@@ -91,7 +91,8 @@ fun GlassIconButton(
     size: Dp = 40.dp,
     background: Color = Color.Transparent,
     badge: String? = null,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    dot: Boolean = false
 ) {
     Box(
         modifier = modifier
@@ -108,6 +109,20 @@ fun GlassIconButton(
                 tint = if (enabled) tint else tint.copy(alpha = 0.35f),
                 modifier = Modifier.size(size * 0.58f)
             )
+            if (dot) {
+                // guldprick, t.ex. när en ny version finns
+                Box(
+                    Modifier
+                        .align(Alignment.TopEnd)
+                        .offset(x = 4.dp, y = (-2).dp)
+                        .size(10.dp)
+                        .clip(CircleShape)
+                        .background(Usb.Bg)
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(Usb.GoldL)
+                )
+            }
             if (badge != null) {
                 Text(
                     badge,

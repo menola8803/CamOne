@@ -85,6 +85,7 @@ import se.snc.camera.ui.theme.CameraTheme
 import se.snc.camera.ui.theme.CameraYellow
 import se.snc.camera.ui.theme.DisplayFont
 import se.snc.camera.ui.theme.Usb
+import se.snc.camera.update.UpdateManager
 import se.snc.camera.ui.components.HeroButton
 import se.snc.camera.ui.components.MutedText
 import se.snc.camera.ui.components.PrimaryButton
@@ -459,6 +460,7 @@ private fun CameraContent(
             onGrid = viewModel::cycleGrid,
             onVideoQuality = viewModel::cycleVideoQuality,
             onSettings = onOpenSettings,
+            updateAvailable = settings.latestKnownVersion.isNotBlank() && UpdateManager.isNewer(settings.latestKnownVersion),
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
@@ -586,6 +588,7 @@ private fun TopBar(
     onGrid: () -> Unit,
     onVideoQuality: () -> Unit,
     onSettings: () -> Unit,
+    updateAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Box(
@@ -681,7 +684,8 @@ private fun TopBar(
                 icon = Icons.Rounded.Settings,
                 contentDescription = stringResource(R.string.cd_settings),
                 onClick = onSettings,
-                rotation = rotation
+                rotation = rotation,
+                dot = updateAvailable
             )
         }
     }

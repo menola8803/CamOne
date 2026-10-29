@@ -33,6 +33,7 @@ import se.snc.camera.gallery.ViewerScreen
 import se.snc.camera.settings.AboutScreen
 import se.snc.camera.settings.SettingsScreen
 import se.snc.camera.text.TextRecognitionScreen
+import se.snc.camera.update.UpdateScreen
 import se.snc.camera.ui.theme.SncTheme
 import se.snc.camera.util.HardwareKeys
 import se.snc.camera.util.KeyCommand
@@ -44,6 +45,7 @@ sealed interface Screen {
     data class Text(val uri: Uri) : Screen
     data object Settings : Screen
     data object About : Screen
+    data object Update : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -60,6 +62,8 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) handleIntent(intent)
+        // Sök efter ny version i bakgrunden (om "Sök automatiskt" är på)
+        app.updateManager.autoCheckIfDue()
 
         setContent {
             val cameraViewModel: CameraViewModel = viewModel()
@@ -111,7 +115,13 @@ class MainActivity : ComponentActivity() {
                         Screen.Settings -> SettingsScreen(
                             repository = app.settingsRepository,
                             onBack = { pop() },
-                            onAbout = { push(Screen.About) }
+                            onAbout = { push(Screen.About) },
+                            onUpdates = { push(Screen.Update) }
+                        )
+                        Screen.Update -> UpdateScreen(
+                            manager = app.updateManager,
+                            repository = app.settingsRepository,
+                            onBack = { pop() }
                         )
                         Screen.About -> AboutScreen(onBack = { pop() })
                     }

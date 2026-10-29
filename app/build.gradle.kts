@@ -13,8 +13,12 @@ android {
         // LineageOS 23.x bygger på Android 16 (API 36). minSdk 31 gör att appen även går på äldre enheter.
         minSdk = 31
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        // Versionen står i gradle.properties. Testet i emulatorn skriver över den (-PsncVersionName=0.9.0 -PsncVersionCode=1)
+        versionCode = ((project.findProperty("sncVersionCode") ?: project.property("sncAppVersionCode")) as String).toInt()
+        versionName = (project.findProperty("sncVersionName") ?: project.property("sncAppVersionName")) as String
+
+        // Uppdateringar hämtas från detta publika GitHub-repo (som i Direct-appen)
+        buildConfigField("String", "UPDATE_REPO", "\"menola8803/CamOne\"")
 
         // Bara svenska och engelska – tar bort andra språk från biblioteken och minskar APK:n
         resourceConfigurations += listOf("en", "sv")

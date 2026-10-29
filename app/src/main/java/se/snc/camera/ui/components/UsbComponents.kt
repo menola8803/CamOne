@@ -149,9 +149,15 @@ fun SquareIconButton(
     }
 }
 
-/** Sidhuvud: tillbakaknapp + rubrik (`.top` + `.h1`). */
+/** Sidhuvud: tillbakaknapp + rubrik (`.top` + `.h1`), valfri underrubrik som i Direct. */
 @Composable
-fun ScreenHeader(title: String, backDescription: String, onBack: () -> Unit, modifier: Modifier = Modifier) {
+fun ScreenHeader(
+    title: String,
+    backDescription: String,
+    onBack: () -> Unit,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null
+) {
     Row(
         modifier
             .fillMaxWidth()
@@ -160,15 +166,19 @@ fun ScreenHeader(title: String, backDescription: String, onBack: () -> Unit, mod
     ) {
         SquareIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, backDescription, onBack, tint = Usb.Muted)
         Spacer(Modifier.width(14.dp))
-        Text(
-            title,
-            color = Usb.Text,
-            fontFamily = DisplayFont,
-            fontWeight = FontWeight.Bold,
-            fontSize = 26.sp,
-            letterSpacing = (-0.3).sp,
-            modifier = Modifier.weight(1f)
-        )
+        Column(Modifier.weight(1f)) {
+            Text(
+                title,
+                color = Usb.Text,
+                fontFamily = DisplayFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 26.sp,
+                letterSpacing = (-0.3).sp
+            )
+            if (subtitle != null) {
+                Text(subtitle, color = Usb.Dim, fontFamily = BodyFont, fontSize = 14.sp)
+            }
+        }
     }
 }
 
@@ -390,28 +400,51 @@ fun GoldSlider(
     }
 }
 
-/** `.item` – klickbar rad med pil. */
+/** `.item` – klickbar rad med pil. [compact] = rad inuti ett kort (ingen egen bakgrund). */
 @Composable
-fun NavItem(title: String, subtitle: String?, onClick: () -> Unit, modifier: Modifier = Modifier, leading: ImageVector? = null) {
+fun NavItem(
+    title: String,
+    subtitle: String?,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    leading: ImageVector? = null,
+    compact: Boolean = false,
+    subtitleColor: Color = Usb.Dim,
+    dot: Boolean = false
+) {
     Row(
         modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = 56.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(Usb.Card)
+            .defaultMinSize(minHeight = if (compact) 48.dp else 56.dp)
+            .clip(RoundedCornerShape(if (compact) 12.dp else 16.dp))
+            .background(if (compact) Color.Transparent else Usb.Card)
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = if (compact) 0.dp else 16.dp, vertical = if (compact) 6.dp else 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         if (leading != null) {
-            Box(
-                Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Usb.Gold.copy(alpha = 0.14f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(leading, contentDescription = null, tint = Usb.Gold, modifier = Modifier.size(20.dp))
+            Box {
+                Box(
+                    Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(Usb.Gold.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(leading, contentDescription = null, tint = Usb.Gold, modifier = Modifier.size(20.dp))
+                }
+                if (dot) {
+                    Box(
+                        Modifier
+                            .align(Alignment.TopEnd)
+                            .size(10.dp)
+                            .clip(CircleShape)
+                            .background(Usb.Bg)
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(Usb.GoldL)
+                    )
+                }
             }
             Spacer(Modifier.width(12.dp))
         }
@@ -419,7 +452,7 @@ fun NavItem(title: String, subtitle: String?, onClick: () -> Unit, modifier: Mod
             Text(title, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             if (subtitle != null) {
                 Spacer(Modifier.height(3.dp))
-                Text(subtitle, color = Usb.Dim, fontFamily = BodyFont, fontSize = 13.sp)
+                Text(subtitle, color = subtitleColor, fontFamily = BodyFont, fontSize = 13.sp)
             }
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = Usb.Dim)

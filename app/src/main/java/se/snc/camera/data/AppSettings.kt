@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
@@ -46,7 +47,13 @@ data class AppSettings(
     val recordAudio: Boolean = true,
     val keepLastMode: Boolean = true,
     val lastMode: String = "PHOTO",
-    val lastLensFront: Boolean = false
+    val lastLensFront: Boolean = false,
+    /** Sök efter ny version på GitHub när appen startar. */
+    val autoUpdateCheck: Boolean = true,
+    /** När uppdateringar senast söktes (ms), 0 = aldrig. */
+    val lastUpdateCheck: Long = 0L,
+    /** Senaste versionen som hittades på GitHub (för pricken på kugghjulet). */
+    val latestKnownVersion: String = ""
 )
 
 private val Context.dataStore by preferencesDataStore(name = "snc_camera_settings")
@@ -72,6 +79,9 @@ class SettingsRepository(private val context: Context) {
         val keepLastMode = booleanPreferencesKey("keep_last_mode")
         val lastMode = stringPreferencesKey("last_mode")
         val lastLensFront = booleanPreferencesKey("last_lens_front")
+        val autoUpdate = booleanPreferencesKey("auto_update_check")
+        val lastUpdateCheck = longPreferencesKey("last_update_check")
+        val latestKnown = stringPreferencesKey("latest_known_version")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { read(it) }
@@ -108,7 +118,10 @@ class SettingsRepository(private val context: Context) {
             recordAudio = p[K.recordAudio] ?: d.recordAudio,
             keepLastMode = p[K.keepLastMode] ?: d.keepLastMode,
             lastMode = p[K.lastMode] ?: d.lastMode,
-            lastLensFront = p[K.lastLensFront] ?: d.lastLensFront
+            lastLensFront = p[K.lastLensFront] ?: d.lastLensFront,
+            autoUpdateCheck = p[K.autoUpdate] ?: d.autoUpdateCheck,
+            lastUpdateCheck = p[K.lastUpdateCheck] ?: d.lastUpdateCheck,
+            latestKnownVersion = p[K.latestKnown] ?: d.latestKnownVersion
         )
     }
 
@@ -131,5 +144,8 @@ class SettingsRepository(private val context: Context) {
         p[K.keepLastMode] = s.keepLastMode
         p[K.lastMode] = s.lastMode
         p[K.lastLensFront] = s.lastLensFront
+        p[K.autoUpdate] = s.autoUpdateCheck
+        p[K.lastUpdateCheck] = s.lastUpdateCheck
+        p[K.latestKnown] = s.latestKnownVersion
     }
 }

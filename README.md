@@ -69,6 +69,17 @@ Varje gång kod skickas till `main` gör GitHub Actions följande automatiskt:
    Artifacts → skarmbilder-och-testrapport*),
 3. publicerar APK:n som en ny release om testet gick igenom.
 
+### Uppdatera direkt i appen (som i Direct-appen)
+**Inställningar → Uppdateringar** visar installerad version och senaste release här på GitHub.
+Finns en ny version visas den med storlek, ändringar och knappen **Ladda ner och installera**.
+Appen kontrollerar filen innan den lämnas till Android: SHA-256 mot GitHub, att det är SNC Camera,
+att versionen är nyare och att den är signerad med samma nyckel. Med **Sök automatiskt** söker appen
+när den startar (högst var sjätte timme) och visar en guldprick på kugghjulet i kameran.
+Ändringarna för varje version skrivs i [CHANGELOG.md](CHANGELOG.md).
+
+Ny release: höj `sncAppVersionName` och `sncAppVersionCode` i `gradle.properties`, skriv ändringarna
+under en ny rubrik i `CHANGELOG.md` och skicka till `main`.
+
 ### Samma signeringsnyckel för alla versioner
 För att en ny version ska kunna installeras **ovanpå** den gamla måste alla byggen signeras med
 samma nyckel. Lägg in nyckeln som en hemlighet en gång:
@@ -78,8 +89,9 @@ samma nyckel. Lägg in nyckeln som en hemlighet en gång:
 3. Secret: hela innehållet i filen `SNC_KEYSTORE_BASE64.txt`
 4. Spara. Nästa bygge använder den fasta nyckeln.
 
-Utan hemligheten får varje bygge en tillfällig nyckel – då måste den gamla versionen avinstalleras
-före uppdatering (bilderna i `DCIM/SNC Camera` ligger kvar). Spara nyckelfilen på ett säkert ställe
+Utan hemligheten byggs och testas appen med en tillfällig nyckel, men **ingen release publiceras**
+(som i Direct-appen) – annars skulle uppdateringen i appen inte kunna installeras ovanpå. Bygget kontrollerar
+också att fingeravtrycket stämmer med `signing/cert-sha256.txt`. Spara nyckelfilen på ett säkert ställe
 och lägg den aldrig i repot.
 
 ### Bygga själv

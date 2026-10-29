@@ -19,6 +19,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.RestartAlt
+import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -60,6 +61,7 @@ import se.snc.camera.ui.components.UsbCard
 import se.snc.camera.ui.theme.BodyFont
 import se.snc.camera.ui.theme.DisplayFont
 import se.snc.camera.ui.theme.Usb
+import se.snc.camera.update.UpdateManager
 import kotlin.math.roundToInt
 
 @StringRes
@@ -81,7 +83,8 @@ fun VolumeKeyAction.labelRes() = when (this) {
 fun SettingsScreen(
     repository: SettingsRepository,
     onBack: () -> Unit,
-    onAbout: () -> Unit
+    onAbout: () -> Unit,
+    onUpdates: () -> Unit
 ) {
     val context = LocalContext.current
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
@@ -225,6 +228,18 @@ fun SettingsScreen(
                 onSelect = { v -> update { it.copy(volumeKeyAction = v) } }
             )
         }
+
+        // ---------------- Uppdateringar (som i Direct) ----------------
+        val newVersion = settings.latestKnownVersion.takeIf { it.isNotBlank() && UpdateManager.isNewer(it) }
+        NavItem(
+            title = stringResource(R.string.update_title),
+            subtitle = if (newVersion != null) stringResource(R.string.update_row_available, newVersion)
+            else stringResource(R.string.update_row_sub),
+            subtitleColor = if (newVersion != null) Usb.GoldL else Usb.Dim,
+            onClick = onUpdates,
+            leading = Icons.Outlined.SystemUpdate,
+            dot = newVersion != null
+        )
 
         // ---------------- Om ----------------
         NavItem(

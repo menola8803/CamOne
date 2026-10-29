@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
+      fixed_key: ${{ steps.signing.outputs.fixed }}
     steps:
       - uses: actions/checkout@v7
 
@@ -28,11 +29,13 @@ jobs:
 
       - name: Versionsnummer
         id: version
-        run: echo "version=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(grep -oP '^sncAppVersionName=\K.+' gradle.properties | tr -d '[:space:]')" >> "$GITHUB_OUTPUT"
 
-      # Om hemligheten SNC_KEYSTORE_BASE64 finns signeras alla byggen med samma nyckel,
-      # så att nya versioner kan installeras ovanpå gamla. Annars används en tillfällig nyckel.
+      # Om hemligheten SNC_KEYSTORE_BASE64 finns signeras alla byggen med appens egen nyckel, så att nya
+      # versioner kan installeras ovanpå gamla (även via uppdateringen i appen). Utan den byggs och testas
+      # appen med en tillfällig nyckel, men ingen release publiceras (som i Direct-appen).
       - name: Signeringsnyckel
+        id: signing
         env:
           KEYSTORE_B64: ${{ secrets.SNC_KEYSTORE_BASE64 }}
         run: |
@@ -44,9 +47,11 @@ jobs:
               echo "SNC_KEY_ALIAS=snc"
               echo "SNC_KEY_PASSWORD=snc-camera"
             } >> "$GITHUB_ENV"
-            echo "::notice title=Signering::Fast nyckel används"
+            echo "fixed=true" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Signering::Appens egen nyckel används"
           else
-            echo "::warning title=Signering::Hemligheten SNC_KEYSTORE_BASE64 saknas – tillfällig nyckel används (avinstallera gammal version före uppdatering)"
+            echo "fixed=false" >> "$GITHUB_OUTPUT"
+            echo "::warning title=Signering::Hemligheten SNC_KEYSTORE_BASE64 saknas – tillfällig nyckel används och ingen release publiceras"
           fi
 
       - name: Bygg APK för telefonen (arm64)
@@ -58,7 +63,8 @@ jobs:
 
       - name: Bygg test-APK (alla arkitekturer, för emulatorn)
         run: |
-          ./gradlew --no-daemon assembleRelease -PsncAllAbis=true
+          # Låg version så att testet kan hitta senaste release på GitHub som en "ny version"
+          ./gradlew --no-daemon assembleRelease -PsncAllAbis=true -PsncVersionName=0.9.0 -PsncVersionCode=1
           cp app/build/outputs/apk/release/app-release.apk out/test-alla-abi.apk
 
       - name: Kontrollera APK
@@ -68,7 +74,19 @@ jobs:
           INFO=$("$BT/aapt2" dump badging "$APK" | grep -E "^(package|sdkVersion|targetSdkVersion|application-label|native-code)" | tr '\n' ' ')
           SIZE=$(du -h "$APK" | cut -f1)
           echo "::notice title=APK::$SIZE – $INFO"
-          "$BT/apksigner" verify "$APK" && echo "::notice title=Signatur::OK"
+          "$BT/apksigner" verify "$APK"
+          # Fingeravtrycket måste stämma med signing/cert-sha256.txt när appens egen nyckel används
+          DIGEST=$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}' | tr 'A-F' 'a-f')
+          WANT=$(tr -d ':[:space:]' < signing/cert-sha256.txt | tr 'A-F' 'a-f')
+          if [ "${{ steps.signing.outputs.fixed }}" = "true" ]; then
+            if [ "$DIGEST" != "$WANT" ]; then
+              echo "::error title=Signatur::APK:n är signerad med fel nyckel ($DIGEST), förväntat $WANT enligt signing/cert-sha256.txt"
+              exit 1
+            fi
+            echo "::notice title=Signatur::OK – appens egen nyckel ($DIGEST)"
+          else
+            echo "::notice title=Signatur::Tillfällig nyckel ($DIGEST)"
+          fi
 
       - uses: actions/upload-artifact@v7
         with:
@@ -87,6 +105,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -123,6 +143,17 @@ jobs:
           path: ci-out
           if-no-files-found: ignore
 
+      # Tillfälligt under granskning: lägg skärmbilderna på grenen ci-results
+      - name: Publicera testresultat på grenen ci-results
+        if: always()
+        run: |
+          [ -d ci-out ] || exit 0
+          cd ci-out
+          git init -q -b ci-results
+          git add -A
+          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Röktest ${GITHUB_SHA::7}"
+          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-results
+
   release:
     name: Publicera release
     needs: [ build, test ]
@@ -131,10 +162,39 @@ jobs:
     permissions:
       contents: write
     steps:
+      # Som i Direct-appen: en release publiceras aldrig signerad med fel nyckel,
+      # annars går uppdateringen i appen inte att installera ovanpå.
+      - name: Kräv appens egen signeringsnyckel
+        if: needs.build.outputs.fixed_key != 'true'
+        run: |
+          echo "::error title=Ingen release::Hemligheten SNC_KEYSTORE_BASE64 saknas. Lägg in den under Settings → Secrets and variables → Actions och kör arbetsflödet igen (Actions → Bygg och testa APK → Run workflow)."
+          exit 1
+
+      - uses: actions/checkout@v7
+
       - uses: actions/download-artifact@v8
         with:
           name: SNC-Camera-apk
           path: out
+
+      - name: Ändringar för versionen (från CHANGELOG.md)
+        env:
+          VERSION: ${{ needs.build.outputs.version }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          v = os.environ["VERSION"]
+          text = open("CHANGELOG.md", encoding="utf-8").read()
+          m = re.search(r"^## Version " + re.escape(v) + r"\b.*?$\n(.*?)(?=^## |\Z)", text, re.S | re.M)
+          body = m.group(1).strip() if m else "- Ny version av SNC Camera."
+          footer = (
+              "\n\n---\n"
+              f"Ladda ner `SNC-Camera-{v}.apk` nedan och öppna filen på telefonen, eller uppdatera direkt i appen under "
+              "**Inställningar → Uppdateringar**.\n\nDeveloper: Claes Sundman S.N.C AB"
+          )
+          open("notes.md", "w", encoding="utf-8").write(body + footer)
+          PY
+          cat notes.md
 
       - name: Skapa release med APK
         env:
@@ -142,16 +202,8 @@ jobs:
           GH_REPO: ${{ github.repository }}
           VERSION: ${{ needs.build.outputs.version }}
         run: |
-          cat > notes.md <<EOF
-          **SNC Camera $VERSION** för OnePlus 13R med LineageOS 23.2.
-
-          ### Installera
-          1. Ladda ner \`SNC-Camera-$VERSION.apk\` här nedanför på telefonen.
-          2. Öppna filen och tillåt installation från webbläsaren/filhanteraren om telefonen frågar.
-
-          Byggd från ${GITHUB_SHA::7} och testad i Android 16-emulator.
-
-          Developer: Claes Sundman S.N.C AB
-          EOF
+          # Fast namn också: .../releases/latest/download/SNC-Camera.apk pekar alltid på senaste versionen
+          cp "out/SNC-Camera-$VERSION.apk" out/SNC-Camera.apk
           gh release delete "v$VERSION" --cleanup-tag -y 2>/dev/null || true
-          gh release create "v$VERSION" out/*.apk --title "SNC Camera $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest
+          gh release create "v$VERSION" "out/SNC-Camera-$VERSION.apk" out/SNC-Camera.apk \
+            --title "SNC Camera $VERSION" --notes-file notes.md --target "$GITHUB_SHA" --latest

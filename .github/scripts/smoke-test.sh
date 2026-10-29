@@ -245,6 +245,49 @@ sleep 2
 key KEYCODE_BACK
 sleep 3
 
+step "Uppdatering (som i Direct)"
+# Testappen har version 0.9.0, så senaste release på GitHub ska visas som en ny version
+adb shell appops set "$PKG" REQUEST_INSTALL_PACKAGES allow
+tap --desc "Settings"
+sleep 3
+$UI tap --text "Updates" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Uppdateringar i inställningarna"
+sleep 2
+if $UI exists --text "NEW VERSION" --timeout 25 >> "$OUT/ui.log" 2>&1; then
+  ok "Ny version hittas på GitHub"
+  shot 29-uppdatering-ny-version
+  tap --text "Download and install"
+  RESULT=""
+  for i in $(seq 1 60); do
+    if $UI exists --contains "verified (SHA-256)" --timeout 1 >> "$OUT/ui.log" 2>&1; then RESULT="verifierad"; break; fi
+    if $UI exists --contains "different key" --timeout 1 >> "$OUT/ui.log" 2>&1; then RESULT="annan nyckel"; break; fi
+    if $UI exists --contains "download failed" --timeout 1 >> "$OUT/ui.log" 2>&1; then RESULT="nätverksfel"; break; fi
+    # Androids installerare kan ha öppnats ovanpå appen
+    if ! adb shell dumpsys window | grep -q "mCurrentFocus.*$PKG"; then RESULT="installerare"; break; fi
+    sleep 2
+  done
+  shot 30-uppdatering-efter-nedladdning
+  log "  Resultat av nedladdningen: ${RESULT:-inget}"
+  check "Nedladdning och kontroll blir klar (${RESULT:-timeout})" bash -c "[ -n '$RESULT' ] && [ '$RESULT' != 'nätverksfel' ]"
+  if [ "$RESULT" = "installerare" ]; then
+    adb exec-out screencap -p > "$OUT/31-androids-installerare.png" 2>/dev/null || true
+    key KEYCODE_BACK
+    sleep 2
+  fi
+  check "Appen lever efter uppdateringsförsöket" alive
+else
+  if $UI exists --text "You have the latest version" --timeout 2 >> "$OUT/ui.log" 2>&1; then
+    bad "Testappen (0.9.0) borde se en nyare release"
+  else
+    log "- ⚠️ Kunde inte nå GitHub från emulatorn – hoppar över nedladdningen"
+  fi
+  shot 29-uppdatering
+fi
+key KEYCODE_BACK
+sleep 2
+key KEYCODE_BACK
+sleep 3
+shot 32-kamera-med-prick
+
 step "Språkval (Svenska)"
 tap --desc "Settings"
 sleep 3
