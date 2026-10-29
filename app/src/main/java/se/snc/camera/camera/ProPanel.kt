@@ -37,6 +37,7 @@ import se.snc.camera.ui.theme.Glass
 import se.snc.camera.ui.theme.GlassStrong
 import se.snc.camera.ui.theme.OnGlass
 import se.snc.camera.ui.theme.OnGlassDim
+import se.snc.camera.ui.theme.Usb
 import java.util.Locale
 import kotlin.math.exp
 import kotlin.math.ln
@@ -228,7 +229,7 @@ private fun ValueSlider(
             colors = SliderDefaults.colors(
                 thumbColor = CameraYellow,
                 activeTrackColor = CameraYellow,
-                inactiveTrackColor = Color.White.copy(alpha = 0.25f)
+                inactiveTrackColor = Usb.Line
             )
         )
     }
@@ -238,7 +239,7 @@ private fun ValueSlider(
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     Text(
         text,
-        color = if (selected) Color.Black else OnGlass,
+        color = if (selected) Usb.Bg else OnGlass,
         fontSize = 12.sp,
         fontWeight = FontWeight.SemiBold,
         modifier = modifier

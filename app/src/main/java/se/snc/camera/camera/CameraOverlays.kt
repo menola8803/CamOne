@@ -40,6 +40,7 @@ import androidx.compose.foundation.background
 import se.snc.camera.data.GridOption
 import se.snc.camera.ui.theme.CameraYellow
 import se.snc.camera.ui.theme.GlassStrong
+import se.snc.camera.ui.theme.Usb
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -71,7 +72,7 @@ fun GridOverlay(grid: GridOption, modifier: Modifier = Modifier) {
 fun LevelIndicator(tilt: Float?, quantized: Int, modifier: Modifier = Modifier) {
     if (tilt == null || abs(tilt) > 12f) return
     val level = abs(tilt) < 1f
-    val color = if (level) CameraYellow else Color.White
+    val color = if (level) CameraYellow else Usb.Text
     Canvas(modifier.fillMaxSize()) {
         val cx = size.width / 2f
         val cy = size.height / 2f
@@ -194,7 +195,7 @@ fun CountdownOverlay(seconds: Int, rotation: Float, modifier: Modifier = Modifie
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
                 "$seconds",
-                color = Color.White,
+                color = Usb.GoldL,
                 fontSize = 120.sp,
                 fontWeight = FontWeight.Light,
                 modifier = Modifier.rotate(rotation)
@@ -213,6 +214,6 @@ fun InfoPill(text: String, modifier: Modifier = Modifier) {
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(text, color = Usb.Text, fontSize = 13.sp, fontWeight = FontWeight.Medium)
     }
 }

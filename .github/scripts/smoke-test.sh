@@ -178,11 +178,17 @@ tap --desc "Settings"
 sleep 3
 shot 21-installningar
 check "Inställningar öppnas" $UI exists --text "Settings"
+W=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1); H=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
+adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H / 4)) 400; sleep 1
+shot 21b-installningar-mitten
+tap --text "Rule of thirds" --scroll
+sleep 1
+shot 21c-val-rutnat
+tap --text "Off" --scroll
 $UI tap --text "About" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Om-raden"
 sleep 3
 shot 22-om
-check "Om visar Developer" $UI exists --text "Developer"
-check "Om visar Claes Sundman S.N.C AB" $UI exists --text "Claes Sundman S.N.C AB"
+check "Om visar Developer: Claes Sundman S.N.C AB" $UI exists --text "Developer: Claes Sundman S.N.C AB"
 key KEYCODE_BACK
 sleep 2
 key KEYCODE_BACK
@@ -236,6 +242,29 @@ shot 26-text-fran-galleri
 check "Textigenkänning från bildvisaren" $UI exists --text "Select all"
 key KEYCODE_BACK
 sleep 2
+key KEYCODE_BACK
+sleep 3
+
+step "Språkval (Svenska)"
+tap --desc "Settings"
+sleep 3
+tap --text "Svenska"
+sleep 4
+shot 27-installningar-svenska
+check "Appen byter till svenska" $UI exists --text "Inställningar"
+$UI tap --text "Om" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Om (svenska)"
+sleep 3
+shot 28-om-svenska
+check "Om på svenska visar Developer-raden" $UI exists --text "Developer: Claes Sundman S.N.C AB"
+key KEYCODE_BACK
+sleep 2
+key KEYCODE_BACK
+sleep 3
+tap --desc "Inställningar"
+sleep 3
+tap --text "English"
+sleep 4
+check "Appen byter tillbaka till engelska" $UI exists --text "Settings"
 key KEYCODE_BACK
 sleep 3
 

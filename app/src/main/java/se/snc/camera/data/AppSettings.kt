@@ -26,8 +26,6 @@ enum class VideoQualityOption(val label: String) { HD("720p"), FHD("1080p"), UHD
 
 enum class VolumeKeyAction { SHUTTER, ZOOM, VOLUME }
 
-enum class ThemeOption { SYSTEM, LIGHT, DARK }
-
 enum class GridOption { OFF, THIRDS, GOLDEN, SQUARE }
 
 data class AppSettings(
@@ -48,9 +46,7 @@ data class AppSettings(
     val recordAudio: Boolean = true,
     val keepLastMode: Boolean = true,
     val lastMode: String = "PHOTO",
-    val lastLensFront: Boolean = false,
-    val theme: ThemeOption = ThemeOption.SYSTEM,
-    val dynamicColor: Boolean = false
+    val lastLensFront: Boolean = false
 )
 
 private val Context.dataStore by preferencesDataStore(name = "snc_camera_settings")
@@ -76,8 +72,6 @@ class SettingsRepository(private val context: Context) {
         val keepLastMode = booleanPreferencesKey("keep_last_mode")
         val lastMode = stringPreferencesKey("last_mode")
         val lastLensFront = booleanPreferencesKey("last_lens_front")
-        val theme = stringPreferencesKey("theme")
-        val dynamicColor = booleanPreferencesKey("dynamic_color")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { read(it) }
@@ -114,9 +108,7 @@ class SettingsRepository(private val context: Context) {
             recordAudio = p[K.recordAudio] ?: d.recordAudio,
             keepLastMode = p[K.keepLastMode] ?: d.keepLastMode,
             lastMode = p[K.lastMode] ?: d.lastMode,
-            lastLensFront = p[K.lastLensFront] ?: d.lastLensFront,
-            theme = p.enumOr(K.theme, d.theme),
-            dynamicColor = p[K.dynamicColor] ?: d.dynamicColor
+            lastLensFront = p[K.lastLensFront] ?: d.lastLensFront
         )
     }
 
@@ -139,7 +131,5 @@ class SettingsRepository(private val context: Context) {
         p[K.keepLastMode] = s.keepLastMode
         p[K.lastMode] = s.lastMode
         p[K.lastLensFront] = s.lastLensFront
-        p[K.theme] = s.theme.name
-        p[K.dynamicColor] = s.dynamicColor
     }
 }

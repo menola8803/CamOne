@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Språk som kan väljas per app (Android 13+), samma val som i inställningarna -->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="sv" />
+    <locale android:name="en" />
+</locale-config>

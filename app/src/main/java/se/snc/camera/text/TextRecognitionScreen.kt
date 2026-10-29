@@ -45,10 +45,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Call
 import androidx.compose.material.icons.rounded.ContentCopy
-import androidx.compose.material.icons.rounded.Description
 import androidx.compose.material.icons.rounded.Deselect
 import androidx.compose.material.icons.rounded.Email
 import androidx.compose.material.icons.rounded.Language
@@ -58,7 +56,6 @@ import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -97,10 +94,14 @@ import com.google.mlkit.vision.text.TextRecognition
 import com.google.mlkit.vision.text.latin.TextRecognizerOptions
 import se.snc.camera.R
 import se.snc.camera.data.MediaRepository
-import se.snc.camera.ui.theme.Accent
+import se.snc.camera.ui.theme.DisplayFont
+import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.components.SquareIconButton
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.outlined.Description
 import se.snc.camera.ui.theme.CameraTheme
-import se.snc.camera.ui.theme.Glass
-import se.snc.camera.ui.theme.OnGlassDim
 import se.snc.camera.util.awaitTask
 import se.snc.camera.util.shareText
 import kotlin.math.min
@@ -211,30 +212,33 @@ fun TextRecognitionScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Usb.Bg)
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)
-                }
+                SquareIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, stringResource(R.string.cd_back), onBack)
+                Spacer(Modifier.width(14.dp))
                 Text(
                     stringResource(R.string.text_title),
-                    color = Color.White,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
+                    color = Usb.Text,
+                    fontFamily = DisplayFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
                     modifier = Modifier.weight(1f)
                 )
                 if (lines.isNotEmpty()) {
-                    IconButton(onClick = { showSheet = true }) {
-                        Icon(Icons.Rounded.Description, contentDescription = stringResource(R.string.text_show_all), tint = Color.White)
-                    }
+                    SquareIconButton(
+                        Icons.Outlined.Description,
+                        stringResource(R.string.text_show_all),
+                        { showSheet = true },
+                        tint = Usb.GoldL
+                    )
                 }
             }
 
@@ -247,8 +251,8 @@ fun TextRecognitionScreen(
                 contentAlignment = Alignment.Center
             ) {
                 when (val s = state) {
-                    is OcrState.Loading -> CircularProgressIndicator(color = Color.White)
-                    is OcrState.Failed -> Text(stringResource(R.string.text_failed), color = OnGlassDim)
+                    is OcrState.Loading -> CircularProgressIndicator(color = Usb.Gold)
+                    is OcrState.Failed -> Text(stringResource(R.string.text_failed), color = Usb.Muted)
                     is OcrState.Done -> {
                         Image(
                             bitmap = remember(s.bitmap) { s.bitmap.asImageBitmap() },
@@ -260,7 +264,7 @@ fun TextRecognitionScreen(
                         Box(
                             Modifier
                                 .fillMaxSize()
-                                .background(Color.Black.copy(alpha = if (lines.isEmpty()) 0f else 0.25f))
+                                .background(Usb.Bg.copy(alpha = if (lines.isEmpty()) 0f else 0.3f))
                         )
                         Canvas(
                             Modifier
@@ -285,13 +289,13 @@ fun TextRecognitionScreen(
                                 val sz = Size(r.width() * scale + 2 * pad, r.height() * scale + 2 * pad)
                                 val isSel = i in selected
                                 drawRoundRect(
-                                    color = if (isSel) Accent.copy(alpha = 0.38f) else Color.White.copy(alpha = 0.16f),
+                                    color = if (isSel) Usb.Gold.copy(alpha = 0.30f) else Usb.TealL.copy(alpha = 0.10f),
                                     topLeft = tl,
                                     size = sz,
                                     cornerRadius = corner
                                 )
                                 drawRoundRect(
-                                    color = if (isSel) Accent else Color.White.copy(alpha = 0.55f),
+                                    color = if (isSel) Usb.Gold else Usb.Teal.copy(alpha = 0.7f),
                                     topLeft = tl,
                                     size = sz,
                                     cornerRadius = corner,
@@ -302,12 +306,12 @@ fun TextRecognitionScreen(
                         if (lines.isEmpty()) {
                             Text(
                                 stringResource(R.string.text_none_found),
-                                color = Color.White,
+                                color = Usb.Text,
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .padding(top = 16.dp)
                                     .clip(RoundedCornerShape(50))
-                                    .background(Glass)
+                                    .background(Usb.Card2)
                                     .padding(horizontal = 16.dp, vertical = 8.dp)
                             )
                         }
@@ -332,7 +336,7 @@ fun TextRecognitionScreen(
                     if (nothingSelected) {
                         Text(
                             if (lines.isEmpty()) "" else stringResource(R.string.text_hint),
-                            color = OnGlassDim,
+                            color = Usb.Dim,
                             fontSize = 13.sp,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                         )
@@ -350,7 +354,7 @@ fun TextRecognitionScreen(
                     } else {
                         Text(
                             pluralStringResource(R.plurals.text_lines_selected, selected.size, selected.size),
-                            color = Color.White,
+                            color = Usb.Text,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -379,7 +383,16 @@ fun TextRecognitionScreen(
             ModalBottomSheet(
                 onDismissRequest = { showSheet = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = Color(0xFF17181C)
+                containerColor = Usb.Card,
+                dragHandle = {
+                    Box(
+                        Modifier
+                            .padding(top = 10.dp, bottom = 6.dp)
+                            .size(width = 40.dp, height = 4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(Usb.Line)
+                    )
+                }
             ) {
                 Column(
                     Modifier
@@ -387,19 +400,19 @@ fun TextRecognitionScreen(
                         .padding(horizontal = 20.dp)
                         .padding(bottom = 24.dp)
                 ) {
-                    Text(stringResource(R.string.text_sheet_title), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                    Text(stringResource(R.string.text_sheet_hint), color = OnGlassDim, fontSize = 12.sp)
+                    Text(stringResource(R.string.text_sheet_title), color = Usb.Text, fontFamily = DisplayFont, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.text_sheet_hint), color = Usb.Dim, fontSize = 13.sp)
                     Spacer(Modifier.height(12.dp))
                     Box(
                         Modifier
                             .fillMaxWidth()
                             .height(320.dp)
                             .clip(RoundedCornerShape(16.dp))
-                            .background(Color.White.copy(alpha = 0.06f))
+                            .background(Usb.Card2)
                             .padding(14.dp)
                     ) {
                         SelectionContainer(Modifier.verticalScroll(rememberScrollState())) {
-                            Text(sheetText, color = Color.White, fontSize = 16.sp, lineHeight = 23.sp)
+                            Text(sheetText, color = Usb.Text, fontSize = 16.sp, lineHeight = 24.sp)
                         }
                     }
                     Spacer(Modifier.height(12.dp))
@@ -451,16 +464,19 @@ private fun ActionPill(
 ) {
     Row(
         Modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (primary) Accent else Glass)
+            .heightIn(min = 44.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(if (primary) Usb.Gold else Usb.Card)
+            .border(1.dp, if (primary) Usb.Gold else Usb.Line, RoundedCornerShape(14.dp))
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 14.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val tint = if (enabled) Color.White else Color.White.copy(alpha = 0.35f)
+        val base = if (primary) Usb.Bg else Usb.Text
+        val tint = if (enabled) base else base.copy(alpha = 0.35f)
         Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
-        Text(label, color = tint, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+        Text(label, color = tint, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -480,7 +496,7 @@ private fun ScanSweep(show: Boolean) {
         drawRect(
             Brush.verticalGradient(
                 0f to Color.Transparent,
-                0.5f to Accent.copy(alpha = 0.35f),
+                0.5f to Usb.Gold.copy(alpha = 0.35f),
                 1f to Color.Transparent,
                 startY = lineY - 60f,
                 endY = lineY + 60f

@@ -13,8 +13,8 @@ android {
         // LineageOS 23.x bygger på Android 16 (API 36). minSdk 31 gör att appen även går på äldre enheter.
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         // Bara svenska och engelska – tar bort andra språk från biblioteken och minskar APK:n
         resourceConfigurations += listOf("en", "sv")

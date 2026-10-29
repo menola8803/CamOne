@@ -145,7 +145,6 @@
     <string name="section_video">Video</string>
     <string name="section_viewfinder">Sökare</string>
     <string name="section_general">Allmänt</string>
-    <string name="section_about">Om</string>
     <string name="setting_aspect">Bildformat</string>
     <string name="setting_max_quality">Högsta kvalitet</string>
     <string name="setting_max_quality_desc">Av ger snabbare avtryckare</string>
@@ -164,9 +163,6 @@
     <string name="setting_volume_keys">Volymknappar</string>
     <string name="setting_keep_mode">Kom ihåg senaste läge</string>
     <string name="setting_keep_mode_desc">Öppna kameran i det läge du använde sist</string>
-    <string name="setting_theme">Tema</string>
-    <string name="setting_dynamic_color">Dynamiska färger</string>
-    <string name="setting_dynamic_color_desc">Använd färger från bakgrundsbilden i menyerna</string>
     <string name="setting_reset">Återställ inställningar</string>
     <string name="setting_reset_confirm">Alla inställningar återgår till standard.</string>
     <string name="grid_off">Av</string>
@@ -176,20 +172,23 @@
     <string name="volume_shutter">Ta bild</string>
     <string name="volume_zoom">Zooma</string>
     <string name="volume_volume">Ändra volym</string>
-    <string name="theme_system">Följ systemet</string>
-    <string name="theme_light">Ljust</string>
-    <string name="theme_dark">Mörkt</string>
 
     <!-- Om -->
     <string name="about_title">Om</string>
-    <string name="about_version">Version %1$s (%2$d)</string>
     <string name="about_version_label">Version</string>
     <string name="about_tagline">En modern kamera för OnePlus 13R med LineageOS — med filter och textigenkänning.</string>
     <string name="about_target">Gjord för</string>
     <string name="about_target_value">OnePlus 13R · LineageOS 23.2</string>
     <string name="about_device">Den här enheten</string>
     <string name="about_android">System</string>
-    <string name="about_package">Paket</string>
     <string name="about_licenses">Öppen källkod</string>
     <string name="about_copyright">© 2026 Claes Sundman S.N.C AB</string>
+
+    <!-- USB-stil -->
+    <string name="setting_language">Språk</string>
+    <string name="about_title_full">Om SNC Camera</string>
+    <string name="wm_sub">Kamera</string>
+    <string name="version_footer">Version %1$s</string>
+    <string name="about_package_line">Paket %1$s</string>
+    <string name="permission_status">Kameraåtkomst är av</string>
 </resources>

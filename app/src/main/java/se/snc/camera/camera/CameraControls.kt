@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
@@ -67,7 +69,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.offset
 import se.snc.camera.R
-import se.snc.camera.ui.theme.Accent
+import se.snc.camera.ui.theme.RecordRed
+import se.snc.camera.ui.theme.Usb
 import se.snc.camera.ui.theme.CameraYellow
 import se.snc.camera.ui.theme.Glass
 import se.snc.camera.ui.theme.OnGlass
@@ -108,7 +111,7 @@ fun GlassIconButton(
             if (badge != null) {
                 Text(
                     badge,
-                    color = Color.Black,
+                    color = Usb.Bg,
                     fontSize = 8.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier
@@ -158,7 +161,7 @@ fun GlassTextButton(
     }
 }
 
-/** Avtryckare: vit för foto, röd för video, morfar till fyrkant under inspelning. */
+/** Avtryckare i USB-stil: guldknapp med sken (som USB-appens huvudknapp), korallröd för video. */
 @Composable
 fun ShutterButton(
     isVideo: Boolean,
@@ -173,9 +176,9 @@ fun ShutterButton(
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(stiffness = 600f), label = "shutterScale")
     val innerColor by animateColorAsState(
         when {
-            isVideo -> Accent
-            isBusy -> Color.White.copy(alpha = 0.6f)
-            else -> Color.White
+            isVideo -> RecordRed
+            isBusy -> Usb.Gold.copy(alpha = 0.55f)
+            else -> Usb.Gold
         },
         label = "shutterColor"
     )
@@ -186,7 +189,17 @@ fun ShutterButton(
         modifier = modifier
             .size(78.dp)
             .scale(scale)
-            .border(4.dp, Color.White, CircleShape)
+            .drawBehind {
+                // mjukt sken, som box-shadow på USB-appens .mic
+                drawCircle(
+                    Brush.radialGradient(
+                        listOf(innerColor.copy(alpha = 0.30f), Color.Transparent),
+                        radius = size.minDimension * 0.85f
+                    ),
+                    radius = size.minDimension * 0.85f
+                )
+            }
+            .border(3.dp, Usb.Text, CircleShape)
             .clip(CircleShape)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
@@ -200,7 +213,7 @@ fun ShutterButton(
         if (countdown > 0) {
             Text(
                 "$countdown",
-                color = Color.Black,
+                color = Usb.Bg,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -222,7 +235,7 @@ fun GalleryThumbnail(
             .size(52.dp)
             .rotate(rotation)
             .clip(CircleShape)
-            .border(2.dp, Color.White.copy(alpha = 0.9f), CircleShape)
+            .border(2.dp, Usb.Gold.copy(alpha = 0.75f), CircleShape)
             .background(Glass)
             .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cd_open_gallery), onClick = onClick),
         contentAlignment = Alignment.Center
@@ -379,7 +392,7 @@ fun ZoomChips(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(if (active) Color.Black.copy(alpha = 0.55f) else Color.Transparent)
+                    .background(if (active) Usb.Bg.copy(alpha = 0.8f) else Color.Transparent)
                     .clickable(role = Role.Button) { onZoom(stop) },
                 contentAlignment = Alignment.Center
             ) {
@@ -413,7 +426,7 @@ fun RecordingTimer(ms: Long, paused: Boolean, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))
-            .background(if (paused) Glass else Accent)
+            .background(if (paused) Glass else RecordRed)
             .padding(horizontal = 12.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)

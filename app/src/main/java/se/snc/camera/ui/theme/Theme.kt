@@ -1,103 +1,136 @@
 package se.snc.camera.ui.theme
 
-import android.os.Build
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import se.snc.camera.data.ThemeOption
+import se.snc.camera.R
 
-/** Accentfärg – varm röd, i stil med OnePlus kameragränssnitt. */
-val Accent = Color(0xFFFF4040)
-val AccentSoft = Color(0xFFFF7A6E)
-val CameraYellow = Color(0xFFFFC233)
-val Glass = Color(0x66202226)
-val GlassStrong = Color(0xB3151619)
-val OnGlass = Color(0xFFF5F5F7)
-val OnGlassDim = Color(0xB3F5F5F7)
+/**
+ * Samma formspråk som USB-appen (menola8803/USB): mörk petrolgrön botten, guld som
+ * huvudfärg, teal för rubriker och Space Grotesk / IBM Plex Sans / Cormorant Garamond.
+ */
+object Usb {
+    val Bg = Color(0xFF0F1A1C)
+    val Card = Color(0xFF172629)
+    val Card2 = Color(0xFF1E3236)
+    val Line = Color(0xFF24393D)
+    val Text = Color(0xFFEAF1EF)
+    val Muted = Color(0xFFB7C6C3)
+    val Dim = Color(0xFF9FB1AE)
+    val Teal = Color(0xFF5FC4B4)
+    val TealL = Color(0xFF8FE0D2)
+    val Gold = Color(0xFFE8B04A)
+    val GoldL = Color(0xFFF3C76E)
+    val Hl = Color(0xFF4A3A18)
+    val Danger = Color(0xFFE8836B)
+    val DangerBg = Color(0xFF3A2420)
+    val DangerLine = Color(0xFF5A3027)
+    val DangerText = Color(0xFFF6C7BB)
+    val Code = Color(0xFF0A1314)
 
-private val DarkScheme = darkColorScheme(
-    primary = Accent,
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFF5C1414),
-    onPrimaryContainer = Color(0xFFFFDAD5),
-    secondary = AccentSoft,
-    background = Color(0xFF0E0F12),
-    onBackground = Color(0xFFEDEDF0),
-    surface = Color(0xFF0E0F12),
-    onSurface = Color(0xFFEDEDF0),
-    surfaceVariant = Color(0xFF1E2026),
-    onSurfaceVariant = Color(0xFFB9BCC6),
-    surfaceContainer = Color(0xFF17181C),
-    surfaceContainerHigh = Color(0xFF1F2126),
-    surfaceContainerHighest = Color(0xFF282A30),
-    outline = Color(0xFF3A3D45),
-    outlineVariant = Color(0xFF2A2C32)
+    /** Guldglans för ordmärket (samma toning som .wm-name i USB-appen). */
+    val GoldShine = Brush.linearGradient(
+        0f to Color(0xFFB9822A),
+        0.28f to Color(0xFFF7DA94),
+        0.48f to Color(0xFFE8B04A),
+        0.62f to Color(0xFFFCEBC0),
+        0.80f to Color(0xFFD59A35),
+        1f to Color(0xFFB9822A)
+    )
+}
+
+// Namn som används i kamera-, visnings- och redigeringsskärmarna
+val Accent = Usb.Gold
+val AccentSoft = Usb.GoldL
+val CameraYellow = Usb.GoldL
+val RecordRed = Usb.Danger
+val Glass = Color(0x99172629)
+val GlassStrong = Color(0xE6172629)
+val OnGlass = Usb.Text
+val OnGlassDim = Usb.Muted
+
+val DisplayFont = FontFamily(
+    Font(R.font.space_grotesk_medium, FontWeight.Medium),
+    Font(R.font.space_grotesk_bold, FontWeight.Bold),
+    Font(R.font.space_grotesk_bold, FontWeight.SemiBold)
 )
 
-private val LightScheme = lightColorScheme(
-    primary = Color(0xFFD62828),
-    onPrimary = Color.White,
-    primaryContainer = Color(0xFFFFDAD5),
-    onPrimaryContainer = Color(0xFF410002),
-    secondary = Color(0xFFB4423A),
-    background = Color(0xFFF7F7F9),
-    onBackground = Color(0xFF15161A),
-    surface = Color(0xFFF7F7F9),
-    onSurface = Color(0xFF15161A),
-    surfaceVariant = Color(0xFFE8E8EE),
-    onSurfaceVariant = Color(0xFF4A4C55),
-    surfaceContainer = Color(0xFFFFFFFF),
-    surfaceContainerHigh = Color(0xFFF0F0F4),
-    surfaceContainerHighest = Color(0xFFE6E6EC),
-    outline = Color(0xFFC4C6CE),
-    outlineVariant = Color(0xFFDADBE1)
+val BodyFont = FontFamily(
+    Font(R.font.ibm_plex_sans_regular, FontWeight.Normal),
+    Font(R.font.ibm_plex_sans_medium, FontWeight.Medium),
+    Font(R.font.ibm_plex_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.ibm_plex_sans_semibold, FontWeight.Bold)
+)
+
+val SerifFont = FontFamily(
+    Font(R.font.cormorant_garamond_semibold, FontWeight.SemiBold),
+    Font(R.font.cormorant_garamond_semibold, FontWeight.Bold)
+)
+
+private val UsbScheme: ColorScheme = darkColorScheme(
+    primary = Usb.Gold,
+    onPrimary = Usb.Bg,
+    primaryContainer = Usb.Hl,
+    onPrimaryContainer = Usb.GoldL,
+    secondary = Usb.Teal,
+    onSecondary = Usb.Bg,
+    secondaryContainer = Usb.Card2,
+    onSecondaryContainer = Usb.TealL,
+    tertiary = Usb.TealL,
+    background = Usb.Bg,
+    onBackground = Usb.Text,
+    surface = Usb.Bg,
+    onSurface = Usb.Text,
+    surfaceVariant = Usb.Card2,
+    onSurfaceVariant = Usb.Muted,
+    surfaceContainerLowest = Usb.Bg,
+    surfaceContainerLow = Usb.Card,
+    surfaceContainer = Usb.Card,
+    surfaceContainerHigh = Usb.Card,
+    surfaceContainerHighest = Usb.Card2,
+    surfaceBright = Usb.Card2,
+    surfaceDim = Usb.Bg,
+    inverseSurface = Usb.Text,
+    inverseOnSurface = Usb.Bg,
+    outline = Usb.Line,
+    outlineVariant = Usb.Line,
+    error = Usb.Danger,
+    onError = Usb.Bg,
+    scrim = Color(0x990A1314)
 )
 
 private val AppTypography = Typography(
-    headlineMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 28.sp, letterSpacing = (-0.5).sp),
-    titleLarge = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 22.sp, letterSpacing = (-0.2).sp),
-    titleMedium = TextStyle(fontWeight = FontWeight.Medium, fontSize = 16.sp),
-    bodyLarge = TextStyle(fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 22.sp),
-    bodyMedium = TextStyle(fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 20.sp),
-    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, letterSpacing = 0.2.sp),
-    labelMedium = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 1.sp),
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.4.sp)
+    displaySmall = TextStyle(fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 32.sp, letterSpacing = (-0.5).sp),
+    headlineMedium = TextStyle(fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 28.sp, letterSpacing = (-0.4).sp),
+    headlineSmall = TextStyle(fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 24.sp, letterSpacing = (-0.2).sp),
+    titleLarge = TextStyle(fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 22.sp, letterSpacing = (-0.2).sp),
+    titleMedium = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 16.sp),
+    titleSmall = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 14.sp),
+    bodyLarge = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.Normal, fontSize = 16.sp, lineHeight = 23.sp),
+    bodyMedium = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.Normal, fontSize = 14.sp, lineHeight = 21.sp),
+    bodySmall = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.Normal, fontSize = 13.sp, lineHeight = 18.sp),
+    labelLarge = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp),
+    labelMedium = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 12.sp, letterSpacing = 1.sp),
+    labelSmall = TextStyle(fontFamily = BodyFont, fontWeight = FontWeight.Medium, fontSize = 11.sp, letterSpacing = 0.4.sp)
 )
 
+/** Hela appen använder USB-stilen (alltid mörk, som USB-appen). */
 @Composable
-fun SncTheme(
-    theme: ThemeOption = ThemeOption.DARK,
-    dynamicColor: Boolean = false,
-    content: @Composable () -> Unit
-) {
-    val dark = when (theme) {
-        ThemeOption.SYSTEM -> isSystemInDarkTheme()
-        ThemeOption.LIGHT -> false
-        ThemeOption.DARK -> true
-    }
-    val context = LocalContext.current
-    val scheme: ColorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S ->
-            if (dark) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        dark -> DarkScheme
-        else -> LightScheme
-    }
-    MaterialTheme(colorScheme = scheme, typography = AppTypography, content = content)
+fun SncTheme(content: @Composable () -> Unit) {
+    MaterialTheme(colorScheme = UsbScheme, typography = AppTypography, content = content)
 }
 
-/** Kameravyn är alltid mörk oavsett tema. */
+/** Kamera-, bildvisare- och redigeringsskärmarna – samma palett. */
 @Composable
 fun CameraTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = DarkScheme, typography = AppTypography, content = content)
+    MaterialTheme(colorScheme = UsbScheme, typography = AppTypography, content = content)
 }

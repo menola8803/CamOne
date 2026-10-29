@@ -18,19 +18,15 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import se.snc.camera.camera.CameraMode
 import se.snc.camera.camera.CameraScreen
 import se.snc.camera.camera.CameraViewModel
-import se.snc.camera.data.AppSettings
-import se.snc.camera.data.ThemeOption
 import se.snc.camera.data.VolumeKeyAction
 import se.snc.camera.editor.EditorScreen
 import se.snc.camera.gallery.ViewerScreen
@@ -66,27 +62,8 @@ class MainActivity : ComponentActivity() {
         if (savedInstanceState == null) handleIntent(intent)
 
         setContent {
-            val settings by app.settingsRepository.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
             val cameraViewModel: CameraViewModel = viewModel()
             val screen = backStack.last()
-
-            val systemDark = isSystemInDarkTheme()
-            val darkUi = when (screen) {
-                Screen.Settings, Screen.About -> when (settings.theme) {
-                    ThemeOption.SYSTEM -> systemDark
-                    ThemeOption.LIGHT -> false
-                    ThemeOption.DARK -> true
-                }
-                else -> true
-            }
-            LaunchedEffect(darkUi) {
-                val style = if (darkUi) {
-                    SystemBarStyle.dark(Color.TRANSPARENT)
-                } else {
-                    SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
-                }
-                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
-            }
 
             LaunchedEffect(requestedMode) {
                 requestedMode?.let {
@@ -97,7 +74,7 @@ class MainActivity : ComponentActivity() {
 
             BackHandler(enabled = backStack.size > 1) { pop() }
 
-            SncTheme(theme = settings.theme, dynamicColor = settings.dynamicColor) {
+            SncTheme {
                 AnimatedContent(
                     targetState = screen,
                     transitionSpec = {

@@ -41,16 +41,12 @@ import androidx.compose.material.icons.rounded.GridOn
 import androidx.compose.material.icons.rounded.HdrOff
 import androidx.compose.material.icons.rounded.HdrOn
 import androidx.compose.material.icons.rounded.NightsStay
-import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material.icons.rounded.TimerOff
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -85,10 +81,17 @@ import se.snc.camera.R
 import se.snc.camera.data.FlashOption
 import se.snc.camera.data.GridOption
 import se.snc.camera.data.TimerOption
-import se.snc.camera.ui.theme.Accent
 import se.snc.camera.ui.theme.CameraTheme
 import se.snc.camera.ui.theme.CameraYellow
-import se.snc.camera.ui.theme.OnGlassDim
+import se.snc.camera.ui.theme.DisplayFont
+import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.components.HeroButton
+import se.snc.camera.ui.components.MutedText
+import se.snc.camera.ui.components.PrimaryButton
+import se.snc.camera.ui.components.SecondaryButton
+import se.snc.camera.ui.components.StatusPill
+import se.snc.camera.ui.components.Wordmark
+import androidx.compose.material.icons.outlined.CameraAlt
 import se.snc.camera.util.HardwareKeys
 import se.snc.camera.util.KeyCommand
 import se.snc.camera.util.findActivity
@@ -134,39 +137,56 @@ fun CameraScreen(
     }
 }
 
+/** Behörighetsskärm i USB-stil: ordmärke överst, stor guldknapp i ringar, status och knappar. */
 @Composable
 private fun PermissionPrompt(showSettings: Boolean, onRequest: () -> Unit, onOpenSettings: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Color.Black)
-            .padding(32.dp),
-        verticalArrangement = Arrangement.Center,
+            .background(Usb.Bg)
+            .statusBarsPadding()
+            .navigationBarsPadding()
+            .padding(horizontal = 16.dp, vertical = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(Icons.Rounded.PhotoCamera, contentDescription = null, tint = Color.White, modifier = Modifier.size(64.dp))
-        Spacer(Modifier.height(24.dp))
+        Wordmark(subtitle = stringResource(R.string.wm_sub), modifier = Modifier.fillMaxWidth())
+        Spacer(Modifier.weight(1f))
+        HeroButton(
+            icon = Icons.Outlined.CameraAlt,
+            contentDescription = stringResource(R.string.permission_grant),
+            onClick = onRequest
+        )
+        Spacer(Modifier.height(18.dp))
+        StatusPill(stringResource(R.string.permission_status), color = Usb.GoldL, dot = Usb.Gold)
+        Spacer(Modifier.height(18.dp))
         Text(
             stringResource(R.string.permission_title),
-            color = Color.White,
-            fontSize = 22.sp,
-            fontWeight = FontWeight.SemiBold,
+            color = Usb.Text,
+            fontFamily = DisplayFont,
+            fontWeight = FontWeight.Bold,
+            fontSize = 20.sp,
             textAlign = TextAlign.Center
         )
         Spacer(Modifier.height(8.dp))
-        Text(
+        MutedText(
             stringResource(R.string.permission_text),
-            color = OnGlassDim,
-            textAlign = TextAlign.Center
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 16.dp)
         )
-        Spacer(Modifier.height(24.dp))
-        Button(onClick = onRequest, colors = ButtonDefaults.buttonColors(containerColor = Accent)) {
-            Text(stringResource(R.string.permission_grant))
-        }
+        Spacer(Modifier.weight(1f))
+        PrimaryButton(
+            text = stringResource(R.string.permission_grant),
+            onClick = onRequest,
+            icon = Icons.Outlined.CameraAlt,
+            modifier = Modifier.fillMaxWidth()
+        )
         if (showSettings) {
-            TextButton(onClick = onOpenSettings) {
-                Text(stringResource(R.string.permission_open_settings), color = Color.White)
-            }
+            Spacer(Modifier.height(10.dp))
+            SecondaryButton(
+                text = stringResource(R.string.permission_open_settings),
+                onClick = onOpenSettings,
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }
@@ -289,7 +309,7 @@ private fun CameraContent(
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Usb.Bg)
     ) {
         // --------------------------- Sökare ---------------------------
         Box(
@@ -391,13 +411,13 @@ private fun CameraContent(
                         .align(Alignment.TopCenter)
                         .padding(top = 12.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Color.Black.copy(alpha = 0.45f))
+                        .background(Usb.Bg.copy(alpha = 0.72f))
                         .padding(horizontal = 12.dp, vertical = 6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(Icons.Rounded.NightsStay, contentDescription = null, tint = CameraYellow, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.size(6.dp))
-                    Text(stringResource(R.string.night_hold_steady), color = Color.White, fontSize = 12.sp)
+                    Text(stringResource(R.string.night_hold_steady), color = Usb.Text, fontSize = 12.sp)
                 }
             }
 
@@ -452,8 +472,8 @@ private fun CameraContent(
                 .background(
                     Brush.verticalGradient(
                         0f to Color.Transparent,
-                        0.25f to Color.Black.copy(alpha = 0.55f),
-                        1f to Color.Black
+                        0.25f to Usb.Bg.copy(alpha = 0.6f),
+                        1f to Usb.Bg
                     )
                 )
                 .navigationBarsPadding()
@@ -512,7 +532,7 @@ private fun CameraContent(
                         )
                         if (state.isCapturing && state.mode == CameraMode.PORTRAIT) {
                             CircularProgressIndicator(
-                                color = Color.White,
+                                color = Usb.Gold,
                                 strokeWidth = 2.dp,
                                 modifier = Modifier.size(56.dp)
                             )
@@ -594,7 +614,7 @@ private fun TopBar(
                         contentDescription = stringResource(R.string.cd_torch),
                         onClick = onFlash,
                         rotation = rotation,
-                        tint = if (state.torchOn) CameraYellow else Color.White,
+                        tint = if (state.torchOn) CameraYellow else Usb.Text,
                         enabled = !state.lensFront
                     )
                 } else {
@@ -607,7 +627,7 @@ private fun TopBar(
                         contentDescription = stringResource(R.string.cd_flash),
                         onClick = onFlash,
                         rotation = rotation,
-                        tint = if (flash == FlashOption.ON) CameraYellow else Color.White
+                        tint = if (flash == FlashOption.ON) CameraYellow else Usb.Text
                     )
                 }
             } else {
@@ -620,7 +640,7 @@ private fun TopBar(
                     contentDescription = stringResource(R.string.cd_hdr),
                     onClick = onHdr,
                     rotation = rotation,
-                    tint = if (hdr) CameraYellow else Color.White
+                    tint = if (hdr) CameraYellow else Usb.Text
                 )
             }
 
@@ -629,7 +649,7 @@ private fun TopBar(
                 contentDescription = stringResource(R.string.cd_timer),
                 onClick = onTimer,
                 rotation = rotation,
-                tint = if (timer == TimerOption.OFF) Color.White else CameraYellow,
+                tint = if (timer == TimerOption.OFF) Usb.Text else CameraYellow,
                 badge = if (timer == TimerOption.OFF) null else "${timer.seconds}s"
             )
 
@@ -654,7 +674,7 @@ private fun TopBar(
                 contentDescription = stringResource(R.string.cd_grid),
                 onClick = onGrid,
                 rotation = rotation,
-                tint = if (grid == GridOption.OFF) Color.White else CameraYellow
+                tint = if (grid == GridOption.OFF) Usb.Text else CameraYellow
             )
 
             GlassIconButton(

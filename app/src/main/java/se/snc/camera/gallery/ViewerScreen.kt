@@ -31,18 +31,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.PhotoLibrary
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.TextFields
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -73,7 +66,19 @@ import se.snc.camera.R
 import se.snc.camera.data.MediaItem
 import se.snc.camera.data.MediaRepository
 import se.snc.camera.ui.theme.CameraTheme
-import se.snc.camera.ui.theme.GlassStrong
+import se.snc.camera.ui.theme.DisplayFont
+import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.components.Seal
+import se.snc.camera.ui.components.SquareIconButton
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Edit
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.PhotoLibrary
+import androidx.compose.material.icons.outlined.Share
 import se.snc.camera.util.isGranted
 import se.snc.camera.util.openVideo
 import se.snc.camera.util.shareMedia
@@ -119,8 +124,8 @@ fun ViewerScreen(
 
         val list = items
         if (list == null) {
-            Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = Color.White)
+            Box(Modifier.fillMaxSize().background(Usb.Bg), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = Usb.Gold)
             }
             return@CameraTheme
         }
@@ -147,7 +152,7 @@ fun ViewerScreen(
         Box(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Usb.Bg)
         ) {
             HorizontalPager(
                 state = pagerState,
@@ -175,34 +180,46 @@ fun ViewerScreen(
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.7f), Color.Transparent)))
+                        .background(Brush.verticalGradient(listOf(Usb.Bg.copy(alpha = 0.9f), Color.Transparent)))
                         .statusBarsPadding()
-                        .padding(horizontal = 4.dp, vertical = 4.dp),
+                        .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)
-                    }
+                    SquareIconButton(
+                        Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+                        stringResource(R.string.cd_back),
+                        onBack,
+                        glass = true,
+                        tint = Usb.Text
+                    )
+                    Spacer(Modifier.width(14.dp))
                     if (current != null) {
                         Column(Modifier.weight(1f)) {
                             Text(
                                 DateFormat.getMediumDateFormat(context).format(Date(current.dateTaken)),
-                                color = Color.White,
-                                fontWeight = FontWeight.SemiBold,
-                                fontSize = 16.sp
+                                color = Usb.Text,
+                                fontFamily = DisplayFont,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 18.sp
                             )
                             Text(
                                 DateFormat.getTimeFormat(context).format(Date(current.dateTaken)),
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 12.sp
+                                color = Usb.Dim,
+                                fontSize = 13.sp
                             )
                         }
+                    } else {
+                        Spacer(Modifier.weight(1f))
                     }
                     Text(
                         "${pagerState.currentPage + 1} / ${list.size}",
-                        color = Color.White.copy(alpha = 0.7f),
+                        color = Usb.TealL,
+                        fontWeight = FontWeight.SemiBold,
                         fontSize = 13.sp,
-                        modifier = Modifier.padding(end = 12.dp)
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(50))
+                            .background(Usb.Card2.copy(alpha = 0.9f))
+                            .padding(horizontal = 12.dp, vertical = 6.dp)
                     )
                 }
             }
@@ -215,29 +232,34 @@ fun ViewerScreen(
                 modifier = Modifier.align(Alignment.BottomCenter)
             ) {
                 val item = current ?: return@AnimatedVisibility
+                // Åtgärdsfält i samma stil som USB-appens meny (.nav)
                 Row(
                     Modifier
                         .fillMaxWidth()
-                        .background(Brush.verticalGradient(listOf(Color.Transparent, Color.Black.copy(alpha = 0.85f))))
+                        .background(Brush.verticalGradient(listOf(Color.Transparent, Usb.Bg.copy(alpha = 0.9f))))
                         .navigationBarsPadding()
-                        .padding(horizontal = 8.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                        .padding(start = 16.dp, end = 16.dp, top = 24.dp, bottom = 12.dp)
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(Usb.Card)
+                        .border(1.dp, Usb.Line, RoundedCornerShape(18.dp))
+                        .padding(6.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     if (!item.isVideo) {
-                        BottomAction(Icons.Rounded.Edit, stringResource(R.string.action_edit)) { onEdit(item.uri) }
+                        BottomAction(Icons.Outlined.Edit, stringResource(R.string.action_edit)) { onEdit(item.uri) }
                         BottomAction(Icons.Rounded.TextFields, stringResource(R.string.action_text)) { onExtractText(item.uri) }
                     } else {
                         BottomAction(Icons.Rounded.PlayArrow, stringResource(R.string.action_play)) { context.openVideo(item.uri) }
                     }
-                    BottomAction(Icons.Rounded.Share, stringResource(R.string.action_share)) {
+                    BottomAction(Icons.Outlined.Share, stringResource(R.string.action_share)) {
                         context.shareMedia(
                             listOf(item.uri),
                             if (item.isVideo) "video/*" else "image/*",
                             context.getString(R.string.share_via)
                         )
                     }
-                    BottomAction(Icons.Rounded.Info, stringResource(R.string.action_info)) { showInfo = true }
-                    BottomAction(Icons.Rounded.Delete, stringResource(R.string.action_delete)) {
+                    BottomAction(Icons.Outlined.Info, stringResource(R.string.action_info)) { showInfo = true }
+                    BottomAction(Icons.Outlined.Delete, stringResource(R.string.action_delete), tint = Usb.Danger) {
                         scope.launch {
                             runCatching {
                                 deleteLauncher.launch(IntentSenderRequest.Builder(media.deleteRequest(listOf(item.uri))).build())
@@ -272,7 +294,7 @@ private fun MediaPage(
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         val bmp = image
         when {
-            bmp == null -> CircularProgressIndicator(color = Color.White.copy(alpha = 0.6f), strokeWidth = 2.dp)
+            bmp == null -> CircularProgressIndicator(color = Usb.Gold.copy(alpha = 0.8f), strokeWidth = 2.dp)
             item.isVideo -> {
                 Image(
                     bitmap = bmp,
@@ -284,13 +306,13 @@ private fun MediaPage(
                 )
                 Box(
                     Modifier
-                        .size(72.dp)
+                        .size(76.dp)
                         .clip(CircleShape)
-                        .background(Color.Black.copy(alpha = 0.5f))
+                        .background(Usb.Gold)
                         .clickable(onClick = onPlay),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.action_play), tint = Color.White, modifier = Modifier.size(44.dp))
+                    Icon(Icons.Rounded.PlayArrow, contentDescription = stringResource(R.string.action_play), tint = Usb.Bg, modifier = Modifier.size(44.dp))
                 }
             }
             else -> se.snc.camera.ui.components.ZoomableImage(
@@ -304,17 +326,18 @@ private fun MediaPage(
 }
 
 @Composable
-private fun BottomAction(icon: ImageVector, label: String, onClick: () -> Unit) {
+private fun RowScope.BottomAction(icon: ImageVector, label: String, tint: Color = Usb.Muted, onClick: () -> Unit) {
     Column(
         Modifier
-            .clip(RoundedCornerShape(16.dp))
+            .weight(1f)
+            .clip(RoundedCornerShape(13.dp))
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp),
+            .padding(vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(24.dp))
+        Icon(icon, contentDescription = null, tint = tint, modifier = Modifier.size(22.dp))
         Spacer(Modifier.height(4.dp))
-        Text(label, color = Color.White, fontSize = 11.sp)
+        Text(label, color = tint, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
     }
 }
 
@@ -323,18 +346,23 @@ private fun EmptyGallery(onBack: () -> Unit) {
     Box(
         Modifier
             .fillMaxSize()
-            .background(Color.Black)
+            .background(Usb.Bg)
     ) {
-        IconButton(onClick = onBack, modifier = Modifier.statusBarsPadding().padding(4.dp)) {
-            Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = stringResource(R.string.cd_back), tint = Color.White)
-        }
+        SquareIconButton(
+            Icons.AutoMirrored.Rounded.KeyboardArrowLeft,
+            stringResource(R.string.cd_back),
+            onBack,
+            modifier = Modifier
+                .statusBarsPadding()
+                .padding(start = 16.dp, top = 12.dp)
+        )
         Column(
             Modifier.align(Alignment.Center),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(Icons.Rounded.PhotoLibrary, contentDescription = null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(56.dp))
-            Spacer(Modifier.height(12.dp))
-            Text(stringResource(R.string.gallery_empty), color = Color.White.copy(alpha = 0.7f))
+            Seal(size = 72.dp, iconSize = 30.dp, icon = Icons.Outlined.PhotoLibrary)
+            Spacer(Modifier.height(16.dp))
+            Text(stringResource(R.string.gallery_empty), color = Usb.Muted, fontSize = 15.sp)
         }
     }
 }
@@ -344,8 +372,8 @@ private fun InfoDialog(item: MediaItem, onDismiss: () -> Unit) {
     val context = LocalContext.current
     AlertDialog(
         onDismissRequest = onDismiss,
-        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) } },
-        title = { Text(stringResource(R.string.action_info)) },
+        confirmButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok), color = Usb.Gold, fontWeight = FontWeight.SemiBold) } },
+        title = { Text(stringResource(R.string.action_info), fontFamily = DisplayFont, fontWeight = FontWeight.Bold) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 InfoRow(stringResource(R.string.info_name), item.name)
@@ -366,14 +394,14 @@ private fun InfoDialog(item: MediaItem, onDismiss: () -> Unit) {
                 InfoRow(stringResource(R.string.info_folder), MediaRepository.RELATIVE_PATH)
             }
         },
-        containerColor = GlassStrong.copy(alpha = 0.95f)
+        containerColor = Usb.Card
     )
 }
 
 @Composable
 private fun InfoRow(label: String, value: String) {
     Column {
-        Text(label, fontSize = 12.sp, color = Color.White.copy(alpha = 0.6f))
-        Text(value, fontSize = 15.sp, color = Color.White)
+        Text(label, fontSize = 12.sp, color = Usb.Dim)
+        Text(value, fontSize = 15.sp, color = Usb.Text, fontWeight = FontWeight.SemiBold)
     }
 }

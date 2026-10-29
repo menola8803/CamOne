@@ -48,11 +48,8 @@ import androidx.compose.material.icons.rounded.RotateRight
 import androidx.compose.material.icons.rounded.Thermostat
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -86,10 +83,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import se.snc.camera.R
 import se.snc.camera.data.MediaRepository
-import se.snc.camera.ui.theme.Accent
+import se.snc.camera.ui.theme.DisplayFont
+import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.components.SquareIconButton
 import se.snc.camera.ui.theme.CameraTheme
-import se.snc.camera.ui.theme.Glass
-import se.snc.camera.ui.theme.OnGlassDim
 import kotlin.math.max
 import kotlin.math.roundToInt
 import androidx.compose.ui.graphics.ColorMatrix as ComposeColorMatrix
@@ -192,7 +189,7 @@ fun EditorScreen(
         Column(
             Modifier
                 .fillMaxSize()
-                .background(Color.Black)
+                .background(Usb.Bg)
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
@@ -200,24 +197,27 @@ fun EditorScreen(
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 4.dp, vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
+                    .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                IconButton(onClick = { requestClose() }) {
-                    Icon(Icons.Rounded.Close, contentDescription = stringResource(R.string.cd_close), tint = Color.White)
-                }
+                SquareIconButton(Icons.Rounded.Close, stringResource(R.string.cd_close), { requestClose() })
                 Text(
                     stringResource(R.string.editor_title),
-                    color = Color.White,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 18.sp,
-                    modifier = Modifier.weight(1f)
+                    color = Usb.Text,
+                    fontFamily = DisplayFont,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 22.sp,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 6.dp)
                 )
                 // Håll in för att jämföra med originalet
                 Box(
                     Modifier
                         .size(44.dp)
-                        .clip(RoundedCornerShape(50))
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(if (comparing) Usb.Hl else Usb.Card)
                         .pointerInput(Unit) {
                             detectTapGestures(onPress = {
                                 comparing = true
@@ -227,22 +227,32 @@ fun EditorScreen(
                         },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Rounded.Compare, contentDescription = stringResource(R.string.cd_compare), tint = if (comparing) Accent else Color.White)
+                    Icon(Icons.Rounded.Compare, contentDescription = stringResource(R.string.cd_compare), tint = if (comparing) Usb.GoldL else Usb.Muted)
                 }
-                IconButton(onClick = { edit = EditState() }, enabled = !edit.isUnchanged) {
-                    Icon(
-                        Icons.Rounded.RestartAlt,
-                        contentDescription = stringResource(R.string.editor_reset),
-                        tint = if (edit.isUnchanged) Color.White.copy(alpha = 0.3f) else Color.White
-                    )
-                }
-                Button(
-                    onClick = { save() },
-                    enabled = !saving && !edit.isUnchanged && base != null,
-                    colors = ButtonDefaults.buttonColors(containerColor = Accent),
-                    modifier = Modifier.padding(end = 8.dp)
+                SquareIconButton(
+                    Icons.Rounded.RestartAlt,
+                    stringResource(R.string.editor_reset),
+                    { edit = EditState() },
+                    enabled = !edit.isUnchanged
+                )
+                // Spara-knapp i guld (USB-appens .primary, kompakt)
+                val canSave = !saving && !edit.isUnchanged && base != null
+                Box(
+                    Modifier
+                        .height(44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(if (canSave) Usb.Gold else Usb.Card2)
+                        .clickable(enabled = canSave) { save() }
+                        .padding(horizontal = 16.dp),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(stringResource(R.string.editor_save))
+                    Text(
+                        stringResource(R.string.editor_save),
+                        color = if (canSave) Usb.Bg else Usb.Dim,
+                        fontFamily = DisplayFont,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp
+                    )
                 }
             }
 
@@ -256,7 +266,7 @@ fun EditorScreen(
             ) {
                 val img = preview
                 if (img == null) {
-                    CircularProgressIndicator(color = Color.White)
+                    CircularProgressIndicator(color = Usb.Gold)
                 } else {
                     val vignette = if (comparing) 0f else edit.adjustments.vignette
                     Image(
@@ -286,13 +296,13 @@ fun EditorScreen(
                     Box(
                         Modifier
                             .fillMaxSize()
-                            .background(Color.Black.copy(alpha = 0.5f)),
+                            .background(Usb.Bg.copy(alpha = 0.6f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            CircularProgressIndicator(color = Color.White)
+                            CircularProgressIndicator(color = Usb.Gold)
                             Spacer(Modifier.height(12.dp))
-                            Text(stringResource(R.string.editor_saving), color = Color.White)
+                            Text(stringResource(R.string.editor_saving), color = Usb.Text)
                         }
                     }
                 }
@@ -399,10 +409,10 @@ fun EditorScreen(
                             .padding(horizontal = 16.dp, vertical = 6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Icon(t.icon, contentDescription = null, tint = if (selected) Accent else OnGlassDim)
+                        Icon(t.icon, contentDescription = null, tint = if (selected) Usb.Gold else Usb.Dim)
                         Text(
                             stringResource(t.label),
-                            color = if (selected) Color.White else OnGlassDim,
+                            color = if (selected) Usb.GoldL else Usb.Dim,
                             fontSize = 12.sp,
                             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal
                         )
@@ -418,11 +428,11 @@ fun EditorScreen(
                 text = { Text(stringResource(R.string.editor_discard_text)) },
                 confirmButton = {
                     TextButton(onClick = { confirmDiscard = false; onClose() }) {
-                        Text(stringResource(R.string.editor_discard), color = Accent)
+                        Text(stringResource(R.string.editor_discard), color = Usb.Danger, fontWeight = FontWeight.SemiBold)
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.cancel)) }
+                    TextButton(onClick = { confirmDiscard = false }) { Text(stringResource(R.string.cancel), color = Usb.Muted) }
                 }
             )
         }
@@ -442,8 +452,8 @@ private fun FilterThumb(thumb: ImageBitmap?, filter: PhotoFilter, selected: Bool
             Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .border(if (selected) 2.dp else 0.dp, if (selected) Accent else Color.Transparent, RoundedCornerShape(12.dp))
-                .background(Glass)
+                .border(if (selected) 2.dp else 1.dp, if (selected) Usb.Gold else Usb.Line, RoundedCornerShape(12.dp))
+                .background(Usb.Card)
         ) {
             if (thumb != null) {
                 Image(
@@ -458,8 +468,8 @@ private fun FilterThumb(thumb: ImageBitmap?, filter: PhotoFilter, selected: Bool
         Spacer(Modifier.height(4.dp))
         Text(
             stringResource(filter.label),
-            color = if (selected) Color.White else OnGlassDim,
-            fontSize = 11.sp,
+            color = if (selected) Usb.GoldL else Usb.Dim,
+            fontSize = 12.sp,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1
         )
@@ -471,25 +481,25 @@ private fun ToolButton(icon: ImageVector, label: String, selected: Boolean, dot:
     Column(
         Modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(if (selected) Glass else Color.Transparent)
+            .background(if (selected) Usb.Card2 else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box {
-            Icon(icon, contentDescription = null, tint = if (selected) Accent else Color.White, modifier = Modifier.size(26.dp))
+            Icon(icon, contentDescription = null, tint = if (selected) Usb.Gold else Usb.Text, modifier = Modifier.size(26.dp))
             if (dot) {
                 Box(
                     Modifier
                         .align(Alignment.TopEnd)
                         .size(6.dp)
                         .clip(RoundedCornerShape(50))
-                        .background(Accent)
+                        .background(Usb.Gold)
                 )
             }
         }
         Spacer(Modifier.height(4.dp))
-        Text(label, color = if (selected) Color.White else OnGlassDim, fontSize = 11.sp)
+        Text(label, color = if (selected) Usb.GoldL else Usb.Dim, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
     }
 }
 
@@ -503,18 +513,18 @@ private fun LabeledSlider(
 ) {
     Column(Modifier.padding(horizontal = 20.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(label, color = OnGlassDim, fontSize = 12.sp)
+            Text(label, color = Usb.Muted, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
-            Text(display, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(display, color = Usb.GoldL, fontFamily = DisplayFont, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         }
         Slider(
             value = value,
             onValueChange = onChange,
             valueRange = range,
             colors = SliderDefaults.colors(
-                thumbColor = Color.White,
-                activeTrackColor = Accent,
-                inactiveTrackColor = Color.White.copy(alpha = 0.2f)
+                thumbColor = Usb.Gold,
+                activeTrackColor = Usb.Gold,
+                inactiveTrackColor = Usb.Card2
             ),
             modifier = Modifier.height(32.dp)
         )

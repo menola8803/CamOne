@@ -1,10 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- USB-stilens mörka botten (#0F1A1C) även före första bildrutan -->
+    <color name="usb_bg">#0F1A1C</color>
+
     <style name="Theme.SncCamera" parent="android:Theme.Material.NoActionBar">
-        <item name="android:windowBackground">@android:color/black</item>
+        <item name="android:windowBackground">@color/usb_bg</item>
+        <item name="android:colorBackground">@color/usb_bg</item>
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
         <item name="android:windowLayoutInDisplayCutoutMode">always</item>
+        <item name="android:windowSplashScreenBackground">@color/usb_bg</item>
     </style>
-    <color name="ic_launcher_background">#0E0F12</color>
 </resources>
