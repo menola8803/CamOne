@@ -42,9 +42,15 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - "Visa text" öppnar texten där man kan markera exakt den del man vill ha
 - Fungerar helt offline och **utan Google Play-tjänster**
 
+**Utseende – samma stil som USB-appen**
+- Mörk petrolgrön botten, guld som huvudfärg och teal för rubriker
+- Typsnitten Space Grotesk, IBM Plex Sans och Cormorant Garamond (ordmärket "SNC" i guld)
+- Rundade kort, guldval och reglage, emblem med guldring – även som appikon
+
 **Inställningar och Om**
 - Bildformat, kvalitet, JPEG-kvalitet, spegling av frontkamera, videoupplösning,
-  stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration, volymknappar, tema, dynamiska färger
+  stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration, volymknappar
+- Språkval Svenska/English direkt i appen (Android 13+), som i USB-appen
 - **Om**-sidan visar *Developer: Claes Sundman S.N.C AB*, version, enhet och licenser
 - Svenska och engelska (följer telefonens språk)
 

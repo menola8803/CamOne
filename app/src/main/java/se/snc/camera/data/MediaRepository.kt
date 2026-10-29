@@ -10,6 +10,7 @@ import android.net.Uri
 import android.provider.MediaStore
 import android.util.Size
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -109,8 +110,19 @@ class MediaRepository(private val context: Context) {
 
     suspend fun latest(): MediaItem? = loadMedia().firstOrNull()
 
+    /**
+     * Miniatyr för galleriknappen. Direkt efter att en bild sparats kan systemets miniatyr saknas
+     * en kort stund – då görs några nya försök, och för bilder avkodas filen själv som reserv.
+     */
     suspend fun loadThumbnail(uri: Uri, sizePx: Int = 256): Bitmap? = withContext(Dispatchers.IO) {
-        runCatching { resolver.loadThumbnail(uri, Size(sizePx, sizePx), null) }.getOrNull()
+        val isVideo = runCatching { resolver.getType(uri) }.getOrNull()?.startsWith("video") == true
+        repeat(3) { attempt ->
+            runCatching { resolver.loadThumbnail(uri, Size(sizePx, sizePx), null) }.getOrNull()
+                ?.let { return@withContext it }
+            if (!isVideo) loadBitmap(uri, sizePx)?.let { return@withContext it }
+            delay(250L * (attempt + 1))
+        }
+        null
     }
 
     /**
