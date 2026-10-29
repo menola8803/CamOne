@@ -452,6 +452,8 @@ private fun CameraContent(
             grid = settings.grid,
             aspectLabel = settings.aspect.label,
             videoQualityLabel = settings.videoQuality.label,
+            videoFps = settings.videoFps,
+            onFps = viewModel::cycleFps,
             rotation = iconRotation,
             onFlash = { if (state.mode.isVideo) viewModel.toggleTorch() else viewModel.cycleFlash() },
             onHdr = viewModel::toggleHdr,
@@ -491,6 +493,24 @@ private fun CameraContent(
                     onExposure = viewModel::setExposureIndex,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
+            }
+
+            // Visar en stund vilken lins som tog över när man zoomar (t.ex. "Tele · 47 mm")
+            var showLens by remember { mutableStateOf(false) }
+            LaunchedEffect(state.lensChangeTick) {
+                if (state.lensChangeTick != 0L) {
+                    showLens = true
+                    delay(1800)
+                    showLens = false
+                }
+            }
+            val lens = state.activeLens
+            AnimatedVisibility(
+                visible = showLens && lens != null,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                if (lens != null) LensPill(lens, iconRotation, Modifier.padding(bottom = 8.dp))
             }
 
             ZoomChips(
@@ -580,6 +600,8 @@ private fun TopBar(
     grid: GridOption,
     aspectLabel: String,
     videoQualityLabel: String,
+    videoFps: Int,
+    onFps: () -> Unit,
     rotation: Float,
     onFlash: () -> Unit,
     onHdr: () -> Unit,
@@ -661,6 +683,12 @@ private fun TopBar(
                     text = videoQualityLabel,
                     contentDescription = stringResource(R.string.cd_video_quality),
                     onClick = onVideoQuality,
+                    rotation = rotation
+                )
+                GlassTextButton(
+                    text = "$videoFps",
+                    contentDescription = stringResource(R.string.cd_fps),
+                    onClick = onFps,
                     rotation = rotation
                 )
             } else if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {

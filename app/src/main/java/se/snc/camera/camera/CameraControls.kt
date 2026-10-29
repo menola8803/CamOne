@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentWidth
@@ -153,9 +154,11 @@ fun GlassTextButton(
 ) {
     Box(
         modifier = modifier
-            .size(40.dp)
-            .clip(CircleShape)
+            .height(40.dp)
+            .widthIn(min = 40.dp)
+            .clip(RoundedCornerShape(20.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 2.dp)
             // Skärmläsare läser t.ex. "Bildformat, 4:3"
             .semantics(mergeDescendants = true) {
                 this.contentDescription = contentDescription
@@ -454,4 +457,29 @@ fun RecordingTimer(ms: Long, paused: Boolean, modifier: Modifier = Modifier) {
         )
         Text(text, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
     }
+}
+
+/** Kort etikett som visar vilken lins som används, t.ex. "Tele · 47 mm". */
+@Composable
+fun LensPill(badge: LensBadge, rotation: Float, modifier: Modifier = Modifier) {
+    val kind = stringResource(
+        when (badge.kind) {
+            se.snc.camera.info.LensKind.ULTRA_WIDE -> R.string.cams_kind_uw
+            se.snc.camera.info.LensKind.WIDE -> R.string.cams_kind_wide
+            se.snc.camera.info.LensKind.TELE -> R.string.cams_kind_tele
+            se.snc.camera.info.LensKind.FRONT -> R.string.cams_kind_front
+            se.snc.camera.info.LensKind.OTHER -> R.string.cams_kind_other
+        }
+    )
+    Text(
+        if (badge.eqMm != null) stringResource(R.string.lens_pill, kind, badge.eqMm) else kind,
+        color = Usb.GoldL,
+        fontSize = 12.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = modifier
+            .rotate(rotation)
+            .clip(RoundedCornerShape(50))
+            .background(Usb.Bg.copy(alpha = 0.8f))
+            .padding(horizontal = 12.dp, vertical = 5.dp)
+    )
 }

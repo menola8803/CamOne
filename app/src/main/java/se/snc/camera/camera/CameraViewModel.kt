@@ -18,6 +18,11 @@ import android.view.Surface
 import androidx.annotation.StringRes
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.Camera2Interop
+import android.hardware.camera2.CameraCaptureSession
+import android.hardware.camera2.CaptureResult
+import android.hardware.camera2.TotalCaptureResult
+import android.os.Build
 import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.Camera
@@ -121,6 +126,25 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     private val sound = MediaActionSound()
 
+    /** Bakkameran med flest linser (t.ex. kamera 5 på OnePlus 13R: vidvinkel + ultravidvinkel + tele). */
+    private val preferredBackId: String? by lazy { LensSelection.preferredBackCameraId(context) }
+
+    @Volatile private var lensBadges: Map<String, LensBadge> = emptyMap()
+    @Volatile private var lastActiveLens: String? = null
+
+    /** Läser vilken fysisk lins den logiska kameran använder i varje bildruta. */
+    private val lensCallback = object : CameraCaptureSession.CaptureCallback() {
+        override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
+            val id = result.get(CaptureResult.LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID) ?: return
+            if (id == lastActiveLens) return
+            val first = lastActiveLens == null
+            lastActiveLens = id
+            val badge = lensBadges[id] ?: return
+            _state.update { it.copy(activeLens = badge, lensChangeTick = if (first) it.lensChangeTick else System.nanoTime()) }
+        }
+    }
+
     /** Inställningar som kräver att kameran binds om när de ändras. */
     private data class BindKey(
         val aspect: AspectOption,
@@ -128,7 +152,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val videoQuality: VideoQualityOption,
         val stabilization: Boolean,
         val maxQuality: Boolean,
-        val jpegQuality: Int
+        val jpegQuality: Int,
+        val videoFps: Int
     )
 
     init {
@@ -148,7 +173,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
         viewModelScope.launch {
             settingsRepo.settings
-                .map { BindKey(it.aspect, it.hdr, it.videoQuality, it.videoStabilization, it.maxQuality, it.jpegQuality) }
+                .map { BindKey(it.aspect, it.hdr, it.videoQuality, it.videoStabilization, it.maxQuality, it.jpegQuality, it.videoFps) }
                 .distinctUntilChanged()
                 .drop(1) // första värdet hanteras av start/attach – rebinda bara vid ändringar
                 .collect { if (initialized) rebind() }
@@ -244,7 +269,18 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         var front = st.lensFront
         if (front && !hasFront) front = false
         if (!front && !hasBack && hasFront) front = true
-        val base = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+        val defaultBase = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
+        // Bak: den logiska kameran med flest linser, så att 0,6× och 2× använder de riktiga linserna
+        val backId = if (!front) preferredBackId else null
+        val base = if (backId != null) {
+            CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .addCameraFilter { infos ->
+                    infos.filter { info -> runCatching { Camera2CameraInfo.from(info).cameraId }.getOrNull() == backId }
+                        .ifEmpty { infos }
+                }
+                .build()
+        } else defaultBase
 
         val ext = extensions
         fun available(mode: Int) = ext != null && runCatching { ext.isExtensionAvailable(base, mode) }.getOrDefault(false)
@@ -264,18 +300,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         zoomLiveData?.removeObserver(zoomObserver)
         zoomLiveData = null
 
-        fun attempt(useExtension: Boolean, stabilization: Boolean): Camera? {
+        fun attempt(useExtension: Boolean, stabilization: Boolean, highFps: Boolean, cameraBase: CameraSelector): Camera? {
             val selector = if (useExtension && wantedExtension != null && ext != null) {
-                ext.getExtensionEnabledCameraSelector(base, wantedExtension)
-            } else base
+                ext.getExtensionEnabledCameraSelector(cameraBase, wantedExtension)
+            } else cameraBase
+            val fpsRange = if (st.mode.isVideo && highFps) Range(60, 60) else null
             val photoAspect = if (s.aspect == AspectOption.RATIO_16_9) {
                 AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY
             } else AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY
             val previewAspect = if (st.mode.isVideo) AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY else photoAspect
 
-            val preview = Preview.Builder()
+            val previewBuilder = Preview.Builder()
                 .setResolutionSelector(ResolutionSelector.Builder().setAspectRatioStrategy(previewAspect).build())
-                .build()
+            if (fpsRange != null) previewBuilder.setTargetFrameRate(fpsRange)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                Camera2Interop.Extender(previewBuilder).setSessionCaptureCallback(lensCallback)
+            }
+            val preview = previewBuilder.build()
             preview.setSurfaceProvider(view.surfaceProvider)
 
             val useCases = mutableListOf<UseCase>(preview)
@@ -290,10 +331,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 val recorder = Recorder.Builder()
                     .setQualitySelector(QualitySelector.from(quality, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD)))
                     .build()
-                vc = VideoCapture.Builder(recorder)
+                val videoBuilder = VideoCapture.Builder(recorder)
                     .setVideoStabilizationEnabled(stabilization)
                     .setTargetRotation(targetRotation)
-                    .build()
+                if (fpsRange != null) videoBuilder.setTargetFrameRate(fpsRange)
+                vc = videoBuilder.build()
                 useCases += vc
             } else {
                 ic = ImageCapture.Builder()
@@ -322,21 +364,38 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 videoCapture = vc
                 cam
             } catch (e: Exception) {
-                Log.w(TAG, "Bindning misslyckades (extension=$useExtension, stab=$stabilization)", e)
+                Log.w(TAG, "Bindning misslyckades (extension=$useExtension, stab=$stabilization, 60fps=$highFps)", e)
                 null
             }
         }
 
-        // Första försöket med extension/stabilisering, annars en enkel standardbindning
-        var usedExtension = wantedExtension != null
-        var bound = attempt(useExtension = true, stabilization = s.videoStabilization)
-        if (bound == null) {
-            usedExtension = false
-            bound = attempt(useExtension = false, stabilization = false)
+        // Försök i ordning: allt påslaget → utan tillägg/stabilisering → 30 fps → standardkameran
+        val wantHighFps = st.mode.isVideo && s.videoFps >= 60
+        val tries = buildList {
+            add(BindTry(true, s.videoStabilization, wantHighFps, base))
+            if (wantHighFps) add(BindTry(false, false, true, base))
+            add(BindTry(false, false, false, base))
+            if (backId != null) add(BindTry(false, false, false, defaultBase))
+        }
+        var bound: Camera? = null
+        var used: BindTry? = null
+        lastActiveLens = null
+        for (t in tries) {
+            bound = attempt(t.extension, t.stabilization, t.highFps, t.selector)
+            if (bound != null) {
+                used = t
+                break
+            }
         }
         val cam: Camera = bound ?: return false
         camera = cam
-        val extensionActive = usedExtension && imageCapture != null
+        val extensionActive = used?.extension == true && wantedExtension != null && imageCapture != null
+        if (wantHighFps && used?.highFps != true) showMessage(R.string.msg_fps_unsupported)
+
+        // Linserna bakom kameran, för etiketten som visar aktiv lins
+        val boundId = runCatching { Camera2CameraInfo.from(cam.cameraInfo).cameraId }.getOrNull()
+        lensBadges = boundId?.let { LensSelection.lensesOf(context, it) } ?: emptyMap()
+        _state.update { it.copy(activeLens = lensBadges.values.singleOrNull()) }
 
         zoomLiveData = cam.cameraInfo.zoomState.also { it.observe(owner, zoomObserver) }
 
@@ -406,7 +465,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             if (!manual || iso == null || exp == null) {
                 previous.copy(supported = false)
             } else {
-                val maxShutter = minOf(exp.upper, 1_000_000_000L) // max 1 s för att förhandsvisningen inte ska frysa
+                val maxShutter = minOf(exp.upper, 30_000_000_000L) // lång exponering upp till 30 s
                 previous.copy(
                     supported = true,
                     isoMin = iso.lower,
@@ -566,6 +625,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val values = AspectOption.entries
         val next = values[(settings.value.aspect.ordinal + 1) % values.size]
         setAspect(next)
+    }
+
+    fun cycleFps() {
+        if (_state.value.isRecording) return
+        viewModelScope.launch { settingsRepo.update { it.copy(videoFps = if (it.videoFps >= 60) 30 else 60) } }
     }
 
     fun cycleVideoQuality() {
@@ -775,3 +839,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(message = null) }
     }
 }
+
+/** Ett försök att binda kameran (se fallback-ordningen i bindUseCases). */
+private data class BindTry(
+    val extension: Boolean,
+    val stabilization: Boolean,
+    val highFps: Boolean,
+    val selector: CameraSelector
+)

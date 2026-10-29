@@ -47,7 +47,8 @@ import kotlin.math.roundToLong
 fun formatShutter(ns: Long): String {
     val seconds = ns / 1_000_000_000.0
     return if (seconds >= 0.3) {
-        String.format(Locale.US, "%.1fs", seconds)
+        if (seconds >= 1.0 && kotlin.math.abs(seconds - seconds.roundToInt()) < 0.05) "${seconds.roundToInt()}s"
+        else String.format(Locale.US, "%.1fs", seconds)
     } else {
         "1/${(1.0 / seconds).roundToInt()}"
     }
@@ -176,6 +177,14 @@ fun ProPanel(
                     }
                 }
             }
+        }
+        if (pro.supported && !pro.shutterAuto && pro.shutterNs > 1_000_000_000L) {
+            Text(
+                stringResource(R.string.pro_long_exposure),
+                color = CameraYellow,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp, start = 16.dp, end = 16.dp)
+            )
         }
         if (!pro.supported) {
             Text(

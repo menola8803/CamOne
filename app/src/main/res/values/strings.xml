@@ -251,7 +251,7 @@
     <string name="cams_hires_no">No – %1$s MP</string>
     <string name="cams_4k60">4K at 60 fps</string>
     <string name="cams_1080_60">1080p at 60 fps</string>
-    <string name="cams_fps_yes">The camera can – the app records at 30 fps</string>
+    <string name="cams_fps_yes">Yes – choose 60 fps in video mode</string>
     <string name="cams_fps_no">No – at most %1$d fps</string>
     <string name="cams_unknown">Unknown</string>
     <string name="cams_slowmo">Slow motion</string>
@@ -292,4 +292,14 @@
     <string name="cams_flash">Flash</string>
     <string name="cams_copy">Copy report</string>
     <string name="cams_share">Share report</string>
+
+    <!-- Version 1.3.0: linser, 60 fps, lång exponering -->
+    <string name="lens_pill" translatable="false">%1$s · %2$d mm</string>
+    <string name="setting_video_fps">Frame rate</string>
+    <string name="cd_fps">Frame rate</string>
+    <string name="msg_fps_unsupported">60 fps isn\'t supported here – recording at 30 fps</string>
+    <string name="pro_long_exposure">Long exposure – keep the phone still. The viewfinder updates slowly.</string>
+    <string name="cams_app_camera">Back camera used by the app</string>
+    <string name="cams_app_camera_value">ID %1$s – %2$s</string>
+    <string name="cams_ois_phone">Handled by the phone – not controllable by apps</string>
 </resources>

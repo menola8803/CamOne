@@ -249,7 +249,7 @@
     <string name="cams_hires_no">Nej – %1$s MP</string>
     <string name="cams_4k60">4K i 60 fps</string>
     <string name="cams_1080_60">1080p i 60 fps</string>
-    <string name="cams_fps_yes">Kameran klarar det – appen filmar i 30 fps</string>
+    <string name="cams_fps_yes">Ja – välj 60 fps i videoläget</string>
     <string name="cams_fps_no">Nej – högst %1$d fps</string>
     <string name="cams_unknown">Okänt</string>
     <string name="cams_slowmo">Slow motion</string>
@@ -290,4 +290,13 @@
     <string name="cams_flash">Blixt</string>
     <string name="cams_copy">Kopiera rapport</string>
     <string name="cams_share">Dela rapport</string>
+
+    <!-- Version 1.3.0: linser, 60 fps, lång exponering -->
+    <string name="setting_video_fps">Bildfrekvens</string>
+    <string name="cd_fps">Bildfrekvens</string>
+    <string name="msg_fps_unsupported">60 fps stöds inte här – filmar i 30 fps</string>
+    <string name="pro_long_exposure">Lång exponering – håll telefonen stilla. Sökaren uppdateras långsamt.</string>
+    <string name="cams_app_camera">Bakkamera som appen använder</string>
+    <string name="cams_app_camera_value">ID %1$s – %2$s</string>
+    <string name="cams_ois_phone">Sköts av telefonen – kan inte styras av appar</string>
 </resources>

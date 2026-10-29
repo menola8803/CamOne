@@ -118,6 +118,10 @@ step "Video"
 tap --text "VIDEO"
 sleep 5
 shot 13-video
+tap --desc "Frame rate"
+sleep 5
+shot 13b-video-60fps
+check "Appen lever efter byte till 60 fps" alive
 before=$(count '\.mp4')
 key KEYCODE_VOLUME_UP
 sleep 6
@@ -126,6 +130,8 @@ key KEYCODE_VOLUME_UP
 sleep 6
 after=$(count '\.mp4')
 check "Video spelas in och sparas ($before → $after)" [ "$after" -gt "$before" ]
+tap --desc "Frame rate"
+sleep 4
 
 step "Natt, Pro och Porträtt"
 tap --text "NIGHT"

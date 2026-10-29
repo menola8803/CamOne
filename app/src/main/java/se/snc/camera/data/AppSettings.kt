@@ -36,6 +36,8 @@ data class AppSettings(
     val hdr: Boolean = false,
     val videoQuality: VideoQualityOption = VideoQualityOption.FHD,
     val videoStabilization: Boolean = true,
+    /** 30 eller 60 bilder per sekund i videoläget. */
+    val videoFps: Int = 30,
     val grid: GridOption = GridOption.OFF,
     val levelIndicator: Boolean = true,
     val shutterSound: Boolean = true,
@@ -67,6 +69,7 @@ class SettingsRepository(private val context: Context) {
         val hdr = booleanPreferencesKey("hdr")
         val videoQuality = stringPreferencesKey("video_quality")
         val videoStab = booleanPreferencesKey("video_stabilization")
+        val videoFps = intPreferencesKey("video_fps")
         val grid = stringPreferencesKey("grid")
         val level = booleanPreferencesKey("level")
         val shutterSound = booleanPreferencesKey("shutter_sound")
@@ -107,6 +110,7 @@ class SettingsRepository(private val context: Context) {
             hdr = p[K.hdr] ?: d.hdr,
             videoQuality = p.enumOr(K.videoQuality, d.videoQuality),
             videoStabilization = p[K.videoStab] ?: d.videoStabilization,
+            videoFps = if ((p[K.videoFps] ?: d.videoFps) >= 60) 60 else 30,
             grid = p.enumOr(K.grid, d.grid),
             levelIndicator = p[K.level] ?: d.levelIndicator,
             shutterSound = p[K.shutterSound] ?: d.shutterSound,
@@ -132,6 +136,7 @@ class SettingsRepository(private val context: Context) {
         p[K.hdr] = s.hdr
         p[K.videoQuality] = s.videoQuality.name
         p[K.videoStab] = s.videoStabilization
+        p[K.videoFps] = s.videoFps
         p[K.grid] = s.grid.name
         p[K.level] = s.levelIndicator
         p[K.shutterSound] = s.shutterSound

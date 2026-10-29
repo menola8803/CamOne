@@ -159,6 +159,16 @@ private fun Summary(r: CameraReport) {
                 }
             )
         }
+        // Vilken bakkamera appen använder och vilka linser den byter mellan
+        val appCam = r.appBackCamera
+        if (appCam != null) {
+            val kinds = r.appBackLenses.map { kindName(it.kind) }.distinct()
+            StatusRow(
+                stringResource(R.string.cams_app_camera),
+                stringResource(R.string.cams_app_camera_value, appCam.id, kinds.joinToString(", ")),
+                Level.USED
+            )
+        }
         accessRow(stringResource(R.string.cams_uw), LensKind.ULTRA_WIDE)
         accessRow(stringResource(R.string.cams_tele), LensKind.TELE)
 
@@ -179,7 +189,7 @@ private fun Summary(r: CameraReport) {
                     fps >= 55 -> stringResource(R.string.cams_fps_yes)
                     else -> stringResource(R.string.cams_fps_no, fps)
                 },
-                if (fps != null && fps >= 55) Level.POSSIBLE else Level.NO
+                if (fps != null && fps >= 55) Level.USED else Level.NO
             )
         }
         fpsRow(stringResource(R.string.cams_4k60), r.maxFps4k)
@@ -210,7 +220,7 @@ private fun Summary(r: CameraReport) {
         val ois = r.backListed.any { it.ois }
         StatusRow(
             stringResource(R.string.cams_ois),
-            stringResource(if (ois) R.string.cams_used else R.string.cams_no),
+            stringResource(if (ois) R.string.cams_used else R.string.cams_ois_phone),
             if (ois) Level.USED else Level.NO
         )
         val ext = (r.extensions.back + r.extensions.front).distinct()
@@ -225,6 +235,17 @@ private fun Summary(r: CameraReport) {
         Text(stringResource(R.string.cams_legend), color = Usb.Dim, fontFamily = BodyFont, fontSize = 12.sp, lineHeight = 17.sp)
     }
 }
+
+@Composable
+private fun kindName(kind: LensKind) = stringResource(
+    when (kind) {
+        LensKind.ULTRA_WIDE -> R.string.cams_kind_uw
+        LensKind.WIDE -> R.string.cams_kind_wide
+        LensKind.TELE -> R.string.cams_kind_tele
+        LensKind.FRONT -> R.string.cams_kind_front
+        LensKind.OTHER -> R.string.cams_kind_other
+    }
+).lowercase()
 
 @Composable
 private fun StatusRow(label: String, value: String, level: Level) {

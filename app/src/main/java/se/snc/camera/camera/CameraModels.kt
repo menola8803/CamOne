@@ -52,6 +52,11 @@ data class CameraUiState(
     val hasBackCamera: Boolean = true,
     val isReady: Boolean = false,
 
+    /** Den fysiska lins som är aktiv just nu (logisk kamera som byter lins vid zoom). */
+    val activeLens: LensBadge? = null,
+    /** Ändras när linsen byts, så att etiketten visas en stund. */
+    val lensChangeTick: Long = 0L,
+
     val zoomRatio: Float = 1f,
     val minZoom: Float = 1f,
     val maxZoom: Float = 1f,

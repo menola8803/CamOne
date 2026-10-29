@@ -169,6 +169,14 @@ fun SettingsScreen(
                 label = { it.label },
                 onSelect = { v -> update { it.copy(videoQuality = v) } }
             )
+            FieldLabel(stringResource(R.string.setting_video_fps))
+            ChoiceGrid(
+                options = listOf(30, 60),
+                selected = settings.videoFps,
+                label = { "$it fps" },
+                onSelect = { v -> update { it.copy(videoFps = v) } },
+                columns = 2
+            )
             Spacer(Modifier.height(2.dp))
             ToggleRow(
                 title = stringResource(R.string.setting_stabilization),

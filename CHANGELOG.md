@@ -2,6 +2,14 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.3.0 – 2026-10-30
+
+- Riktiga linser: appen använder nu den bakkamera som har flest linser (på OnePlus 13R kamera 5 med vidvinkel, ultravidvinkel och tele). 0,6× är ultravidvinkeln och 2× den riktiga telelinsen i stället för digital zoom.
+- En liten etikett visar vilken lins som tar över när du zoomar, t.ex. "Tele · 47 mm".
+- 60 fps-video: välj 30 eller 60 fps med knappen i videoläget eller under Inställningar → Video. Fungerar i 4K och 1080p på huvudkameran och telelinsen.
+- Lång exponering i Pro-läget: slutartid upp till 30 sekunder (tidigare 1 sekund).
+- Kameror-sidan visar vilken bakkamera appen använder och att 60 fps nu stöds.
+
 ## Version 1.2.0 – 2026-10-29
 
 - Nytt: uppdateringar direkt i appen, som i Direct-appen. Under Inställningar → Uppdateringar söker appen efter ny version på GitHub, laddar ner den, kontrollerar den och lämnar den till Android för installation ovanpå den gamla.

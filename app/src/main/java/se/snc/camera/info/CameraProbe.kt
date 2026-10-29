@@ -17,6 +17,7 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import se.snc.camera.camera.LensSelection
 import se.snc.camera.util.await
 import java.util.Locale
 import kotlin.math.atan
@@ -78,8 +79,20 @@ data class CameraReport(
     val concurrent: List<Set<String>>,
     val extensions: ExtensionSupport,
     val device: String,
-    val android: String
+    val android: String,
+    /** Bakkameran som appen använder (den logiska kameran med flest linser). */
+    val appBackCameraId: String? = null
 ) {
+    val appBackCamera: LensInfo? get() = lenses.firstOrNull { it.id == appBackCameraId }
+
+    /** Linserna appen når genom zoom på sin bakkamera. */
+    val appBackLenses: List<LensInfo>
+        get() {
+            val cam = appBackCamera ?: return emptyList()
+            val members = cam.physicalIds.mapNotNull { pid -> lenses.firstOrNull { it.id == pid } }
+            return members.ifEmpty { listOf(cam) }.sortedBy { it.eqMm ?: 999 }
+        }
+
     val back get() = lenses.filter { !it.front }
     val backListed get() = back.filter { it.listed || it.parentId != null }
 
@@ -87,6 +100,7 @@ data class CameraReport(
 
     /** Hur appen kommer åt en lins av en viss typ. */
     fun access(kind: LensKind): Access {
+        if (appBackLenses.any { it.kind == kind }) return Access.ZOOM
         val logicalZoom = lenses.filter { !it.front && it.listed }
         when (kind) {
             LensKind.ULTRA_WIDE -> if (logicalZoom.any { (it.zoomMin ?: 1f) < 0.95f }) return Access.ZOOM
@@ -153,7 +167,8 @@ object CameraProbe {
             concurrent = concurrent,
             extensions = ext,
             device = "${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})",
-            android = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.DISPLAY}"
+            android = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.DISPLAY}",
+            appBackCameraId = LensSelection.preferredBackCameraId(context)
         )
     }
 
@@ -314,6 +329,7 @@ object CameraProbe {
         appendLine(r.device)
         appendLine(r.android)
         appendLine()
+        appendLine("Appens bakkamera: ID ${r.appBackCameraId ?: "-"} ${r.appBackLenses.map { "${it.id}:${it.kind}" }}")
         appendLine("Ultravidvinkel: ${r.access(LensKind.ULTRA_WIDE)}")
         appendLine("Tele: ${r.access(LensKind.TELE)}")
         appendLine("Högupplöst läge: ${r.maxResMp?.let { String.format(Locale.US, "%.1f MP", it) } ?: "nej"}")
