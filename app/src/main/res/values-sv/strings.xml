@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="edit_with_app">Redigera i SNC Camera</string>
+    <string name="extract_text_with_app">Kopiera text från bild</string>
+
+    <!-- Lägen -->
+    <string name="mode_pro">Pro</string>
+    <string name="mode_night">Natt</string>
+    <string name="mode_video">Video</string>
+    <string name="mode_photo">Foto</string>
+    <string name="mode_portrait">Porträtt</string>
+
+    <!-- Vitbalans -->
+    <string name="wb_auto">Auto</string>
+    <string name="wb_daylight">Dagsljus</string>
+    <string name="wb_cloudy">Molnigt</string>
+    <string name="wb_fluorescent">Lysrör</string>
+    <string name="wb_incandescent">Glödlampa</string>
+
+    <!-- Pro -->
+    <string name="pro_ev">EV</string>
+    <string name="pro_iso">ISO</string>
+    <string name="pro_shutter">Slutartid</string>
+    <string name="pro_shutter_short">S</string>
+    <string name="pro_wb">VB</string>
+    <string name="pro_focus">Fokus</string>
+    <string name="pro_focus_short">Fokus</string>
+    <string name="pro_af">AF</string>
+    <string name="pro_auto">Auto</string>
+    <string name="pro_not_supported">Manuell ISO och slutartid stöds inte av den här kameran</string>
+
+    <!-- Kamerameddelanden -->
+    <string name="msg_camera_error">Kameran kunde inte startas</string>
+    <string name="msg_capture_failed">Bilden kunde inte tas</string>
+    <string name="msg_record_failed">Inspelningen misslyckades</string>
+    <string name="msg_night_software">Nattläge: lång exponering och extra brusreducering</string>
+    <string name="msg_portrait_software">Porträtt: bakgrunden görs oskarp efter bilden tagits</string>
+    <string name="msg_processing_portrait">Skapar porträtteffekt…</string>
+    <string name="night_hold_steady">Håll stilla</string>
+
+    <!-- Tillgänglighet -->
+    <string name="cd_open_gallery">Öppna senaste bilden</string>
+    <string name="cd_switch_camera">Byt kamera</string>
+    <string name="cd_pause">Pausa inspelning</string>
+    <string name="cd_resume">Fortsätt inspelning</string>
+    <string name="cd_flash">Blixt</string>
+    <string name="cd_torch">Ficklampa</string>
+    <string name="cd_hdr">HDR</string>
+    <string name="cd_timer">Självutlösare</string>
+    <string name="cd_aspect">Bildformat</string>
+    <string name="cd_grid">Rutnät</string>
+    <string name="cd_video_quality">Videoupplösning</string>
+    <string name="cd_settings">Inställningar</string>
+    <string name="cd_back">Tillbaka</string>
+    <string name="cd_close">Stäng</string>
+    <string name="cd_compare">Håll in för att jämföra med originalet</string>
+
+    <!-- Behörigheter -->
+    <string name="permission_title">Kameraåtkomst behövs</string>
+    <string name="permission_text">SNC Camera behöver åtkomst till kameran för att ta bilder, och till mikrofonen för att spela in ljud i videor.</string>
+    <string name="permission_grant">Ge åtkomst</string>
+    <string name="permission_open_settings">Öppna appinställningar</string>
+
+    <!-- Bildvisare -->
+    <string name="action_edit">Redigera</string>
+    <string name="action_text">Text</string>
+    <string name="action_share">Dela</string>
+    <string name="action_delete">Radera</string>
+    <string name="action_info">Detaljer</string>
+    <string name="action_play">Spela upp</string>
+    <string name="share_via">Dela via</string>
+    <string name="gallery_empty">Inga bilder ännu</string>
+    <string name="info_name">Filnamn</string>
+    <string name="info_date">Tagen</string>
+    <string name="info_resolution">Upplösning</string>
+    <string name="info_size">Storlek</string>
+    <string name="info_duration">Längd</string>
+    <string name="info_folder">Mapp</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Avbryt</string>
+    <string name="reset">Återställ</string>
+
+    <!-- Redigerare -->
+    <string name="editor_title">Redigera</string>
+    <string name="editor_filters">Filter</string>
+    <string name="editor_adjust">Justera</string>
+    <string name="editor_rotate">Rotera</string>
+    <string name="editor_rotate_left">Vänster</string>
+    <string name="editor_rotate_right">Höger</string>
+    <string name="editor_flip">Spegla</string>
+    <string name="editor_intensity">Styrka</string>
+    <string name="editor_reset">Ångra allt</string>
+    <string name="editor_save">Spara kopia</string>
+    <string name="editor_saving">Sparar…</string>
+    <string name="editor_saved">Sparad som ny bild</string>
+    <string name="editor_save_failed">Bilden kunde inte sparas</string>
+    <string name="editor_discard_title">Släng ändringarna?</string>
+    <string name="editor_discard_text">Dina ändringar har inte sparats.</string>
+    <string name="editor_discard">Släng</string>
+
+    <string name="filter_original">Original</string>
+    <string name="filter_vivid">Livfull</string>
+    <string name="filter_warm">Varm</string>
+    <string name="filter_cool">Kall</string>
+    <string name="filter_golden">Gyllene</string>
+    <string name="filter_film">Film</string>
+    <string name="filter_fade">Blek</string>
+    <string name="filter_vintage">Retro</string>
+    <string name="filter_dramatic">Dramatisk</string>
+    <string name="filter_mono">Svartvit</string>
+    <string name="filter_noir">Noir</string>
+    <string name="filter_sepia">Sepia</string>
+
+    <string name="adjust_brightness">Ljusstyrka</string>
+    <string name="adjust_contrast">Kontrast</string>
+    <string name="adjust_saturation">Mättnad</string>
+    <string name="adjust_warmth">Värme</string>
+    <string name="adjust_vignette">Vinjett</string>
+
+    <!-- Textigenkänning -->
+    <string name="text_title">Text i bilden</string>
+    <string name="text_hint">Tryck på texten för att markera den. Håll in och dra för att markera flera rader.</string>
+    <string name="text_select_all">Markera allt</string>
+    <string name="text_copy_all">Kopiera allt</string>
+    <string name="text_copy">Kopiera</string>
+    <string name="text_show">Visa text</string>
+    <string name="text_show_all">Visa all text</string>
+    <string name="text_deselect">Avmarkera</string>
+    <string name="text_copied">Kopierat till urklipp</string>
+    <string name="text_failed">Bilden kunde inte läsas</string>
+    <string name="text_none_found">Ingen text hittades</string>
+    <string name="text_sheet_title">Igenkänd text</string>
+    <string name="text_sheet_hint">Håll in för att markera exakt den del du vill ha</string>
+    <string name="text_action_open">Öppna länk</string>
+    <string name="text_action_email">Skicka e-post</string>
+    <string name="text_action_call">Ring</string>
+    <plurals name="text_lines_selected">
+        <item quantity="one">%d rad markerad</item>
+        <item quantity="other">%d rader markerade</item>
+    </plurals>
+
+    <!-- Inställningar -->
+    <string name="settings_title">Inställningar</string>
+    <string name="section_photo">Foto</string>
+    <string name="section_video">Video</string>
+    <string name="section_viewfinder">Sökare</string>
+    <string name="section_general">Allmänt</string>
+    <string name="section_about">Om</string>
+    <string name="setting_aspect">Bildformat</string>
+    <string name="setting_max_quality">Högsta kvalitet</string>
+    <string name="setting_max_quality_desc">Av ger snabbare avtryckare</string>
+    <string name="setting_jpeg_quality">JPEG-kvalitet</string>
+    <string name="setting_mirror_front">Spegla frontkameran</string>
+    <string name="setting_mirror_front_desc">Spara selfies som de ser ut i sökaren</string>
+    <string name="setting_video_quality">Videoupplösning</string>
+    <string name="setting_stabilization">Videostabilisering</string>
+    <string name="setting_stabilization_desc">Stadigare video när kameran stöder det</string>
+    <string name="setting_record_audio">Spela in ljud</string>
+    <string name="setting_grid">Rutnät</string>
+    <string name="setting_level">Vattenpass</string>
+    <string name="setting_level_desc">Visar när telefonen hålls rakt</string>
+    <string name="setting_shutter_sound">Slutarljud</string>
+    <string name="setting_haptics">Vibration</string>
+    <string name="setting_volume_keys">Volymknappar</string>
+    <string name="setting_keep_mode">Kom ihåg senaste läge</string>
+    <string name="setting_keep_mode_desc">Öppna kameran i det läge du använde sist</string>
+    <string name="setting_theme">Tema</string>
+    <string name="setting_dynamic_color">Dynamiska färger</string>
+    <string name="setting_dynamic_color_desc">Använd färger från bakgrundsbilden i menyerna</string>
+    <string name="setting_reset">Återställ inställningar</string>
+    <string name="setting_reset_confirm">Alla inställningar återgår till standard.</string>
+    <string name="grid_off">Av</string>
+    <string name="grid_thirds">Tredjedelsregeln</string>
+    <string name="grid_golden">Gyllene snittet</string>
+    <string name="grid_square">Kvadrat</string>
+    <string name="volume_shutter">Ta bild</string>
+    <string name="volume_zoom">Zooma</string>
+    <string name="volume_volume">Ändra volym</string>
+    <string name="theme_system">Följ systemet</string>
+    <string name="theme_light">Ljust</string>
+    <string name="theme_dark">Mörkt</string>
+
+    <!-- Om -->
+    <string name="about_title">Om</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_version_label">Version</string>
+    <string name="about_tagline">En modern kamera för OnePlus 13R med LineageOS — med filter och textigenkänning.</string>
+    <string name="about_target">Gjord för</string>
+    <string name="about_target_value">OnePlus 13R · LineageOS 23.2</string>
+    <string name="about_device">Den här enheten</string>
+    <string name="about_android">System</string>
+    <string name="about_package">Paket</string>
+    <string name="about_licenses">Öppen källkod</string>
+    <string name="about_copyright">© 2026 Claes Sundman S.N.C AB</string>
+</resources>

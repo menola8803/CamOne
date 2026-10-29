@@ -1,0 +1,198 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">SNC Camera</string>
+    <string name="edit_with_app">Edit in SNC Camera</string>
+    <string name="extract_text_with_app">Copy text from image</string>
+
+    <!-- Modes -->
+    <string name="mode_pro">Pro</string>
+    <string name="mode_night">Night</string>
+    <string name="mode_video">Video</string>
+    <string name="mode_photo">Photo</string>
+    <string name="mode_portrait">Portrait</string>
+
+    <!-- White balance -->
+    <string name="wb_auto">Auto</string>
+    <string name="wb_daylight">Daylight</string>
+    <string name="wb_cloudy">Cloudy</string>
+    <string name="wb_fluorescent">Fluorescent</string>
+    <string name="wb_incandescent">Incandescent</string>
+
+    <!-- Pro -->
+    <string name="pro_ev">EV</string>
+    <string name="pro_iso">ISO</string>
+    <string name="pro_shutter">Shutter speed</string>
+    <string name="pro_shutter_short">S</string>
+    <string name="pro_wb">WB</string>
+    <string name="pro_focus">Focus</string>
+    <string name="pro_focus_short">Focus</string>
+    <string name="pro_af">AF</string>
+    <string name="pro_auto">Auto</string>
+    <string name="pro_not_supported">Manual ISO and shutter are not supported by this camera</string>
+
+    <!-- Camera messages -->
+    <string name="msg_camera_error">Could not start the camera</string>
+    <string name="msg_capture_failed">Could not take the photo</string>
+    <string name="msg_record_failed">Recording failed</string>
+    <string name="msg_night_software">Night mode: long exposure and extra noise reduction</string>
+    <string name="msg_portrait_software">Portrait: background blur is applied after the shot</string>
+    <string name="msg_processing_portrait">Creating portrait effect…</string>
+    <string name="night_hold_steady">Hold steady</string>
+
+    <!-- Content descriptions -->
+    <string name="cd_open_gallery">Open last photo</string>
+    <string name="cd_switch_camera">Switch camera</string>
+    <string name="cd_pause">Pause recording</string>
+    <string name="cd_resume">Resume recording</string>
+    <string name="cd_flash">Flash</string>
+    <string name="cd_torch">Torch</string>
+    <string name="cd_hdr">HDR</string>
+    <string name="cd_timer">Timer</string>
+    <string name="cd_aspect">Aspect ratio</string>
+    <string name="cd_grid">Grid</string>
+    <string name="cd_video_quality">Video resolution</string>
+    <string name="cd_settings">Settings</string>
+    <string name="cd_back">Back</string>
+    <string name="cd_close">Close</string>
+    <string name="cd_compare">Hold to compare with original</string>
+
+    <!-- Permissions -->
+    <string name="permission_title">Camera access needed</string>
+    <string name="permission_text">SNC Camera needs access to the camera to take photos, and the microphone to record sound in videos.</string>
+    <string name="permission_grant">Allow access</string>
+    <string name="permission_open_settings">Open app settings</string>
+
+    <!-- Viewer -->
+    <string name="action_edit">Edit</string>
+    <string name="action_text">Text</string>
+    <string name="action_share">Share</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_info">Details</string>
+    <string name="action_play">Play</string>
+    <string name="share_via">Share via</string>
+    <string name="gallery_empty">No photos yet</string>
+    <string name="info_name">File name</string>
+    <string name="info_date">Taken</string>
+    <string name="info_resolution">Resolution</string>
+    <string name="info_size">Size</string>
+    <string name="info_duration">Duration</string>
+    <string name="info_folder">Folder</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="reset">Reset</string>
+
+    <!-- Editor -->
+    <string name="editor_title">Edit</string>
+    <string name="editor_filters">Filters</string>
+    <string name="editor_adjust">Adjust</string>
+    <string name="editor_rotate">Rotate</string>
+    <string name="editor_rotate_left">Rotate left</string>
+    <string name="editor_rotate_right">Rotate right</string>
+    <string name="editor_flip">Mirror</string>
+    <string name="editor_intensity">Strength</string>
+    <string name="editor_reset">Undo all</string>
+    <string name="editor_save">Save copy</string>
+    <string name="editor_saving">Saving…</string>
+    <string name="editor_saved">Saved as a new photo</string>
+    <string name="editor_save_failed">Could not save the photo</string>
+    <string name="editor_discard_title">Discard changes?</string>
+    <string name="editor_discard_text">Your edits have not been saved.</string>
+    <string name="editor_discard">Discard</string>
+
+    <string name="filter_original">Original</string>
+    <string name="filter_vivid">Vivid</string>
+    <string name="filter_warm">Warm</string>
+    <string name="filter_cool">Cool</string>
+    <string name="filter_golden">Golden</string>
+    <string name="filter_film">Film</string>
+    <string name="filter_fade">Fade</string>
+    <string name="filter_vintage">Vintage</string>
+    <string name="filter_dramatic">Dramatic</string>
+    <string name="filter_mono">Mono</string>
+    <string name="filter_noir">Noir</string>
+    <string name="filter_sepia">Sepia</string>
+
+    <string name="adjust_brightness">Brightness</string>
+    <string name="adjust_contrast">Contrast</string>
+    <string name="adjust_saturation">Saturation</string>
+    <string name="adjust_warmth">Warmth</string>
+    <string name="adjust_vignette">Vignette</string>
+
+    <!-- Text recognition -->
+    <string name="text_title">Text in image</string>
+    <string name="text_hint">Tap text to select it. Touch and hold, then drag, to select several lines.</string>
+    <string name="text_select_all">Select all</string>
+    <string name="text_copy_all">Copy all</string>
+    <string name="text_copy">Copy</string>
+    <string name="text_show">Show text</string>
+    <string name="text_show_all">Show all text</string>
+    <string name="text_deselect">Clear</string>
+    <string name="text_copied">Copied to clipboard</string>
+    <string name="text_failed">Could not read the image</string>
+    <string name="text_none_found">No text found</string>
+    <string name="text_sheet_title">Recognised text</string>
+    <string name="text_sheet_hint">Touch and hold to select exactly the part you want</string>
+    <string name="text_action_open">Open link</string>
+    <string name="text_action_email">Send email</string>
+    <string name="text_action_call">Call</string>
+    <plurals name="text_lines_selected">
+        <item quantity="one">%d line selected</item>
+        <item quantity="other">%d lines selected</item>
+    </plurals>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="section_photo">Photo</string>
+    <string name="section_video">Video</string>
+    <string name="section_viewfinder">Viewfinder</string>
+    <string name="section_general">General</string>
+    <string name="section_about">About</string>
+    <string name="setting_aspect">Aspect ratio</string>
+    <string name="setting_max_quality">Maximum quality</string>
+    <string name="setting_max_quality_desc">Off gives a faster shutter</string>
+    <string name="setting_jpeg_quality">JPEG quality</string>
+    <string name="setting_mirror_front">Mirror front camera</string>
+    <string name="setting_mirror_front_desc">Save selfies the way they look in the viewfinder</string>
+    <string name="setting_video_quality">Video resolution</string>
+    <string name="setting_stabilization">Video stabilisation</string>
+    <string name="setting_stabilization_desc">Smoother video when the camera supports it</string>
+    <string name="setting_record_audio">Record sound</string>
+    <string name="setting_grid">Grid</string>
+    <string name="setting_level">Level</string>
+    <string name="setting_level_desc">Shows when the phone is straight</string>
+    <string name="setting_shutter_sound">Shutter sound</string>
+    <string name="setting_haptics">Vibration</string>
+    <string name="setting_volume_keys">Volume buttons</string>
+    <string name="setting_keep_mode">Remember last mode</string>
+    <string name="setting_keep_mode_desc">Open the camera in the mode you used last</string>
+    <string name="setting_theme">Theme</string>
+    <string name="setting_dynamic_color">Dynamic colours</string>
+    <string name="setting_dynamic_color_desc">Use colours from your wallpaper in menus</string>
+    <string name="setting_reset">Reset settings</string>
+    <string name="setting_reset_confirm">All settings return to their defaults.</string>
+    <string name="grid_off">Off</string>
+    <string name="grid_thirds">Rule of thirds</string>
+    <string name="grid_golden">Golden ratio</string>
+    <string name="grid_square">Square</string>
+    <string name="volume_shutter">Take photo</string>
+    <string name="volume_zoom">Zoom</string>
+    <string name="volume_volume">Change volume</string>
+    <string name="theme_system">Follow system</string>
+    <string name="theme_light">Light</string>
+    <string name="theme_dark">Dark</string>
+
+    <!-- About -->
+    <string name="about_title">About</string>
+    <string name="about_version">Version %1$s (%2$d)</string>
+    <string name="about_version_label">Version</string>
+    <string name="about_tagline">A modern camera for OnePlus 13R on LineageOS — with filters and text recognition.</string>
+    <string name="about_developer_label" translatable="false">Developer</string>
+    <string name="about_developer_value" translatable="false">Claes Sundman S.N.C AB</string>
+    <string name="about_target">Made for</string>
+    <string name="about_target_value">OnePlus 13R · LineageOS 23.2</string>
+    <string name="about_device">This device</string>
+    <string name="about_android">System</string>
+    <string name="about_package">Package</string>
+    <string name="about_licenses">Open source</string>
+    <string name="about_copyright">© 2026 Claes Sundman S.N.C AB</string>
+</resources>
