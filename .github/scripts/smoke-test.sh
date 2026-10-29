@@ -74,14 +74,14 @@ step "Bildvisare och redigerare"
 tap --desc "Open last photo"
 sleep 4
 shot 07-bildvisare
-check "Bildvisaren öppnas" $UI exists --text "Edit"
+check "Bildvisaren öppnas" $UI exists --text "Details"
 tap --text "Edit"
 sleep 4
 shot 08-redigerare
 check "Redigeraren öppnas med filter" $UI exists --text "Filters"
-tap --text "Mono"
+tap --text "Warm"
 sleep 2
-shot 09-filter-mono
+shot 09-filter-varm
 tap --text "Adjust"
 sleep 2
 shot 10-justera
@@ -91,7 +91,7 @@ sleep 8
 shot 11-sparad-kopia
 after=$(count '\.jpg')
 check "Redigerad kopia sparas ($before → $after)" [ "$after" -gt "$before" ]
-check "Tillbaka i bildvisaren efter sparande" $UI exists --text "Edit"
+check "Tillbaka i bildvisaren efter sparande" $UI exists --text "Details"
 tap --text "Details"
 sleep 2
 shot 12-detaljer

@@ -16,6 +16,9 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
+        // Bara svenska och engelska – tar bort andra språk från biblioteken och minskar APK:n
+        resourceConfigurations += listOf("en", "sv")
+
         // OnePlus 13R är arm64 – håller APK:n liten.
         // -PsncAllAbis=true tar med alla arkitekturer (används för testet i emulatorn).
         if (!project.hasProperty("sncAllAbis")) {

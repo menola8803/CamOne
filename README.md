@@ -50,31 +50,44 @@ där man trycker på texten för att markera, kopiera eller dela den.
 
 ---
 
-## Bygga APK:n
+## Ladda ner och installera
 
-### Alternativ 1 – GitHub (inget behöver installeras)
-1. Skapa ett nytt repo på github.com och ladda upp hela mappen `SNCCamera`.
-2. Gå till fliken **Actions** – bygget startar automatiskt (eller tryck *Run workflow*).
-3. När det är klart (≈ 5–8 min): öppna körningen och ladda ner **SNC-Camera-apk** under *Artifacts*.
-4. Packa upp zip-filen – där ligger `app-release.apk`.
+**Enklast:** öppna [Releases](https://github.com/menola8803/CamOne/releases/latest) på telefonen,
+ladda ner `SNC-Camera-x.y.z.apk` och öppna filen. Tillåt "Installera okända appar" för
+webbläsaren eller filhanteraren om telefonen frågar.
 
-### Alternativ 2 – Android Studio
-1. Installera [Android Studio](https://developer.android.com/studio) (Narwhal eller senare).
-2. *File → Open* → välj mappen `SNCCamera`. Vänta tills Gradle-synken är klar.
-3. *Build → Generate App Bundles or APKs → Build APK(s)*.
+Varje gång kod skickas till `main` gör GitHub Actions följande automatiskt:
+1. bygger APK:n,
+2. installerar den i en Android 16-emulator och klickar igenom kamera, foto, video, alla lägen,
+   redigerare, textigenkänning, inställningar och Om (skärmbilder sparas under *Actions → körningen →
+   Artifacts → skarmbilder-och-testrapport*),
+3. publicerar APK:n som en ny release om testet gick igenom.
 
-### Alternativ 3 – kommandorad
+### Samma signeringsnyckel för alla versioner
+För att en ny version ska kunna installeras **ovanpå** den gamla måste alla byggen signeras med
+samma nyckel. Lägg in nyckeln som en hemlighet en gång:
+
+1. GitHub → repot → **Settings → Secrets and variables → Actions → New repository secret**
+2. Name: `SNC_KEYSTORE_BASE64`
+3. Secret: hela innehållet i filen `SNC_KEYSTORE_BASE64.txt`
+4. Spara. Nästa bygge använder den fasta nyckeln.
+
+Utan hemligheten får varje bygge en tillfällig nyckel – då måste den gamla versionen avinstalleras
+före uppdatering (bilderna i `DCIM/SNC Camera` ligger kvar). Spara nyckelfilen på ett säkert ställe
+och lägg den aldrig i repot.
+
+### Bygga själv
+**Android Studio:** *File → Open* → välj projektmappen, vänta på Gradle-synken,
+*Build → Generate App Bundles or APKs → Build APK(s)*.
+
+**Kommandorad:**
 ```bash
 ./gradlew assembleRelease
 # APK: app/build/outputs/apk/release/app-release.apk
+adb install app/build/outputs/apk/release/app-release.apk
 ```
 
-## Installera på telefonen
-- Kopiera APK:n till telefonen och öppna den (tillåt "Installera okända appar" för filhanteraren), eller
-- `adb install app/build/outputs/apk/release/app-release.apk`
-
-Release-APK:n signeras med en debug-nyckel om ingen egen nyckel anges, så den går att installera direkt.
-Egen nyckel: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWORD`, `SNC_KEY_ALIAS`, `SNC_KEY_PASSWORD`.
+Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWORD`, `SNC_KEY_ALIAS`, `SNC_KEY_PASSWORD`.
 
 ---
 

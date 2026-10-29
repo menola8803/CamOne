@@ -317,10 +317,12 @@ fun TextRecognitionScreen(
             }
 
             // Åtgärdsfält
+            // Fast höjd så att bilden inte hoppar när man markerar text
             AnimatedContent(
                 targetState = selected.isEmpty(),
                 transitionSpec = { fadeIn() togetherWith fadeOut() },
-                label = "textActions"
+                label = "textActions",
+                modifier = Modifier.height(128.dp)
             ) { nothingSelected ->
                 Column(
                     Modifier

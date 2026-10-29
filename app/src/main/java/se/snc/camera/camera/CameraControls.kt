@@ -57,6 +57,9 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
@@ -134,7 +137,12 @@ fun GlassTextButton(
         modifier = modifier
             .size(40.dp)
             .clip(CircleShape)
-            .clickable(enabled = enabled, role = Role.Button, onClickLabel = contentDescription, onClick = onClick),
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            // Skärmläsare läser t.ex. "Bildformat, 4:3"
+            .semantics(mergeDescendants = true) {
+                this.contentDescription = contentDescription
+                stateDescription = text
+            },
         contentAlignment = Alignment.Center
     ) {
         Text(
