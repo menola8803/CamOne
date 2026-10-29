@@ -10,9 +10,16 @@ import kotlin.coroutines.resumeWithException
 
 private val DirectExecutor = Executor { it.run() }
 
-/** Väntar på en ListenableFuture (CameraX) utan extra bibliotek. */
+/**
+ * Väntar på en ListenableFuture (CameraX) utan extra bibliotek.
+ *
+ * Viktigt: om coroutinen avbryts avbryts INTE själva future:n. CameraX återanvänder samma
+ * future (t.ex. ProcessCameraProvider.getInstance), så att avbryta den skulle göra att
+ * kameran aldrig kan starta igen under appens livstid.
+ */
 suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { cont ->
     addListener({
+        if (!cont.isActive) return@addListener
         try {
             cont.resume(get())
         } catch (e: ExecutionException) {
@@ -21,7 +28,6 @@ suspend fun <T> ListenableFuture<T>.await(): T = suspendCancellableCoroutine { c
             cont.resumeWithException(e)
         }
     }, DirectExecutor)
-    cont.invokeOnCancellation { cancel(false) }
 }
 
 /** Väntar på en ML Kit-Task. */

@@ -46,6 +46,7 @@ sleep 8
 shot 01-kamera
 check "Appen startar och lever" alive
 check "Kameravyn visas" $UI exists --desc "Switch camera"
+check "Kameran startar utan felmeddelande" bash -c "! $UI exists --text 'Could not start the camera' --timeout 1"
 
 before=$(count '\.jpg')
 key KEYCODE_VOLUME_UP
@@ -53,6 +54,19 @@ sleep 6
 shot 02-efter-foto
 after=$(count '\.jpg')
 check "Foto tas med volymknappen och sparas ($before → $after)" [ "$after" -gt "$before" ]
+
+step "Omstart tre gånger (fångar startproblem)"
+for n in 1 2 3; do
+  adb shell am force-stop "$PKG"
+  adb shell am start -W -n "$PKG/.MainActivity" >> "$OUT/ui.log" 2>&1
+  sleep 7
+  before=$(count '\.jpg')
+  key KEYCODE_VOLUME_UP
+  sleep 5
+  after=$(count '\.jpg')
+  check "Omstart $n: foto sparas ($before → $after)" [ "$after" -gt "$before" ]
+done
+shot 02b-efter-omstarter
 
 step "Bildformat, rutnät och självutlösare"
 tap --desc "Aspect ratio"; sleep 3; shot 03-format-1-1

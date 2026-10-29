@@ -49,6 +49,7 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.viewModelScope
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +57,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -148,6 +150,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             settingsRepo.settings
                 .map { BindKey(it.aspect, it.hdr, it.videoQuality, it.videoStabilization, it.maxQuality, it.jpegQuality) }
                 .distinctUntilChanged()
+                .drop(1) // första värdet hanteras av start/attach – rebinda bara vid ändringar
                 .collect { if (initialized) rebind() }
         }
         viewModelScope.launch {
@@ -201,22 +204,40 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         bindJob = viewModelScope.launch {
             val owner = lifecycleOwner ?: return@launch
             val view = previewView ?: return@launch
-            try {
-                val cp = provider ?: ProcessCameraProvider.getInstance(context).await().also { provider = it }
-                if (!extensionsTried) {
-                    extensionsTried = true
-                    extensions = runCatching { ExtensionsManager.getInstanceAsync(context, cp).await() }.getOrNull()
+            // Några försök: kameran kan vara upptagen en kort stund (t.ex. direkt efter en annan app)
+            var lastError: Exception? = null
+            for (attempt in 1..3) {
+                try {
+                    val cp = provider ?: ProcessCameraProvider.getInstance(context).await().also { provider = it }
+                    if (!extensionsTried) {
+                        extensions = try {
+                            ExtensionsManager.getInstanceAsync(context, cp).await()
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            Log.w(TAG, "Kameratillägg (natt/porträtt/HDR) saknas", e)
+                            null
+                        }
+                        extensionsTried = true
+                    }
+                    val s = settingsRepo.settings.first()
+                    if (bindUseCases(cp, owner, view, s)) return@launch
+                } catch (e: CancellationException) {
+                    // En ny bindning har ersatt den här – inget fel
+                    throw e
+                } catch (e: Exception) {
+                    lastError = e
+                    Log.w(TAG, "Kamerastart misslyckades (försök $attempt)", e)
                 }
-                val s = settingsRepo.settings.first()
-                bindUseCases(cp, owner, view, s)
-            } catch (e: Exception) {
-                Log.e(TAG, "Kunde inte starta kameran", e)
-                showMessage(R.string.msg_camera_error)
+                delay(700L * attempt)
             }
+            Log.e(TAG, "Kunde inte starta kameran", lastError)
+            showMessage(R.string.msg_camera_error)
         }
     }
 
-    private fun bindUseCases(cp: ProcessCameraProvider, owner: LifecycleOwner, view: PreviewView, s: AppSettings) {
+    /** Returnerar true om kameran kunde bindas. */
+    private fun bindUseCases(cp: ProcessCameraProvider, owner: LifecycleOwner, view: PreviewView, s: AppSettings): Boolean {
         val st = _state.value
         val hasBack = runCatching { cp.hasCamera(CameraSelector.DEFAULT_BACK_CAMERA) }.getOrDefault(false)
         val hasFront = runCatching { cp.hasCamera(CameraSelector.DEFAULT_FRONT_CAMERA) }.getOrDefault(false)
@@ -313,10 +334,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             usedExtension = false
             bound = attempt(useExtension = false, stabilization = false)
         }
-        val cam: Camera = bound ?: run {
-            showMessage(R.string.msg_camera_error)
-            return
-        }
+        val cam: Camera = bound ?: return false
         camera = cam
         val extensionActive = usedExtension && imageCapture != null
 
@@ -357,6 +375,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             lastFallbackMode = st.mode
             showMessage(if (st.mode == CameraMode.NIGHT) R.string.msg_night_software else R.string.msg_portrait_software)
         }
+        return true
     }
 
     private fun flashModeFor(f: FlashOption, front: Boolean): Int = if (front) {
