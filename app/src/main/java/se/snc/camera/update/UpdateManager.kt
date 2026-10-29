@@ -212,9 +212,11 @@ class UpdateManager(private val context: Context, private val settings: Settings
             .map { it.drop(2).replace("**", "").replace("`", "").trim() }
             .filter { it.isNotEmpty() }
         if (bullets.isNotEmpty()) return bullets.take(8)
-        val text = main.lines().map { it.trim() }.filter { it.isNotEmpty() && !it.startsWith("#") }
-            .joinToString(" ").replace("**", "").take(300)
-        return if (text.isBlank()) emptyList() else listOf(text)
+        // Ingen punktlista: visa bara första meningen (äldre releaser hade bara installationstext)
+        val first = main.lines().map { it.trim().replace("**", "") }
+            .firstOrNull { it.isNotEmpty() && !it.startsWith("#") && !it.first().isDigit() }
+            ?: return emptyList()
+        return listOf(if (first.length > 140) first.take(140).trimEnd() + "…" else first)
     }
 
     /** "Ladda ner och installera": laddar ner, kontrollerar och installerar sedan direkt. */

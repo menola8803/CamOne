@@ -342,6 +342,8 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
         val progress = when (download) {
             is DownloadState.Downloading -> download.progress
             is DownloadState.Ready -> 1f
+            // Kontrollen efter nedladdningen misslyckades: filen kom fram, visa fullt (i rött)
+            is DownloadState.Failed -> if (download.error == UpdateError.NETWORK) 0f else 1f
             else -> 0f
         }
         if (download is DownloadState.Downloading && progress < 0f) {
