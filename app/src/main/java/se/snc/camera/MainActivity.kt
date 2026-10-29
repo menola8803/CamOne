@@ -34,6 +34,7 @@ import se.snc.camera.settings.AboutScreen
 import se.snc.camera.settings.SettingsScreen
 import se.snc.camera.text.TextRecognitionScreen
 import se.snc.camera.update.UpdateScreen
+import se.snc.camera.info.CameraInfoScreen
 import se.snc.camera.ui.theme.SncTheme
 import se.snc.camera.util.HardwareKeys
 import se.snc.camera.util.KeyCommand
@@ -46,6 +47,7 @@ sealed interface Screen {
     data object Settings : Screen
     data object About : Screen
     data object Update : Screen
+    data object Cameras : Screen
 }
 
 class MainActivity : ComponentActivity() {
@@ -116,8 +118,10 @@ class MainActivity : ComponentActivity() {
                             repository = app.settingsRepository,
                             onBack = { pop() },
                             onAbout = { push(Screen.About) },
-                            onUpdates = { push(Screen.Update) }
+                            onUpdates = { push(Screen.Update) },
+                            onCameras = { push(Screen.Cameras) }
                         )
+                        Screen.Cameras -> CameraInfoScreen(onBack = { pop() })
                         Screen.Update -> UpdateScreen(
                             manager = app.updateManager,
                             repository = app.settingsRepository,

@@ -8,6 +8,7 @@ Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för 
 - Nedladdningen kontrolleras innan den installeras: kontrollsumma (SHA-256) från GitHub, att det är SNC Camera, att versionen är nyare och att den är signerad med samma nyckel.
 - Sök automatiskt (kan stängas av): appen söker när den startar, högst var sjätte timme. En guldprick på kugghjulet i kameran visar att en ny version finns.
 - Release publiceras bara när appen är signerad med appens egen nyckel, så att varje version kan installeras ovanpå den förra.
+- Nytt: Inställningar → Kameror visar vad telefonen ger appen tillgång till – varje lins med brännvidd, megapixlar, högupplöst läge, bildfrekvens, slow motion, stabilisering och Pro-värden – och vilka funktioner som går att bygga. Rapporten kan kopieras eller delas.
 
 ## Version 1.1.0 – 2026-10-29
 

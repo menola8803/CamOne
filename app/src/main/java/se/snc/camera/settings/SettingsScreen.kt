@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Camera
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.SystemUpdate
@@ -84,7 +85,8 @@ fun SettingsScreen(
     repository: SettingsRepository,
     onBack: () -> Unit,
     onAbout: () -> Unit,
-    onUpdates: () -> Unit
+    onUpdates: () -> Unit,
+    onCameras: () -> Unit
 ) {
     val context = LocalContext.current
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
@@ -228,6 +230,14 @@ fun SettingsScreen(
                 onSelect = { v -> update { it.copy(volumeKeyAction = v) } }
             )
         }
+
+        // ---------------- Kameror: vad telefonen klarar ----------------
+        NavItem(
+            title = stringResource(R.string.cams_title),
+            subtitle = stringResource(R.string.cams_row_sub),
+            onClick = onCameras,
+            leading = Icons.Outlined.Camera
+        )
 
         // ---------------- Uppdateringar (som i Direct) ----------------
         val newVersion = settings.latestKnownVersion.takeIf { it.isNotBlank() && UpdateManager.isNewer(it) }

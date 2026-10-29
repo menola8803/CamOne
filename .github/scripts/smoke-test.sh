@@ -245,6 +245,24 @@ sleep 2
 key KEYCODE_BACK
 sleep 3
 
+step "Kameror (vad telefonen ger appen)"
+tap --desc "Settings"
+sleep 3
+$UI tap --text "Cameras" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Kameror i inställningarna"
+check "Kamerasidan visar sammanfattningen" $UI exists --text "AVAILABLE TO THE APP" --timeout 20
+shot 33-kameror
+W=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1); H=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
+adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H / 5)) 400; sleep 1
+shot 34-kameror-linser
+check "Kamerasidan visar bakkameran" $UI exists --contains "BACK CAMERA" --scroll --timeout 10
+tap --text "Copy report"
+sleep 1
+check "Appen lever efter kamerasidan" alive
+key KEYCODE_BACK
+sleep 2
+key KEYCODE_BACK
+sleep 3
+
 step "Uppdatering (som i Direct)"
 # Testappen har version 0.9.0, så senaste release på GitHub ska visas som en ny version
 adb shell appops set "$PKG" REQUEST_INSTALL_PACKAGES allow
