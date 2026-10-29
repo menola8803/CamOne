@@ -16,8 +16,11 @@ android {
         versionCode = 1
         versionName = "1.0.0"
 
-        // OnePlus 13R är arm64 – håller APK:n liten
-        ndk { abiFilters += listOf("arm64-v8a") }
+        // OnePlus 13R är arm64 – håller APK:n liten.
+        // -PsncAllAbis=true tar med alla arkitekturer (används för testet i emulatorn).
+        if (!project.hasProperty("sncAllAbis")) {
+            ndk { abiFilters += listOf("arm64-v8a") }
+        }
     }
 
     signingConfigs {

@@ -79,6 +79,9 @@ import se.snc.camera.util.openVideo
 import se.snc.camera.util.shareMedia
 import java.util.Date
 
+/** Frågar om fotobehörighet högst en gång per appstart. */
+private var askedMediaPermission = false
+
 @Composable
 fun ViewerScreen(
     media: MediaRepository,
@@ -101,13 +104,17 @@ fun ViewerScreen(
         val permissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) {
             permissionTick++
         }
-        LaunchedEffect(Unit) {
-            if (android.os.Build.VERSION.SDK_INT >= 33 && mediaPermissions.none { context.isGranted(it) }) {
+        LaunchedEffect(changes, permissionTick) {
+            val loaded = media.loadMedia()
+            items = loaded
+            // Appens egna bilder syns alltid. Behörigheten behövs bara för att se bilder från en
+            // tidigare installation, så fråga bara när albumet ser tomt ut – och bara en gång.
+            if (loaded.isEmpty() && !askedMediaPermission &&
+                mediaPermissions.none { context.isGranted(it) }
+            ) {
+                askedMediaPermission = true
                 permissionLauncher.launch(mediaPermissions)
             }
-        }
-        LaunchedEffect(changes, permissionTick) {
-            items = media.loadMedia()
         }
 
         val list = items

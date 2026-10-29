@@ -113,7 +113,12 @@ fun CameraScreen(
             askedOnce = true
         }
         LaunchedEffect(Unit) {
-            if (!hasCamera || !context.isGranted(Manifest.permission.RECORD_AUDIO)) {
+            // Fråga automatiskt bara en gång per appstart (inte varje gång man går tillbaka från galleriet)
+            hasCamera = context.isGranted(Manifest.permission.CAMERA)
+            if (!viewModel.permissionsRequested &&
+                (!hasCamera || !context.isGranted(Manifest.permission.RECORD_AUDIO))
+            ) {
+                viewModel.permissionsRequested = true
                 launcher.launch(arrayOf(Manifest.permission.CAMERA, Manifest.permission.RECORD_AUDIO))
             }
         }

@@ -114,6 +114,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var lastFallbackMode: CameraMode? = null
     private var pendingMode: CameraMode? = null
 
+    /** Behörighetsdialogen visas automatiskt högst en gång per appstart. */
+    var permissionsRequested = false
+
     private val sound = MediaActionSound()
 
     /** Inställningar som kräver att kameran binds om när de ändras. */
