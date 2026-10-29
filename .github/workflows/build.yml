@@ -87,8 +87,6 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v7
 
@@ -124,17 +122,6 @@ jobs:
           name: skarmbilder-och-testrapport
           path: ci-out
           if-no-files-found: ignore
-
-      # Tillfälligt under felsökning: lägg resultaten på en egen gren så att de går att hämta med git
-      - name: Publicera testresultat på grenen ci-results
-        if: always()
-        run: |
-          [ -d ci-out ] || exit 0
-          cd ci-out
-          git init -q -b ci-results
-          git add -A
-          git -c user.name="github-actions" -c user.email="github-actions@users.noreply.github.com" commit -qm "Röktest ${GITHUB_SHA::7}"
-          git push -qf "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" ci-results
 
   release:
     name: Publicera release
