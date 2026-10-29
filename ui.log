@@ -1,0 +1,205 @@
+[steg] Installation
+Performing Streamed Install
+Success
+[steg] Kamera
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 3517
+WaitTime: 3672
+Complete
+[ui] hittade 'Switch camera'
+[ui] HITTADE INTE: 'Could not start the camera'. Synligt på skärmen:
+text='' desc='Flash' bounds=[54,171][115,232]
+text='' desc='Timer' bounds=[282,171][343,232]
+text='' desc='Aspect ratio' bounds=[488,149][593,254]
+text='4:3' desc='' bounds=[519,171][562,232]
+text='' desc='Grid' bounds=[737,171][798,232]
+text='' desc='Settings' bounds=[965,171][1026,232]
+text='1×' desc='' bounds=[426,1820][464,1881]
+text='2' desc='' bounds=[540,1820][557,1881]
+text='5' desc='' bounds=[635,1820][652,1881]
+text='PRO' desc='' bounds=[0,1933][56,2059]
+text='NIGHT' desc='' bounds=[56,1933][250,2059]
+text='VIDEO' desc='' bounds=[250,1933][440,2059]
+text='PHOTO' desc='' bounds=[440,1933][640,2059]
+text='PORTRAIT' desc='' bounds=[640,1933][901,2059]
+text='' desc='Open last photo' bounds=[137,2161][200,2224]
+text='' desc='Switch camera' bounds=[872,2153][951,2232]
+
+[steg] Omstart tre gånger (fångar startproblem)
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 3184
+WaitTime: 3207
+Complete
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 3647
+WaitTime: 3649
+Complete
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 2865
+WaitTime: 3120
+Complete
+[steg] Bildformat, rutnät och självutlösare
+[ui] tryckte på 'Aspect ratio' vid [488,149][593,254]
+[ui] tryckte på 'Aspect ratio' vid [488,149][593,254]
+[ui] tryckte på 'Aspect ratio' vid [488,149][593,254]
+[ui] tryckte på 'Grid' vid [737,171][798,232]
+[ui] tryckte på 'Grid' vid [737,171][798,232]
+[ui] tryckte på 'Grid' vid [737,171][798,232]
+[ui] tryckte på 'Grid' vid [737,171][798,232]
+[ui] tryckte på 'Timer' vid [282,171][343,232]
+[ui] tryckte på 'Timer' vid [282,171][343,232]
+[ui] tryckte på 'Timer' vid [282,171][343,232]
+[ui] tryckte på 'Timer' vid [282,171][343,232]
+[steg] Bildvisare och redigerare
+[ui] tryckte på 'Open last photo' vid [100,2124][237,2261]
+[ui] hittade 'Details'
+[ui] tryckte på 'Edit' vid [121,2207][180,2268]
+[ui] hittade 'Filters'
+[ui] tryckte på 'Warm' vid [525,2050][608,2111]
+[ui] tryckte på 'Adjust' vid [495,2239][585,2300]
+[ui] tryckte på 'Save copy' vid [800,188][996,249]
+[ui] hittade 'Details'
+[ui] tryckte på 'Details' vid [685,2207][785,2268]
+[steg] Video
+[ui] tryckte på 'VIDEO' vid [250,1933][440,2059]
+[steg] Natt, Pro och Porträtt
+[ui] tryckte på 'NIGHT' vid [251,1933][445,2059]
+[ui] tryckte på 'PRO' vid [295,1933][443,2059]
+[ui] hittade 'EV'
+[ui] hittade 'ISO'
+[ui] tryckte på 'ISO' vid [313,1630][359,1691]
+[ui] tryckte på 'NIGHT' vid [615,1933][809,2059]
+[ui] tryckte på 'VIDEO' vid [637,1933][827,2059]
+[ui] tryckte på 'PHOTO' vid [636,1933][836,2059]
+[ui] tryckte på 'PORTRAIT' vid [640,1933][901,2059]
+[ui] tryckte på 'PHOTO' vid [208,1933][408,2059]
+[steg] Framkamera
+[ui] tryckte på 'Switch camera' vid [872,2153][951,2232]
+[ui] tryckte på 'Switch camera' vid [872,2153][951,2232]
+[steg] Inställningar och Om
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] hittade 'Settings'
+[ui] tryckte på 'Rule of thirds' vid [661,1534][886,1595]
+[ui] tryckte på 'Off' vid [280,1534][333,1595]
+[ui] tryckte på 'About' vid [211,1857][320,1918]
+[ui] hittade 'Developer: Claes Sundman S.N.C AB'
+[steg] Text i bild (delas till appen)
+ci-out/ocr-testbild.png: 1 file pushed, 0 skipped. 208.9 MB/s (52750 bytes in 0.000s)
+Starting: Intent { act=android.intent.action.SEND typ=image/png cmp=se.snc.camera/.MainActivity (has extras) }
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+[ui] hittade 'Select all'
+[ui] hittade 'Tap text to select'
+[ui] tryckte på 'Select all' vid [132,2199][287,2260]
+[ui] hittade 'selected'
+[ui] tryckte på 'Show text' vid [629,2138][795,2199]
+[ui] hittade 'SNC Camera'
+[ui] hittade '123 45 67'
+[ui] hittade 'Copy'
+[ui] tryckte på 'Copy' vid [153,2186][237,2247]
+[steg] Galleri: textknappen
+[ui] tryckte på 'Open last photo' vid [100,2124][237,2261]
+[ui] tryckte på 'Text' vid [314,2207][376,2268]
+[ui] hittade 'Select all'
+[steg] Kameror (vad telefonen ger appen)
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] tryckte på 'Cameras' vid [211,2109][371,2170]
+[ui] hittade 'AVAILABLE TO THE APP'
+[ui] hittade 'BACK CAMERA'
+[ui] tryckte på 'Copy report' vid [455,2034][710,2095]
+[steg] Uppdatering (som i Direct)
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] tryckte på 'Updates' vid [211,1616][362,1677]
+[ui] hittade 'NEW VERSION'
+[ui] tryckte på 'Download and install' vid [361,2034][804,2095]
+[ui] HITTADE INTE: 'verified (SHA-256)'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.1.0' desc='' bounds=[89,521][752,630]
+text='You have 0.9.0 · 39 MB · released today' desc='' bounds=[89,656][736,717]
+text='SNC Camera 1.1.0 för OnePlus 13R med LineageOS 23.2.' desc='' bounds=[134,841][991,953]
+text='Check automatically' desc='' bounds=[84,1090][454,1151]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1151][738,1199]
+text='Source' desc='' bounds=[84,1247][210,1308]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1316][548,1377]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1514][996,1682]
+text='Downloading… 0 %' desc='' bounds=[384,2034][780,2095]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] HITTADE INTE: 'different key'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.1.0' desc='' bounds=[89,521][752,630]
+text='You have 0.9.0 · 39 MB · released today' desc='' bounds=[89,656][736,717]
+text='SNC Camera 1.1.0 för OnePlus 13R med LineageOS 23.2.' desc='' bounds=[134,841][991,953]
+text='Check automatically' desc='' bounds=[84,1090][454,1151]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1151][738,1199]
+text='Source' desc='' bounds=[84,1247][210,1308]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1316][548,1377]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1514][996,1682]
+text='Downloading… 30 %' desc='' bounds=[371,2034][794,2095]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] HITTADE INTE: 'download failed'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.1.0' desc='' bounds=[89,521][752,630]
+text='You have 0.9.0 · 39 MB · released today' desc='' bounds=[89,656][736,717]
+text='SNC Camera 1.1.0 för OnePlus 13R med LineageOS 23.2.' desc='' bounds=[134,841][991,953]
+text='Check automatically' desc='' bounds=[84,1090][454,1151]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1151][738,1199]
+text='Source' desc='' bounds=[84,1247][210,1308]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1316][548,1377]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1514][996,1682]
+text='Downloading… 62 %' desc='' bounds=[372,2034][792,2095]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] HITTADE INTE: 'verified (SHA-256)'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.1.0' desc='' bounds=[89,521][752,630]
+text='You have 0.9.0 · 39 MB · released today' desc='' bounds=[89,656][736,717]
+text="The new version is signed with a different key, so it can't be installed on top. Uninstall SNC Camera and install the new version from the download page – your photos are kept." desc='' bounds=[168,790][991,1014]
+text='SNC Camera 1.1.0 för OnePlus 13R med LineageOS 23.2.' desc='' bounds=[134,1091][991,1203]
+text='Check automatically' desc='' bounds=[84,1340][454,1401]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1401][738,1449]
+text='Source' desc='' bounds=[84,1497][210,1558]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1566][548,1627]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1764][996,1932]
+text='Open the download page' desc='' bounds=[336,2042][819,2103]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] hittade 'different key'
+[steg] Språkval (Svenska)
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] tryckte på 'Svenska' vid [129,498][269,559]
+[ui] hittade 'Inställningar'
+[ui] tryckte på 'Om' vid [211,1857][274,1918]
+[ui] hittade 'Developer: Claes Sundman S.N.C AB'
+[ui] tryckte på 'Inställningar' vid [965,171][1026,232]
+[ui] tryckte på 'English' vid [348,498][471,559]
+[ui] hittade 'Settings'
+[steg] Avslut
