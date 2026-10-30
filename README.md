@@ -13,15 +13,17 @@ där man trycker på texten för att markera, kopiera eller dela den.
 **Kamera**
 - Fram- och bakkamera (snurra-knappen till höger om avtryckaren)
 - Lägen i en svepbar karusell som i OnePlus: **Pro · Natt · Video · Foto · Porträtt**
-  (svep i sökaren eller tryck på läget)
+  (svep i sidled på lägesraden eller i sökaren, eller tryck på läget – raden följer fingret)
 - Övre fältet: blixt (av/auto/på, skärmblixt på frontkameran), HDR, självutlösare 3/5/10 s,
   bildformat 4:3 / 1:1 / 16:9, rutnät och inställningar
-- Zoomknappar (.6 / 1× / 2× / 5× beroende på vad kameran exponerar) och nyp-zoom
+- **Riktiga linser**: appen väljer den bakkamera som har flest linser (på OnePlus 13R kamera 5).
+  0,6× = ultravidvinkel 16 mm, 1× = huvudkamera 24 mm, 2× = tele 47 mm – en etikett visar vilken lins som tar över
+- Zoomknappar (.6 / 1× / 2× / 5×) och nyp-zoom upp till 10×
 - Tryck för fokus, dra sedan upp/ned för exponering (solikonen)
 - Vattenpass, rutnät (tredjedelar, gyllene snittet, kvadrat)
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
-- Video 720p / 1080p / 4K med paus, ficklampa och stabilisering
-- Pro-läge: EV, ISO, slutartid, vitbalans och manuell fokus
+- Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
+- Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus
 - Volymknapparna kan ta bild eller zooma
 - Appen kan väljas som standardkamera (dubbeltryck på strömknappen)
 
@@ -51,6 +53,9 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Bildformat, kvalitet, JPEG-kvalitet, spegling av frontkamera, videoupplösning,
   stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration, volymknappar
 - Språkval Svenska/English direkt i appen (Android 13+), som i USB-appen
+- **Kameror** visar vad telefonen ger appen tillgång till: varje lins med brännvidd, megapixlar,
+  bildfrekvens, slow motion, RAW och Pro-värden. Rapporten kan kopieras eller delas
+- **Uppdateringar** direkt i appen (se nedan)
 - **Om**-sidan visar *Developer: Claes Sundman S.N.C AB*, version, enhet och licenser
 - Svenska och engelska (följer telefonens språk)
 
@@ -58,7 +63,9 @@ där man trycker på texten för att markera, kopiera eller dela den.
 
 ## Ladda ner och installera
 
-**Enklast:** öppna [Releases](https://github.com/menola8803/CamOne/releases/latest) på telefonen,
+**Från version 1.2.0** uppdaterar appen sig själv under *Inställningar → Uppdateringar*.
+
+**Första installationen:** öppna [Releases](https://github.com/menola8803/CamOne/releases/latest) på telefonen,
 ladda ner `SNC-Camera-x.y.z.apk` och öppna filen. Tillåt "Installera okända appar" för
 webbläsaren eller filhanteraren om telefonen frågar.
 
@@ -67,7 +74,7 @@ Varje gång kod skickas till `main` gör GitHub Actions följande automatiskt:
 2. installerar den i en Android 16-emulator och klickar igenom kamera, foto, video, alla lägen,
    redigerare, textigenkänning, inställningar och Om (skärmbilder sparas under *Actions → körningen →
    Artifacts → skarmbilder-och-testrapport*),
-3. publicerar APK:n som en ny release om testet gick igenom.
+3. publicerar APK:n som en ny release om testet gick igenom och appen är signerad med den fasta nyckeln.
 
 ### Uppdatera direkt i appen (som i Direct-appen)
 **Inställningar → Uppdateringar** visar installerad version och senaste release här på GitHub.
@@ -116,8 +123,19 @@ Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWO
   - **Porträtt**: tillverkarens bokeh-tillägg om det finns, annars mjukvaruporträtt där personen
     hittas och bakgrunden görs oskarp efter bilden tagits.
   - **HDR**-knappen visas bara om kameran erbjuder HDR-tillägg.
-- Vilka zoomsteg som syns (.6× vidvinkel, 2× tele) beror på hur LineageOS-portningen exponerar
-  kamerorna. Om bara huvudkameran syns används digital zoom.
+- Så exponerar LineageOS 23.2 kamerorna på OnePlus 13R (CPH2645), enligt appens kamerarapport:
+
+  | ID | Typ | Lins |
+  |---|---|---|
+  | 0 | logisk bak [2, 3] | vidvinkel + ultravid, zoom 0,6–10× |
+  | **5** | **logisk bak [2, 3, 4]** | **vidvinkel + ultravid + tele, zoom 0,6–10× – används av appen** |
+  | 2 | fysisk | huvudkamera 24 mm f/1.88, 12,6 MP, 4K/1080p 60 fps, slow motion 1080p 480 fps |
+  | 3 | fysisk | ultravid 16 mm f/2.2, 107°, 8 MP |
+  | 4 | fysisk | tele 47 mm f/2.0, 12,6 MP, slow motion 240 fps |
+  | 1 | fram | 24 mm f/2.4, 15,9 MP, 1080p 60 fps |
+
+  Alla kameror har manuell sensor och RAW (LEVEL_3). Fram + bak samtidigt stöds ([0, 1] och [1, 5]).
+  Inga CameraX-tillägg och inget 50 MP-läge exponeras; OIS styrs av hårdvaran och syns inte för appen.
 - Textigenkänning och porträtt använder Google ML Kit med inbäddade modeller (ingen internet, inga GApps).
 
 ## Projektstruktur
@@ -129,6 +147,8 @@ app/src/main/java/se/snc/camera/
 ├─ editor/                   filter, justeringar, redigerare
 ├─ text/                     textigenkänning med tryck-för-att-markera
 ├─ settings/                 inställningar och Om
+├─ update/                   uppdateringar från GitHub (som i Direct)
+├─ info/                     Kameror-sidan och kamerarapporten
 ├─ data/                     inställningar (DataStore) och mediabibliotek (MediaStore)
 └─ ui/, util/                tema, zoombar bild, orientering m.m.
 ```
