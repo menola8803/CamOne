@@ -2,6 +2,11 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.3.1 – 2026-10-30
+
+- Svep i sidled mellan lägena Pro, Natt, Video, Foto och Porträtt, som i OnePlus-kameran. Raden följer fingret och landar på läget i mitten när du släpper; ett kort svep byter ett läge, ett långt eller snabbt svep hoppar flera. Det går fortfarande att trycka på ett läge.
+- Svep i sökaren byter också läge och kräver nu ett kortare svep än förut.
+
 ## Version 1.3.0 – 2026-10-30
 
 - Riktiga linser: appen använder nu den bakkamera som har flest linser (på OnePlus 13R kamera 5 med vidvinkel, ultravidvinkel och tele). 0,6× är ultravidvinkeln och 2× den riktiga telelinsen i stället för digital zoom.

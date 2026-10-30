@@ -329,7 +329,7 @@ private fun CameraContent(
                 Modifier
                     .fillMaxSize()
                     .pointerInput(Unit) {
-                        val swipeThreshold = 64.dp.toPx()
+                        val swipeThreshold = 40.dp.toPx()
                         val evStepPx = 16.dp.toPx()
                         val slop = viewConfiguration.touchSlop
                         awaitEachGesture {
@@ -373,7 +373,7 @@ private fun CameraContent(
                             }
                             if (!pinch && !evDragging) {
                                 val st = currentState
-                                if (abs(dx) > swipeThreshold && abs(dx) > abs(dy) * 1.5f) {
+                                if (abs(dx) > swipeThreshold && abs(dx) > abs(dy) * 1.2f) {
                                     if (!st.isRecording && st.countdown == 0) {
                                         val i = modes.indexOf(st.mode) + if (dx < 0) 1 else -1
                                         if (i in modes.indices) viewModel.setMode(modes[i])

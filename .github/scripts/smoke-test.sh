@@ -167,6 +167,29 @@ check "Appen lever efter porträtt" alive
 tap --text "PHOTO"
 sleep 4
 
+step "Svep mellan lägen"
+check "Foto är valt läge" $UI exists --text "PHOTO" --selected
+$UI swipe --text "PHOTO" --dx=-170 >> "$OUT/ui.log" 2>&1
+sleep 4
+shot 19b-svep-till-portratt
+check "Svep åt vänster på lägesraden byter till Porträtt" $UI exists --text "PORTRAIT" --selected
+$UI swipe --text "PORTRAIT" --dx=170 >> "$OUT/ui.log" 2>&1
+sleep 4
+check "Svep åt höger på lägesraden byter tillbaka till Foto" $UI exists --text "PHOTO" --selected
+$UI swipe --text "PHOTO" --dx=380 --ms=250 >> "$OUT/ui.log" 2>&1
+sleep 4
+shot 19c-langt-svep
+check "Långt svep på lägesraden hoppar förbi Video (Natt eller Pro)" bash -c "$UI exists --text NIGHT --selected --timeout 2 || $UI exists --text PRO --selected --timeout 2"
+tap --text "PHOTO"
+sleep 4
+$UI swipe --y 0.4 --dx=-0.3 >> "$OUT/ui.log" 2>&1
+sleep 4
+check "Svep i sökaren byter till Porträtt" $UI exists --text "PORTRAIT" --selected
+$UI swipe --y 0.4 --dx=0.3 >> "$OUT/ui.log" 2>&1
+sleep 4
+check "Svep i sökaren byter tillbaka till Foto" $UI exists --text "PHOTO" --selected
+check "Appen lever efter svepen" alive
+
 step "Framkamera"
 tap --desc "Switch camera"
 sleep 6

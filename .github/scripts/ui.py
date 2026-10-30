@@ -4,6 +4,9 @@
   ui.py tap --text "Edit"            tryck på ett element med exakt text
   ui.py tap --desc "Switch camera"   tryck på ett element med innehållsbeskrivning
   ui.py exists --contains "SNC"      finns det något som innehåller texten?
+  ui.py exists --text "PHOTO" --selected   är elementet valt (t.ex. aktivt kameraläge)?
+  ui.py swipe --text "PHOTO" --dx=-160     svep i sidled från elementets mitt
+  ui.py swipe --y 0.4 --dx=-0.35           svep i sidled mitt på skärmen (dx som andel av bredden)
   ui.py dump                         skriv ut allt som syns på skärmen
   ui.py text-image fil.png           skapa en testbild med text (för textigenkänning)
 """
@@ -64,6 +67,8 @@ def find(root, args, w, h):
             or (args.desc is not None and d == args.desc)
             or (args.contains is not None and (args.contains in t or args.contains in d))
         )
+        if hit and getattr(args, "selected", False) and n.get("selected") != "true":
+            continue
         if hit and visible(n, w, h):
             return n
     return None
@@ -77,7 +82,8 @@ def describe(root):
         t = n.get("text", "")
         d = n.get("content-desc", "")
         if t or d:
-            items.append(f"text={t!r} desc={d!r} bounds={n.get('bounds')}")
+            sel = " selected" if n.get("selected") == "true" else ""
+            items.append(f"text={t!r} desc={d!r} bounds={n.get('bounds')}{sel}")
     return "\n".join(items)
 
 
@@ -108,14 +114,26 @@ def target(args):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("cmd", choices=["tap", "exists", "dump", "text-image"])
+    p.add_argument("cmd", choices=["tap", "exists", "swipe", "dump", "text-image"])
     p.add_argument("path", nargs="?")
     p.add_argument("--text")
     p.add_argument("--desc")
     p.add_argument("--contains")
     p.add_argument("--timeout", type=float, default=8)
     p.add_argument("--scroll", action="store_true")
+    p.add_argument("--selected", action="store_true")
+    p.add_argument("--dx", type=float, default=0)
+    p.add_argument("--y", type=float, default=0.4)
+    p.add_argument("--ms", type=int, default=600)
     args = p.parse_args()
+
+    if args.cmd == "swipe" and target(args) is None:
+        w, h = screen_size()
+        dx = int(args.dx * w) if abs(args.dx) < 1 else int(args.dx)
+        x, y = w // 2, int(h * args.y)
+        adb("shell", "input", "swipe", str(x), str(y), str(x + dx), str(y), str(args.ms))
+        print(f"[ui] svepte {dx:+d} px vid y={y}")
+        return 0
 
     if args.cmd == "dump":
         print(describe(dump()))
@@ -143,6 +161,13 @@ def main():
         x1, y1, x2, y2 = bounds(node)
         adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
         print(f"[ui] tryckte på {target(args)!r} vid {node.get('bounds')}")
+    elif args.cmd == "swipe":
+        w, _ = screen_size()
+        x1, y1, x2, y2 = bounds(node)
+        x, y = (x1 + x2) // 2, (y1 + y2) // 2
+        dx = int(args.dx * w) if abs(args.dx) < 1 else int(args.dx)
+        adb("shell", "input", "swipe", str(x), str(y), str(x + dx), str(y), str(args.ms))
+        print(f"[ui] svepte {dx:+d} px från {target(args)!r} vid {node.get('bounds')}")
     else:
         print(f"[ui] hittade {target(args)!r}")
     return 0

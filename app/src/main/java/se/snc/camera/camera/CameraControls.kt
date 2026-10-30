@@ -79,6 +79,21 @@ import se.snc.camera.ui.theme.OnGlassDim
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.launch
 
 /** Rund ikonknapp med glaseffekt, roterar med telefonen. */
 @Composable
@@ -326,7 +341,11 @@ fun PauseButton(isPaused: Boolean, onClick: () -> Unit, modifier: Modifier = Mod
     )
 }
 
-/** Karusell med lägen. Valt läge centreras och markeras med accentfärg. */
+/**
+ * Karusell med lägen, som i OnePlus-kameran: svep i sidled eller tryck på ett läge.
+ * Raden följer fingret och landar på det läge som hamnar närmast mitten när man släpper.
+ * Ett kort svep byter ett läge åt gången, ett längre eller snabbare svep kan hoppa flera.
+ */
 @Composable
 fun ModeSelector(
     modes: List<CameraMode>,
@@ -335,39 +354,113 @@ fun ModeSelector(
     onSelect: (CameraMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Varje lägets x-position och bredd i raden, i px.
     val positions = remember { mutableStateMapOf<CameraMode, Pair<Float, Float>>() }
-    BoxWithConstraints(
+    var widthPx by remember { mutableIntStateOf(0) }
+    // Radens förskjutning i px. NaN tills storlekarna är kända – då hamnar den direkt rätt.
+    val offset = remember { Animatable(Float.NaN) }
+    var dragging by remember { mutableStateOf(false) }
+    var dragDistance by remember { mutableFloatStateOf(0f) }
+    val currentSelected by rememberUpdatedState(selected)
+    val currentOnSelect by rememberUpdatedState(onSelect)
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val minSwipePx = with(density) { 24.dp.toPx() }
+    val overscrollPx = with(density) { 40.dp.toPx() }
+
+    fun targetFor(mode: CameraMode): Float? {
+        if (widthPx == 0) return null
+        return positions[mode]?.let { (x, w) -> widthPx / 2f - (x + w / 2f) }
+    }
+
+    /** Läget vars mitt ligger närmast radens mitt när raden är förskjuten [at] px. */
+    fun closestTo(at: Float): CameraMode? {
+        if (widthPx == 0) return null
+        val probe = widthPx / 2f - at
+        return modes.minByOrNull { m -> positions[m]?.let { (x, w) -> abs(x + w / 2f - probe) } ?: Float.MAX_VALUE }
+    }
+
+    val target = targetFor(selected)
+    LaunchedEffect(target, dragging) {
+        if (target == null || dragging) return@LaunchedEffect
+        if (offset.value.isNaN()) offset.snapTo(target)
+        else offset.animateTo(target, spring(stiffness = 350f, dampingRatio = 0.85f))
+    }
+
+    val dragState = rememberDraggableState { delta ->
+        if (offset.value.isNaN()) return@rememberDraggableState
+        dragDistance += delta
+        scope.launch {
+            val first = targetFor(modes.first())
+            val last = targetFor(modes.last())
+            var v = offset.value + delta
+            if (first != null && last != null) v = v.coerceIn(last - overscrollPx, first + overscrollPx)
+            offset.snapTo(v)
+        }
+    }
+
+    // Under svepet lyses läget i mitten upp, så man ser var man landar.
+    val highlighted by remember(selected) {
+        derivedStateOf { if (dragging && !offset.value.isNaN()) closestTo(offset.value) ?: selected else selected }
+    }
+
+    // Svepet sitter på hela raden (även tomrummet på sidorna). Ett tryck går fortfarande till lägena,
+    // eftersom svepet tar över först när fingret har rört sig en bit.
+    Box(
         modifier
             .fillMaxWidth()
-            .height(44.dp)
+            .height(48.dp)
             .clipToBounds()
+            .onSizeChanged { widthPx = it.width }
+            .draggable(
+                state = dragState,
+                orientation = Orientation.Horizontal,
+                enabled = enabled,
+                onDragStarted = {
+                    dragging = true
+                    dragDistance = 0f
+                },
+                onDragStopped = { velocity ->
+                    val now = offset.value
+                    if (!now.isNaN()) {
+                        // Kasta lite i fingrets riktning, så ett snabbt svep går längre.
+                        val fling = velocity * 0.12f
+                        var choice = closestTo(now + fling) ?: currentSelected
+                        val push = dragDistance + fling
+                        if (choice == currentSelected && abs(push) > minSwipePx) {
+                            val i = modes.indexOf(currentSelected) + if (push < 0) 1 else -1
+                            if (i in modes.indices) choice = modes[i]
+                        }
+                        if (choice != currentSelected) currentOnSelect(choice)
+                    }
+                    dragging = false
+                    dragDistance = 0f
+                }
+            )
     ) {
-        val center = constraints.maxWidth / 2f
-        val p = positions[selected]
-        val target = if (p != null) center - (p.first + p.second / 2f) else 0f
-        val offset by animateFloatAsState(target, spring(stiffness = 350f, dampingRatio = 0.85f), label = "modeOffset")
         Row(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .wrapContentWidth(Alignment.Start, unbounded = true)
-                .offset { IntOffset(offset.roundToInt(), 0) },
+                .offset { IntOffset(offset.value.let { if (it.isNaN()) 0 else it.roundToInt() }, 0) }
+                .graphicsLayer { alpha = if (offset.value.isNaN()) 0f else 1f },
             verticalAlignment = Alignment.CenterVertically
         ) {
             modes.forEach { mode ->
-                val isSelected = mode == selected
-                val color by animateColorAsState(if (isSelected) CameraYellow else OnGlassDim, label = "modeColor")
+                val lit = mode == highlighted
+                val color by animateColorAsState(if (lit) CameraYellow else OnGlassDim, label = "modeColor")
                 Text(
                     text = stringResource(mode.label).uppercase(Locale.getDefault()),
                     color = color,
                     fontSize = 13.sp,
-                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                    fontWeight = if (lit) FontWeight.Bold else FontWeight.Medium,
                     letterSpacing = 1.2.sp,
                     modifier = Modifier
                         .onGloballyPositioned { c ->
                             positions[mode] = c.positionInParent().x to c.size.width.toFloat()
                         }
                         .clip(RoundedCornerShape(16.dp))
-                        .clickable(enabled = enabled, role = Role.Tab) { onSelect(mode) }
+                        .selectable(selected = mode == selected, enabled = enabled, role = Role.Tab) { onSelect(mode) }
                         .padding(horizontal = 14.dp, vertical = 8.dp)
                 )
             }
