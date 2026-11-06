@@ -101,6 +101,9 @@ import se.snc.camera.util.openAppSettings
 import se.snc.camera.util.rememberDeviceOrientation
 import se.snc.camera.util.rememberIconRotation
 import kotlin.math.abs
+import android.graphics.ColorMatrixColorFilter
+import android.graphics.RenderEffect
+import androidx.compose.material.icons.rounded.PhotoFilter
 
 @Composable
 fun CameraScreen(
@@ -217,6 +220,14 @@ private fun CameraContent(
     DisposableEffect(previewView, lifecycleOwner) {
         viewModel.attach(lifecycleOwner, previewView)
         onDispose { viewModel.detach() }
+    }
+
+    // Live-filter: samma färgmatris som läggs på den sparade bilden. Inte i video (spelas in utan filter).
+    val liveFilterOn = state.filter.isActive && !state.mode.isVideo
+    LaunchedEffect(previewView, liveFilterOn, state.filter) {
+        previewView.setRenderEffect(
+            if (liveFilterOn) RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(state.filter.matrix())) else null
+        )
     }
 
     LifecycleResumeEffect(Unit) {
@@ -379,6 +390,7 @@ private fun CameraContent(
                                         if (i in modes.indices) viewModel.setMode(modes[i])
                                     }
                                 } else if (abs(dx) < slop && abs(dy) < slop) {
+                                    viewModel.closeFilterPanel()
                                     focusPos = down.position
                                     focusKey++
                                     focusTouch = System.currentTimeMillis()
@@ -404,6 +416,16 @@ private fun CameraContent(
             )
 
             CountdownOverlay(state.countdown, iconRotation)
+
+            if (liveFilterOn && !state.filterPanelOpen && !state.isRecording) {
+                FilterBadge(
+                    filter = state.filter,
+                    onClick = viewModel::toggleFilterPanel,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .padding(12.dp)
+                )
+            }
 
             // Läges-badge (t.ex. nattläge)
             if (state.mode == CameraMode.NIGHT && !state.isCapturing) {
@@ -462,6 +484,8 @@ private fun CameraContent(
             onGrid = viewModel::cycleGrid,
             onVideoQuality = viewModel::cycleVideoQuality,
             onSettings = onOpenSettings,
+            filterActive = state.filter.isActive,
+            onFilter = viewModel::toggleFilterPanel,
             updateAvailable = settings.latestKnownVersion.isNotBlank() && UpdateManager.isNewer(settings.latestKnownVersion),
             modifier = Modifier
                 .align(Alignment.TopCenter)
@@ -484,7 +508,15 @@ private fun CameraContent(
                 .padding(top = 12.dp, bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.mode == CameraMode.PRO && !state.isRecording) {
+            if (state.filterPanelOpen && !state.mode.isVideo && !state.isRecording) {
+                FilterPanel(
+                    filter = state.filter,
+                    onPreset = viewModel::setFilterPreset,
+                    onChannel = viewModel::setFilterChannel,
+                    onReset = viewModel::resetFilter,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            } else if (state.mode == CameraMode.PRO && !state.isRecording) {
                 ProPanel(
                     state = state,
                     rotation = iconRotation,
@@ -610,6 +642,8 @@ private fun TopBar(
     onGrid: () -> Unit,
     onVideoQuality: () -> Unit,
     onSettings: () -> Unit,
+    filterActive: Boolean,
+    onFilter: () -> Unit,
     updateAvailable: Boolean = false,
     modifier: Modifier = Modifier
 ) {
@@ -697,6 +731,18 @@ private fun TopBar(
                     contentDescription = stringResource(R.string.cd_aspect),
                     onClick = onAspect,
                     rotation = rotation
+                )
+            }
+
+            // Live-filter (foto, natt, pro, porträtt – inte video)
+            if (!mode.isVideo) {
+                GlassIconButton(
+                    icon = Icons.Rounded.PhotoFilter,
+                    contentDescription = stringResource(R.string.cd_filter),
+                    onClick = onFilter,
+                    rotation = rotation,
+                    tint = if (filterActive || state.filterPanelOpen) CameraYellow else Usb.Text,
+                    dot = filterActive
                 )
             }
 

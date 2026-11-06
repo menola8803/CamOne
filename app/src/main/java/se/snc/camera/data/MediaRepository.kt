@@ -19,6 +19,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import kotlin.math.max
+import androidx.exifinterface.media.ExifInterface
 
 data class MediaItem(
     val id: Long,
@@ -37,6 +38,38 @@ class MediaRepository(private val context: Context) {
     companion object {
         const val ALBUM = "SNC Camera"
         const val RELATIVE_PATH = "DCIM/$ALBUM"
+
+        /** EXIF-uppgifter som behålls när en bild skrivs om (filter, porträtt). */
+        private val KEEP_EXIF_TAGS = listOf(
+            ExifInterface.TAG_DATETIME,
+            ExifInterface.TAG_DATETIME_ORIGINAL,
+            ExifInterface.TAG_DATETIME_DIGITIZED,
+            ExifInterface.TAG_OFFSET_TIME,
+            ExifInterface.TAG_OFFSET_TIME_ORIGINAL,
+            ExifInterface.TAG_OFFSET_TIME_DIGITIZED,
+            ExifInterface.TAG_SUBSEC_TIME,
+            ExifInterface.TAG_SUBSEC_TIME_ORIGINAL,
+            ExifInterface.TAG_SUBSEC_TIME_DIGITIZED,
+            ExifInterface.TAG_MAKE,
+            ExifInterface.TAG_MODEL,
+            ExifInterface.TAG_F_NUMBER,
+            ExifInterface.TAG_APERTURE_VALUE,
+            ExifInterface.TAG_EXPOSURE_TIME,
+            ExifInterface.TAG_EXPOSURE_BIAS_VALUE,
+            ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY,
+            ExifInterface.TAG_FOCAL_LENGTH,
+            ExifInterface.TAG_FOCAL_LENGTH_IN_35MM_FILM,
+            ExifInterface.TAG_FLASH,
+            ExifInterface.TAG_WHITE_BALANCE,
+            ExifInterface.TAG_GPS_LATITUDE,
+            ExifInterface.TAG_GPS_LATITUDE_REF,
+            ExifInterface.TAG_GPS_LONGITUDE,
+            ExifInterface.TAG_GPS_LONGITUDE_REF,
+            ExifInterface.TAG_GPS_ALTITUDE,
+            ExifInterface.TAG_GPS_ALTITUDE_REF,
+            ExifInterface.TAG_GPS_TIMESTAMP,
+            ExifInterface.TAG_GPS_DATESTAMP
+        )
 
         fun newFileName(prefix: String, extension: String): String {
             val stamp = SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())
@@ -172,6 +205,40 @@ class MediaRepository(private val context: Context) {
         notifyChanged()
         uri
     }
+
+    /** Läser de EXIF-uppgifter som ska följa med när en bild skrivs om (datum, kamera, exponering, plats). */
+    suspend fun readExif(uri: Uri): Map<String, String> = withContext(Dispatchers.IO) {
+        runCatching {
+            resolver.openInputStream(uri)?.use { input ->
+                val exif = ExifInterface(input)
+                KEEP_EXIF_TAGS.mapNotNull { tag -> exif.getAttribute(tag)?.let { tag to it } }.toMap()
+            } ?: emptyMap()
+        }.getOrDefault(emptyMap())
+    }
+
+    /**
+     * Skriver över en JPEG med nya pixlar (rotationen är redan inbakad i bitmappen) och lägger
+     * tillbaka EXIF-uppgifterna, så att datum, kamera och exponering syns under Detaljer.
+     */
+    suspend fun overwriteJpeg(uri: Uri, bitmap: Bitmap, quality: Int, exif: Map<String, String>): Boolean =
+        withContext(Dispatchers.IO) {
+            val ok = runCatching {
+                resolver.openOutputStream(uri, "wt")?.use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(50, 100), out)
+                } ?: false
+            }.getOrDefault(false)
+            if (ok && exif.isNotEmpty()) {
+                runCatching {
+                    resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                        val e = ExifInterface(pfd.fileDescriptor)
+                        exif.forEach { (tag, value) -> e.setAttribute(tag, value) }
+                        e.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
+                        e.saveAttributes()
+                    }
+                }
+            }
+            ok
+        }
 
     /** Systemdialog för att ta bort filer (krävs för filer appen inte själv äger). */
     fun deleteRequest(uris: List<Uri>): IntentSender =

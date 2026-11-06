@@ -79,6 +79,10 @@ data class CameraUiState(
     val pro: ProState = ProState(),
     val activeProControl: ProControl? = null,
 
+    /** Live-filter i sökaren (gäller foton, inte video). */
+    val filter: LiveFilter = LiveFilter(),
+    val filterPanelOpen: Boolean = false,
+
     val isRecording: Boolean = false,
     val isPaused: Boolean = false,
     val recordingMs: Long = 0L,

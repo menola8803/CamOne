@@ -7,6 +7,8 @@
   ui.py exists --text "PHOTO" --selected   är elementet valt (t.ex. aktivt kameraläge)?
   ui.py swipe --text "PHOTO" --dx=-160     svep i sidled från elementets mitt
   ui.py swipe --y 0.4 --dx=-0.35           svep i sidled mitt på skärmen (dx som andel av bredden)
+  ui.py tap --desc "Red" --fx 0          tryck längst till vänster på ett element (t.ex. ett reglage)
+  ui.py rgb [bild.png] --region 0.1,0.2,0.9,0.4   medelfärg R G B i ett område (andel av bilden)
   ui.py dump                         skriv ut allt som syns på skärmen
   ui.py text-image fil.png           skapa en testbild med text (för textigenkänning)
 """
@@ -114,7 +116,7 @@ def target(args):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("cmd", choices=["tap", "exists", "swipe", "dump", "text-image"])
+    p.add_argument("cmd", choices=["tap", "exists", "swipe", "rgb", "dump", "text-image"])
     p.add_argument("path", nargs="?")
     p.add_argument("--text")
     p.add_argument("--desc")
@@ -125,7 +127,28 @@ def main():
     p.add_argument("--dx", type=float, default=0)
     p.add_argument("--y", type=float, default=0.4)
     p.add_argument("--ms", type=int, default=600)
+    p.add_argument("--fx", type=float, default=0.5)
+    p.add_argument("--region", default="0,0,1,1")
     args = p.parse_args()
+
+    if args.cmd == "rgb":
+        import io
+        from PIL import Image
+        if args.path:
+            img = Image.open(args.path)
+        else:
+            png = subprocess.run(["adb", "exec-out", "screencap", "-p"], capture_output=True, timeout=60).stdout
+            img = Image.open(io.BytesIO(png))
+        img = img.convert("RGB")
+        x1, y1, x2, y2 = (float(v) for v in args.region.split(","))
+        w, h = img.size
+        crop = img.crop((int(x1 * w), int(y1 * h), int(x2 * w), int(y2 * h))).resize((64, 64))
+        px = list(crop.getdata())
+        r = sum(p[0] for p in px) / len(px)
+        g = sum(p[1] for p in px) / len(px)
+        b = sum(p[2] for p in px) / len(px)
+        print(f"{r:.0f} {g:.0f} {b:.0f}")
+        return 0
 
     if args.cmd == "swipe" and target(args) is None:
         w, h = screen_size()
@@ -159,7 +182,8 @@ def main():
         return 1
     if args.cmd == "tap":
         x1, y1, x2, y2 = bounds(node)
-        adb("shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+        x = int(x1 + max(0.0, min(1.0, args.fx)) * (x2 - x1 - 1))
+        adb("shell", "input", "tap", str(x), str((y1 + y2) // 2))
         print(f"[ui] tryckte på {target(args)!r} vid {node.get('bounds')}")
     elif args.cmd == "swipe":
         w, _ = screen_size()

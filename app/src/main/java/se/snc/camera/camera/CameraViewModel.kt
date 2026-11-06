@@ -79,6 +79,10 @@ import se.snc.camera.data.TimerOption
 import se.snc.camera.data.VideoQualityOption
 import se.snc.camera.util.await
 import java.util.concurrent.TimeUnit
+import se.snc.camera.editor.PhotoFilter
+import se.snc.camera.editor.withColorMatrix
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -524,8 +528,47 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun selectProControl(control: ProControl?) {
-        _state.update { it.copy(activeProControl = if (it.activeProControl == control) null else control) }
+        _state.update {
+            it.copy(activeProControl = if (it.activeProControl == control) null else control, filterPanelOpen = false)
+        }
     }
+
+    // ---------------------------------------------------------------------------------------------
+    // Live-filter
+    // ---------------------------------------------------------------------------------------------
+
+    fun toggleFilterPanel() {
+        _state.update { it.copy(filterPanelOpen = !it.filterPanelOpen, activeProControl = null) }
+    }
+
+    fun closeFilterPanel() {
+        if (_state.value.filterPanelOpen) _state.update { it.copy(filterPanelOpen = false) }
+    }
+
+    fun setFilterPreset(preset: PhotoFilter) {
+        _state.update { it.copy(filter = it.filter.copy(preset = preset)) }
+    }
+
+    fun setFilterChannel(channel: ColorChannel, value: Float) {
+        _state.update { it.copy(filter = it.filter.with(channel, value)) }
+    }
+
+    fun resetFilter() {
+        _state.update { it.copy(filter = LiveFilter()) }
+    }
+
+    /** Lägger live-filtret på den sparade bilden i full upplösning och behåller EXIF-data. */
+    private suspend fun applyLiveFilter(uri: Uri, filter: LiveFilter, jpegQuality: Int): Boolean =
+        withContext(Dispatchers.Default) {
+            val media = sncApp.mediaRepository
+            val exif = media.readExif(uri)
+            val source = media.loadBitmap(uri, maxDimension = 8192) ?: return@withContext false
+            val filtered = source.withColorMatrix(filter.matrix())
+            source.recycle()
+            val ok = media.overwriteJpeg(uri, filtered, jpegQuality, exif)
+            filtered.recycle()
+            ok
+        }
 
     // ---------------------------------------------------------------------------------------------
     // Användaråtgärder
@@ -539,7 +582,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun setMode(mode: CameraMode) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0 || mode == st.mode) return
-        _state.update { it.copy(mode = mode, activeProControl = null) }
+        _state.update { it.copy(mode = mode, activeProControl = null, filterPanelOpen = it.filterPanelOpen && !mode.isVideo) }
+        if (mode.isVideo && st.filter.isActive) showMessage(R.string.msg_filter_not_video)
         viewModelScope.launch { settingsRepo.update { it.copy(lastMode = mode.name) } }
         rebind()
     }
@@ -736,6 +780,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                         if (st.mode == CameraMode.PORTRAIT && !st.extensionActive) {
                             showMessage(R.string.msg_processing_portrait)
                             portrait.process(uri, s.jpegQuality)
+                        }
+                        // Live-filtret (samma färger som i sökaren när bilden togs)
+                        if (st.filter.isActive) {
+                            val ok = runCatching { applyLiveFilter(uri, st.filter, s.jpegQuality) }.getOrDefault(false)
+                            if (!ok) showMessage(R.string.msg_filter_failed)
                         }
                         _state.update { it.copy(isCapturing = false) }
                         onMediaSaved(uri, isVideo = false)

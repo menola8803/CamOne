@@ -24,6 +24,8 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
 - Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus
+- **Live-filter**: filterknappen i övre fältet öppnar redigerarens filter och reglage för rött, grönt och blått
+  (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger (foto, pro, natt, porträtt – inte video)
 - Volymknapparna kan ta bild eller zooma
 - Appen kan väljas som standardkamera (dubbeltryck på strömknappen)
 
@@ -136,6 +138,9 @@ Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWO
 
   Alla kameror har manuell sensor och RAW (LEVEL_3). Fram + bak samtidigt stöds ([0, 1] och [1, 5]).
   Inga CameraX-tillägg och inget 50 MP-läge exponeras; OIS styrs av hårdvaran och syns inte för appen.
+- **Infrarött och värme:** telefonen har en IR-sändare (fjärrkontroll) men ingen IR- eller värmekamera.
+  Kamerorna har IR-spärrfilter, så en fjärrkontrolls IR-diod syns bara svagt, om alls (oftast bäst i
+  framkameran). Värme (8–14 µm) kan inte ses med mobilens kameror – det kräver en separat värmekamera.
 - Textigenkänning och porträtt använder Google ML Kit med inbäddade modeller (ingen internet, inga GApps).
 
 ## Projektstruktur

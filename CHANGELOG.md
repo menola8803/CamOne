@@ -2,6 +2,14 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.4.0 – 2026-11-06
+
+- Nytt: live-filter i kameran. Tryck på filterknappen i övre fältet och välj ett av filtren (Livfull, Varm, Kall, Svartvit, Noir, Sepia …) eller ändra rött, grönt och blått var för sig från 0 till 200 %. Effekten syns direkt i sökaren.
+- Bilden sparas med samma färger som du såg i sökaren, i full upplösning. Fungerar i Foto, Pro, Natt och Porträtt.
+- En liten etikett i sökaren visar att ett filter är på; tryck på den för att ändra. Återställ tar bort filtret.
+- Video spelas in utan filter i den här versionen, därför göms filterknappen i videoläget.
+- Datum, kamera och exponering (EXIF) följer nu med när appen skriver om en bild, även i porträttläget.
+
 ## Version 1.3.1 – 2026-10-30
 
 - Svep i sidled mellan lägena Pro, Natt, Video, Foto och Porträtt, som i OnePlus-kameran. Raden följer fingret och landar på läget i mitten när du släpper; ett kort svep byter ett läge, ett långt eller snabbt svep hoppar flera. Det går fortfarande att trycka på ett läge.

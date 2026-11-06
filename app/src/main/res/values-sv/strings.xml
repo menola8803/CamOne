@@ -295,6 +295,13 @@
     <string name="setting_video_fps">Bildfrekvens</string>
     <string name="cd_fps">Bildfrekvens</string>
     <string name="msg_fps_unsupported">60 fps stöds inte här – filmar i 30 fps</string>
+    <string name="cd_filter">Filter</string>
+    <string name="filter_panel_title">LIVE-FILTER</string>
+    <string name="filter_red">Rött</string>
+    <string name="filter_green">Grönt</string>
+    <string name="filter_blue">Blått</string>
+    <string name="msg_filter_not_video">Live-filtret gäller foton – video spelas in utan filter</string>
+    <string name="msg_filter_failed">Filtret kunde inte läggas på – bilden sparades utan filter</string>
     <string name="pro_long_exposure">Lång exponering – håll telefonen stilla. Sökaren uppdateras långsamt.</string>
     <string name="cams_app_camera">Bakkamera som appen använder</string>
     <string name="cams_app_camera_value">ID %1$s – %2$s</string>

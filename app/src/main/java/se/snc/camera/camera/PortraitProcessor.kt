@@ -72,13 +72,9 @@ class PortraitProcessor(private val context: Context, private val media: MediaRe
         Canvas(background).drawBitmap(foreground, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG))
         foreground.recycle()
 
-        val ok = withContext(Dispatchers.IO) {
-            runCatching {
-                context.contentResolver.openOutputStream(uri, "wt")?.use { out ->
-                    background.compress(Bitmap.CompressFormat.JPEG, jpegQuality, out)
-                } ?: false
-            }.getOrDefault(false)
-        }
+        // Behåll datum, kamera och exponering i EXIF när bilden skrivs om
+        val exif = media.readExif(uri)
+        val ok = media.overwriteJpeg(uri, background, jpegQuality, exif)
         background.recycle()
         source.recycle()
         ok

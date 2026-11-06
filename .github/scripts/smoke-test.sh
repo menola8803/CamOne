@@ -190,6 +190,62 @@ sleep 4
 check "Svep i sökaren byter tillbaka till Foto" $UI exists --text "PHOTO" --selected
 check "Appen lever efter svepen" alive
 
+step "Live-filter (RGB)"
+VF="0.1,0.18,0.9,0.40"   # ett område mitt i sökaren
+check "Filterknappen finns i fotoläget" $UI exists --desc "Filter"
+read -r r0 g0 b0 < <($UI rgb --region "$VF" 2>> "$OUT/ui.log")
+log "  Sökaren utan filter: R=${r0:-?} G=${g0:-?} B=${b0:-?}"
+tap --desc "Filter"
+sleep 2
+shot 19d-filterpanel
+check "Filterpanelen öppnas med RGB-reglage" $UI exists --desc "Red"
+tap --text "Warm"
+sleep 2
+shot 19e-filter-varm
+tap --text "Original"
+sleep 1
+tap --desc "Red" --fx 0
+sleep 2
+shot 19f-rott-0-procent
+check "Rött-reglaget står på 0 %" $UI exists --text "0 %"
+read -r r1 g1 b1 < <($UI rgb --region "$VF" 2>> "$OUT/ui.log")
+log "  Sökaren med rött 0 %: R=${r1:-?} G=${g1:-?} B=${b1:-?}"
+bright=0
+[ "${r0:-0}" -ge 30 ] 2>/dev/null && bright=1
+if [ "$bright" = 1 ]; then
+  check "Sökaren visar filtret live (rött försvinner)" [ "${r1:-999}" -le $(( r0 / 3 )) ]
+else
+  log "  (scenen i emulatorn har för lite rött för att mäta sökaren)"
+fi
+before=$(count '\.jpg')
+key KEYCODE_VOLUME_UP
+sleep 8
+after=$(count '\.jpg')
+check "Foto med filter sparas ($before → $after)" [ "$after" -gt "$before" ]
+latest=$(adb shell "ls -t '$DIR' | grep 'jpg' | head -1" | tr -d '\r')
+adb pull "$DIR/$latest" "$OUT/filter-foto.jpg" >> "$OUT/ui.log" 2>&1
+read -r pr pg pb < <($UI rgb "$OUT/filter-foto.jpg" 2>> "$OUT/ui.log")
+log "  Sparat foto ($latest) med rött 0 %: R=${pr:-?} G=${pg:-?} B=${pb:-?}"
+log "  EXIF i fotot: $(python3 -c "from PIL import Image; e=Image.open('$OUT/filter-foto.jpg').getexif(); print(e.get(271, '-'), e.get(272, '-'), e.get(306, '-'))" 2>&1)"
+if [ "$bright" = 1 ]; then
+  check "Det sparade fotot har samma filter som sökaren (inget rött)" [ "${pr:-999}" -le 12 ]
+fi
+check "Appen lever efter foto med filter" alive
+tap --text "Reset"
+sleep 2
+read -r r2 g2 b2 < <($UI rgb --region "$VF" 2>> "$OUT/ui.log")
+log "  Sökaren efter Återställ: R=${r2:-?} G=${g2:-?} B=${b2:-?}"
+if [ "$bright" = 1 ]; then
+  check "Återställ tar bort filtret" [ "${r2:-0}" -ge $(( r0 / 2 )) ]
+fi
+tap --desc "Filter"
+sleep 1
+tap --text "VIDEO"
+sleep 4
+check "Filterknappen göms i videoläget" bash -c "! $UI exists --desc Filter --timeout 1"
+tap --text "PHOTO"
+sleep 4
+
 step "Framkamera"
 tap --desc "Switch camera"
 sleep 6

@@ -124,6 +124,13 @@ fun buildColorMatrix(state: EditState): ColorMatrix {
     return m
 }
 
+/** Ny bitmapp med färgmatrisen [m] applicerad (används av live-filtret i kameran). */
+fun Bitmap.withColorMatrix(m: ColorMatrix): Bitmap {
+    val out = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    Canvas(out).drawBitmap(this, 0f, 0f, Paint(Paint.FILTER_BITMAP_FLAG).apply { colorFilter = ColorMatrixColorFilter(m) })
+    return out
+}
+
 /** Roterar/speglar en bitmapp. */
 fun Bitmap.transformed(rotation: Int, flipHorizontal: Boolean): Bitmap {
     if (rotation % 360 == 0 && !flipHorizontal) return this
