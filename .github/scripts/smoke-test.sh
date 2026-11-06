@@ -176,7 +176,7 @@ check "Svep åt vänster på lägesraden byter till Porträtt" $UI exists --text
 $UI swipe --text "PORTRAIT" --dx=170 >> "$OUT/ui.log" 2>&1
 sleep 4
 check "Svep åt höger på lägesraden byter tillbaka till Foto" $UI exists --text "PHOTO" --selected
-$UI swipe --text "PHOTO" --dx=380 --ms=250 >> "$OUT/ui.log" 2>&1
+$UI swipe --text "PHOTO" --dx=640 --ms=400 >> "$OUT/ui.log" 2>&1
 sleep 4
 shot 19c-langt-svep
 check "Långt svep på lägesraden hoppar förbi Video (Natt eller Pro)" bash -c "$UI exists --text NIGHT --selected --timeout 2 || $UI exists --text PRO --selected --timeout 2"
@@ -204,8 +204,10 @@ sleep 2
 shot 19e-filter-varm
 tap --text "Original"
 sleep 1
-tap --desc "Red" --fx 0
+# Dra reglaget från mitten (100 %) ända till vänster (0 %)
+$UI swipe --desc "Red" --dx=-0.45 --ms=500 >> "$OUT/ui.log" 2>&1
 sleep 2
+$UI dump >> "$OUT/ui.log" 2>&1
 shot 19f-rott-0-procent
 check "Rött-reglaget står på 0 %" $UI exists --text "0 %"
 read -r r1 g1 b1 < <($UI rgb --region "$VF" 2>> "$OUT/ui.log")
