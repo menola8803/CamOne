@@ -1,0 +1,326 @@
+[steg] Installation
+Performing Streamed Install
+Success
+[steg] Kamera
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 2337
+WaitTime: 2488
+Complete
+[ui] hittade 'Switch camera'
+[ui] HITTADE INTE: 'Could not start the camera'. Synligt på skärmen:
+text='' desc='Flash' bounds=[54,171][115,232]
+text='' desc='Timer' bounds=[236,171][297,232]
+text='' desc='Aspect ratio' bounds=[396,149][501,254]
+text='4:3' desc='' bounds=[427,171][470,232]
+text='' desc='Filter' bounds=[601,171][662,232]
+text='' desc='Grid' bounds=[783,171][844,232]
+text='' desc='Settings' bounds=[965,171][1026,232]
+text='1×' desc='' bounds=[426,1810][464,1871]
+text='2' desc='' bounds=[540,1810][557,1871]
+text='5' desc='' bounds=[635,1810][652,1871]
+text='PRO' desc='' bounds=[0,1928][56,2054]
+text='NIGHT' desc='' bounds=[56,1928][250,2054]
+text='VIDEO' desc='' bounds=[250,1928][440,2054]
+text='PHOTO' desc='' bounds=[440,1928][640,2054] selected
+text='PORTRAIT' desc='' bounds=[640,1928][901,2054]
+text='' desc='Open last photo' bounds=[137,2161][200,2224]
+text='' desc='Switch camera' bounds=[872,2153][951,2232]
+
+[steg] Omstart tre gånger (fångar startproblem)
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 2195
+WaitTime: 2249
+Complete
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 1938
+WaitTime: 2010
+Complete
+Starting: Intent { cmp=se.snc.camera/.MainActivity }
+Status: ok
+LaunchState: COLD
+Activity: se.snc.camera/.MainActivity
+TotalTime: 2464
+WaitTime: 2465
+Complete
+[steg] Bildformat, rutnät och självutlösare
+[ui] tryckte på 'Aspect ratio' vid [396,149][501,254]
+[ui] tryckte på 'Aspect ratio' vid [396,149][501,254]
+[ui] tryckte på 'Aspect ratio' vid [396,149][501,254]
+[ui] tryckte på 'Grid' vid [783,171][844,232]
+[ui] tryckte på 'Grid' vid [783,171][844,232]
+[ui] tryckte på 'Grid' vid [783,171][844,232]
+[ui] tryckte på 'Grid' vid [783,171][844,232]
+[ui] tryckte på 'Timer' vid [236,171][297,232]
+[ui] tryckte på 'Timer' vid [236,171][297,232]
+[ui] tryckte på 'Timer' vid [236,171][297,232]
+[ui] tryckte på 'Timer' vid [236,171][297,232]
+[steg] Bildvisare och redigerare
+[ui] tryckte på 'Open last photo' vid [100,2124][237,2261]
+[ui] hittade 'Details'
+[ui] tryckte på 'Edit' vid [121,2207][180,2268]
+[ui] hittade 'Filters'
+[ui] tryckte på 'Warm' vid [525,2050][608,2111]
+[ui] tryckte på 'Adjust' vid [495,2239][585,2300]
+[ui] tryckte på 'Save copy' vid [800,188][996,249]
+[ui] hittade 'Details'
+[ui] tryckte på 'Details' vid [685,2207][785,2268]
+[steg] Video
+[ui] tryckte på 'VIDEO' vid [250,1928][440,2054]
+[ui] tryckte på 'Frame rate' vid [583,149][688,254]
+[ui] tryckte på 'Frame rate' vid [583,149][688,254]
+[steg] Natt, Pro och Porträtt
+[ui] tryckte på 'NIGHT' vid [251,1928][445,2054]
+[ui] tryckte på 'PRO' vid [295,1928][443,2054]
+[ui] hittade 'EV'
+[ui] hittade 'ISO'
+[ui] tryckte på 'ISO' vid [313,1620][359,1681]
+[ui] tryckte på 'NIGHT' vid [615,1928][809,2054]
+[ui] tryckte på 'VIDEO' vid [637,1928][827,2054]
+[ui] tryckte på 'PHOTO' vid [636,1928][836,2054]
+[ui] tryckte på 'PORTRAIT' vid [640,1928][901,2054]
+[ui] tryckte på 'PHOTO' vid [208,1928][408,2054]
+[steg] Svep mellan lägen
+[ui] hittade 'PHOTO'
+[ui] svepte -170 px från 'PHOTO' vid [440,1928][640,2054]
+[ui] hittade 'PORTRAIT'
+[ui] svepte +170 px från 'PORTRAIT' vid [408,1928][673,2054]
+[ui] hittade 'PHOTO'
+[ui] svepte +640 px från 'PHOTO' vid [440,1928][640,2054]
+[ui] HITTADE INTE: 'NIGHT'. Synligt på skärmen:
+text='' desc='Flash' bounds=[54,171][115,232]
+text='' desc='Timer' bounds=[236,171][297,232]
+text='' desc='Aspect ratio' bounds=[396,149][501,254]
+text='4:3' desc='' bounds=[427,171][470,232]
+text='' desc='Filter' bounds=[601,171][662,232]
+text='' desc='Grid' bounds=[783,171][844,232]
+text='' desc='Settings' bounds=[965,171][1026,232]
+text='EV' desc='' bounds=[137,1620][170,1681]
+text='0.0' desc='' bounds=[130,1681][177,1742]
+text='ISO' desc='' bounds=[313,1620][359,1681]
+text='Auto' desc='' bounds=[302,1681][370,1742]
+text='S' desc='' bounds=[520,1620][536,1681]
+text='Auto' desc='' bounds=[494,1681][562,1742]
+text='WB' desc='' bounds=[699,1620][741,1681]
+text='Auto' desc='' bounds=[686,1681][754,1742]
+text='Focus' desc='' bounds=[879,1620][950,1681]
+text='AF' desc='' bounds=[895,1681][934,1742]
+text='1×' desc='' bounds=[426,1810][464,1871]
+text='2' desc='' bounds=[540,1810][557,1871]
+text='5' desc='' bounds=[635,1810][652,1871]
+text='PRO' desc='' bounds=[465,1928][615,2054] selected
+text='NIGHT' desc='' bounds=[615,1928][809,2054]
+text='VIDEO' desc='' bounds=[809,1928][999,2054]
+text='PHOTO' desc='' bounds=[999,1928][1080,2054]
+text='' desc='Open last photo' bounds=[100,2124][237,2261]
+text='' desc='Switch camera' bounds=[872,2153][951,2232]
+
+[ui] hittade 'PRO'
+[ui] tryckte på 'PHOTO' vid [999,1928][1080,2054]
+[ui] svepte -324 px vid y=960
+[ui] hittade 'PORTRAIT'
+[ui] svepte +324 px vid y=960
+[ui] hittade 'PHOTO'
+[steg] Live-filter (RGB)
+[ui] hittade 'Filter'
+/home/runner/work/CamOne/CamOne/.github/scripts/ui.py:146: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  px = list(crop.getdata())
+[ui] tryckte på 'Filter' vid [601,171][662,232]
+[ui] hittade 'Red'
+[ui] tryckte på 'Warm' vid [435,1266][585,1386]
+[ui] tryckte på 'Original' vid [79,1266][256,1392]
+[ui] svepte -486 px från 'Red' vid [132,1386][880,1496]
+text='' desc='Flash' bounds=[54,171][115,232]
+text='' desc='Timer' bounds=[236,171][297,232]
+text='' desc='Aspect ratio' bounds=[396,149][501,254]
+text='4:3' desc='' bounds=[427,171][470,232]
+text='' desc='Filter' bounds=[601,171][662,232]
+text='' desc='Grid' bounds=[783,171][844,232]
+text='' desc='Settings' bounds=[965,171][1026,232]
+text='LIVE FILTER' desc='' bounds=[79,1196][855,1257]
+text='Reset' desc='' bounds=[855,1164][1001,1282]
+text='Original' desc='' bounds=[79,1266][256,1392]
+text='Vivid' desc='' bounds=[277,1266][414,1386]
+text='Warm' desc='' bounds=[435,1266][585,1386]
+text='Cool' desc='' bounds=[606,1266][733,1386]
+text='Golden' desc='' bounds=[754,1266][920,1392]
+text='Film' desc='' bounds=[941,1266][1064,1392]
+text='R' desc='' bounds=[99,1412][118,1470]
+text='' desc='Red' bounds=[132,1386][880,1496]
+text='0 %' desc='' bounds=[875,1411][1001,1472]
+text='G' desc='' bounds=[98,1522][118,1580]
+text='' desc='Green' bounds=[132,1496][880,1606]
+text='100 %' desc='' bounds=[875,1521][1001,1582]
+text='B' desc='' bounds=[99,1632][118,1690]
+text='' desc='Blue' bounds=[132,1606][880,1716]
+text='100 %' desc='' bounds=[875,1631][1001,1692]
+text='1×' desc='' bounds=[426,1810][464,1871]
+text='2' desc='' bounds=[540,1810][557,1871]
+text='5' desc='' bounds=[635,1810][652,1871]
+text='PRO' desc='' bounds=[0,1928][56,2054]
+text='NIGHT' desc='' bounds=[56,1928][250,2054]
+text='VIDEO' desc='' bounds=[250,1928][440,2054]
+text='PHOTO' desc='' bounds=[440,1928][640,2054] selected
+text='PORTRAIT' desc='' bounds=[640,1928][901,2054]
+text='' desc='Open last photo' bounds=[100,2124][237,2261]
+text='' desc='Switch camera' bounds=[872,2153][951,2232]
+[ui] hittade '0 %'
+/home/runner/work/CamOne/CamOne/.github/scripts/ui.py:146: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  px = list(crop.getdata())
+/sdcard/DCIM/SNC Camera/IMG_20261106_022757_908.jpg: 1 file pulled, 0 skipped. 2.9 MB/s (52570 bytes in 0.017s)
+/home/runner/work/CamOne/CamOne/.github/scripts/ui.py:146: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  px = list(crop.getdata())
+[ui] tryckte på 'Reset' vid [855,1164][1001,1282]
+/home/runner/work/CamOne/CamOne/.github/scripts/ui.py:146: DeprecationWarning: Image.Image.getdata is deprecated and will be removed in Pillow 14 (2027-10-15). Use get_flattened_data instead.
+  px = list(crop.getdata())
+[ui] tryckte på 'Filter' vid [601,171][662,232]
+[ui] tryckte på 'VIDEO' vid [250,1928][440,2054]
+[ui] HITTADE INTE: 'Filter'. Synligt på skärmen:
+text='' desc='Torch' bounds=[54,171][115,232]
+text='' desc='Timer' bounds=[234,171][295,232]
+text='' desc='Video resolution' bounds=[392,149][509,254]
+text='1080p' desc='' bounds=[408,171][493,232]
+text='' desc='Frame rate' bounds=[583,149][688,254]
+text='30' desc='' bounds=[619,171][653,232]
+text='' desc='Grid' bounds=[785,171][846,232]
+text='' desc='Settings' bounds=[965,171][1026,232]
+text='1×' desc='' bounds=[426,1810][464,1871]
+text='2' desc='' bounds=[540,1810][557,1871]
+text='5' desc='' bounds=[635,1810][652,1871]
+text='PRO' desc='' bounds=[103,1928][251,2054]
+text='NIGHT' desc='' bounds=[251,1928][445,2054]
+text='VIDEO' desc='' bounds=[445,1928][636,2054] selected
+text='PHOTO' desc='' bounds=[636,1928][836,2054]
+text='PORTRAIT' desc='' bounds=[836,1928][1080,2054]
+text='' desc='Open last photo' bounds=[100,2124][237,2261]
+text='' desc='Switch camera' bounds=[872,2153][951,2232]
+
+[ui] tryckte på 'PHOTO' vid [636,1928][836,2054]
+[steg] Framkamera
+[ui] tryckte på 'Switch camera' vid [872,2153][951,2232]
+[ui] tryckte på 'Switch camera' vid [872,2153][951,2232]
+[steg] Inställningar och Om
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] hittade 'Settings'
+[ui] tryckte på 'Rule of thirds' vid [661,1811][886,1872]
+[ui] tryckte på 'Off' vid [280,1811][333,1872]
+[ui] tryckte på 'About' vid [211,1907][320,1968]
+[ui] hittade 'Developer: Claes Sundman S.N.C AB'
+[steg] Text i bild (delas till appen)
+ci-out/ocr-testbild.png: 1 file pushed, 0 skipped. 269.3 MB/s (52750 bytes in 0.000s)
+Starting: Intent { act=android.intent.action.SEND typ=image/png cmp=se.snc.camera/.MainActivity (has extras) }
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+[ui] hittade 'Select all'
+[ui] hittade 'Tap text to select'
+[ui] tryckte på 'Select all' vid [132,2199][287,2260]
+[ui] hittade 'selected'
+[ui] tryckte på 'Show text' vid [629,2138][795,2199]
+[ui] hittade 'SNC Camera'
+[ui] hittade '123 45 67'
+[ui] hittade 'Copy'
+[ui] tryckte på 'Copy' vid [153,2186][237,2247]
+[steg] Galleri: textknappen
+[ui] tryckte på 'Open last photo' vid [100,2124][237,2261]
+[ui] tryckte på 'Text' vid [314,2207][376,2268]
+[ui] hittade 'Select all'
+[steg] Kameror (vad telefonen ger appen)
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] tryckte på 'Cameras' vid [211,2306][371,2337]
+[ui] hittade 'AVAILABLE TO THE APP'
+[ui] hittade 'BACK CAMERA'
+[ui] tryckte på 'Copy report' vid [455,2034][710,2095]
+[steg] Uppdatering (som i Direct)
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] tryckte på 'Updates' vid [211,1616][362,1677]
+[ui] hittade 'NEW VERSION'
+[ui] tryckte på 'Download and install' vid [361,2034][804,2095]
+[ui] HITTADE INTE: 'verified (SHA-256)'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.3.1' desc='' bounds=[89,521][750,630]
+text='You have 0.9.0 · 39 MB · released oct 30, 2026' desc='' bounds=[89,656][856,717]
+text='Svep i sidled mellan lägena Pro, Natt, Video, Foto och Porträtt, som i OnePlus-kameran. Raden följer fingret och landar på läget i mitten när du släpper; ett kort svep byter ett läge, ett långt eller snabbt svep hoppar flera. Det går fortfarande att trycka på ett läge.' desc='' bounds=[134,841][991,1177]
+text='Svep i sökaren byter också läge och kräver nu ett kortare svep än förut.' desc='' bounds=[134,1203][991,1315]
+text='Check automatically' desc='' bounds=[84,1452][454,1513]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1513][738,1561]
+text='Source' desc='' bounds=[84,1609][210,1670]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1678][548,1739]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1876][996,1959]
+text='Downloading… 0 %' desc='' bounds=[384,2034][780,2095]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] HITTADE INTE: 'different key'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.3.1' desc='' bounds=[89,521][750,630]
+text='You have 0.9.0 · 39 MB · released oct 30, 2026' desc='' bounds=[89,656][856,717]
+text='Svep i sidled mellan lägena Pro, Natt, Video, Foto och Porträtt, som i OnePlus-kameran. Raden följer fingret och landar på läget i mitten när du släpper; ett kort svep byter ett läge, ett långt eller snabbt svep hoppar flera. Det går fortfarande att trycka på ett läge.' desc='' bounds=[134,841][991,1177]
+text='Svep i sökaren byter också läge och kräver nu ett kortare svep än förut.' desc='' bounds=[134,1203][991,1315]
+text='Check automatically' desc='' bounds=[84,1452][454,1513]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1513][738,1561]
+text='Source' desc='' bounds=[84,1609][210,1670]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1678][548,1739]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1876][996,1959]
+text='Downloading… 40 %' desc='' bounds=[370,2034][794,2095]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] HITTADE INTE: 'download failed'. Synligt på skärmen:
+text='' desc='Back' bounds=[71,226][129,284]
+text='Updates' desc='' bounds=[195,181][465,268]
+text='From GitHub Releases' desc='' bounds=[195,268][557,329]
+text='NEW VERSION' desc='' bounds=[89,426][846,487]
+text='Stable' desc='' bounds=[872,426][965,487]
+text='SNC Camera 1.3.1' desc='' bounds=[89,521][750,630]
+text='You have 0.9.0 · 39 MB · released oct 30, 2026' desc='' bounds=[89,656][856,717]
+text='Svep i sidled mellan lägena Pro, Natt, Video, Foto och Porträtt, som i OnePlus-kameran. Raden följer fingret och landar på läget i mitten när du släpper; ett kort svep byter ett läge, ett långt eller snabbt svep hoppar flera. Det går fortfarande att trycka på ett läge.' desc='' bounds=[134,841][991,1177]
+text='Svep i sökaren byter också läge och kräver nu ett kortare svep än förut.' desc='' bounds=[134,1203][991,1315]
+text='Check automatically' desc='' bounds=[84,1452][454,1513]
+text='When the app starts, at most every 6 hours' desc='' bounds=[84,1513][738,1561]
+text='Source' desc='' bounds=[84,1609][210,1670]
+text='GitHub · menola8803/camone' desc='' bounds=[84,1678][548,1739]
+text='The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.' desc='' bounds=[163,1876][996,1959]
+text='Downloading… 82 %' desc='' bounds=[373,2034][792,2095]
+text='Check for updates' desc='' bounds=[363,2199][718,2260]
+
+[ui] HITTADE INTE: 'verified (SHA-256)'. Synligt på skärmen:
+text='SNC Camera' desc='' bounds=[238,1067][947,1138]
+text='Do you want to update this app?' desc='' bounds=[133,1166][732,1223]
+text='Cancel' desc='' bounds=[624,1297][798,1439]
+text='Update' desc='' bounds=[798,1297][978,1439]
+
+[ui] HITTADE INTE: 'different key'. Synligt på skärmen:
+text='SNC Camera' desc='' bounds=[238,1067][947,1138]
+text='Do you want to update this app?' desc='' bounds=[133,1166][732,1223]
+text='Cancel' desc='' bounds=[624,1297][798,1439]
+text='Update' desc='' bounds=[798,1297][978,1439]
+
+[ui] HITTADE INTE: 'download failed'. Synligt på skärmen:
+text='SNC Camera' desc='' bounds=[238,1067][947,1138]
+text='Do you want to update this app?' desc='' bounds=[133,1166][732,1223]
+text='Cancel' desc='' bounds=[624,1297][798,1439]
+text='Update' desc='' bounds=[798,1297][978,1439]
+
+[steg] Språkval (Svenska)
+[ui] tryckte på 'Settings' vid [965,171][1026,232]
+[ui] tryckte på 'Svenska' vid [129,498][269,559]
+[ui] hittade 'Inställningar'
+[ui] tryckte på 'Om' vid [211,1857][274,1918]
+[ui] hittade 'Developer: Claes Sundman S.N.C AB'
+[ui] tryckte på 'Inställningar' vid [965,171][1026,232]
+[ui] tryckte på 'English' vid [348,498][471,559]
+[ui] hittade 'Settings'
+[steg] Avslut
