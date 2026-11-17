@@ -136,8 +136,8 @@ Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWO
 
   | ID | Typ | Lins |
   |---|---|---|
-  | 0 | logisk bak [2, 3] | vidvinkel + ultravid, zoom 0,6–10× |
-  | **5** | **logisk bak [2, 3, 4]** | **vidvinkel + ultravid + tele, zoom 0,6–10× – används av appen** |
+  | **0** | **logisk bak [2, 3]** | **vidvinkel + ultravid, zoom 0,6–10× – används för video** |
+  | **5** | **logisk bak [2, 3, 4]** | **vidvinkel + ultravid + tele, zoom 0,6–10× – används för foto** |
   | 2 | fysisk | huvudkamera 24 mm f/1.88, 12,6 MP, 4K/1080p 60 fps, slow motion 1080p 480 fps |
   | 3 | fysisk | ultravid 16 mm f/2.2, 107°, 8 MP |
   | 4 | fysisk | tele 47 mm f/2.0, 12,6 MP, slow motion 240 fps |
@@ -145,6 +145,10 @@ Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWO
 
   Alla kameror har manuell sensor och RAW (LEVEL_3). Fram + bak samtidigt stöds ([0, 1] och [1, 5]).
   Inga CameraX-tillägg och inget 50 MP-läge exponeras; OIS styrs av hårdvaran och syns inte för appen.
+- **Kamera 5 och 16:9:** så fort kamera 5 ska leverera 16:9 (sökare, foto eller film) skär drivrutinen bort
+  kanten två gånger, och en sjättedel av bilden blir randig – till vänster med 1×, till höger med .6. 4:3 är
+  felfritt, och kamera 0 (som LineageOS kameraapp använder) är felfri i 16:9. Därför tar fotolägena allt i 4:3
+  och beskär efteråt, och video använder kamera 0 (2× och 5× blir digital zoom i video).
 - **Infrarött och värme:** telefonen har en IR-sändare (fjärrkontroll) men ingen IR- eller värmekamera.
   Kamerorna har IR-spärrfilter, så en fjärrkontrolls IR-diod syns bara svagt, om alls (oftast bäst i
   framkameran). Värme (8–14 µm) kan inte ses med mobilens kameror – det kräver en separat värmekamera.

@@ -107,10 +107,20 @@ data class CameraReport(
     val extensions: ExtensionSupport,
     val device: String,
     val android: String,
-    /** Bakkameran som appen använder (den logiska kameran med flest linser). */
-    val appBackCameraId: String? = null
+    /** Bakkameran som appen använder för foto (den logiska kameran med flest linser). */
+    val appBackCameraId: String? = null,
+    /** Bakkameran som appen använder för video (standardkameran, kamera 0 på OnePlus 13R). */
+    val videoBackCameraId: String? = null
 ) {
     val appBackCamera: LensInfo? get() = lenses.firstOrNull { it.id == appBackCameraId }
+    val videoBackCamera: LensInfo? get() = lenses.firstOrNull { it.id == videoBackCameraId }
+
+    /** Linserna bakom en kamera (fysiska linser för en logisk kamera, annars kameran själv). */
+    fun lensesBehind(cam: LensInfo?): List<LensInfo> {
+        cam ?: return emptyList()
+        val members = cam.physicalIds.mapNotNull { pid -> lenses.firstOrNull { it.id == pid } }
+        return members.ifEmpty { listOf(cam) }.sortedBy { it.eqMm ?: 999 }
+    }
 
     /** Linserna appen når genom zoom på sin bakkamera. */
     val appBackLenses: List<LensInfo>
@@ -192,6 +202,7 @@ object CameraProbe {
         } else emptyList()
 
         val appBack = LensSelection.preferredBackCameraId(context)
+        val videoBack = LensSelection.defaultBackCameraId(context)
         val ext = withContext(Dispatchers.Main) { cameraXExtensions(context, appBack) }
 
         CameraReport(
@@ -200,7 +211,8 @@ object CameraProbe {
             extensions = ext,
             device = "${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})",
             android = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.DISPLAY}",
-            appBackCameraId = appBack
+            appBackCameraId = appBack,
+            videoBackCameraId = videoBack
         )
     }
 
@@ -430,6 +442,7 @@ object CameraProbe {
         appendLine(r.android)
         appendLine()
         appendLine("Appens bakkamera: ID ${r.appBackCameraId ?: "-"} ${r.appBackLenses.map { "${it.id}:${it.kind}" }}")
+        appendLine("Appens videokamera: ID ${r.videoBackCameraId ?: "-"} ${r.lensesBehind(r.videoBackCamera).map { "${it.id}:${it.kind}" }}")
         appendLine("Ultravidvinkel: ${r.access(LensKind.ULTRA_WIDE)}")
         appendLine("Tele: ${r.access(LensKind.TELE)}")
         appendLine("Högupplöst läge: ${r.maxResMp?.let { String.format(Locale.US, "%.1f MP", it) } ?: "nej"}")

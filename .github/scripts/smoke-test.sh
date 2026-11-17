@@ -456,6 +456,8 @@ sleep 3
 $UI tap --text "Cameras" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Kameror i inställningarna"
 check "Kamerasidan visar sammanfattningen" $UI exists --text "AVAILABLE TO THE APP" --timeout 20
 shot 33-kameror
+# Video använder standardkameran (kamera 0), foto den logiska kameran med flest linser
+check "Kamerasidan visar kameran för video" $UI exists --contains "Back camera for video" --scroll --timeout 15
 W=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1); H=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
 adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H / 5)) 400; sleep 1
 shot 34-kameror-linser

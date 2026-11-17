@@ -2,6 +2,12 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.6.2 – 2026-11-17
+
+- Remsan i 16:9 är borta även i sökaren och i video. Den kom från telefonens kamera 5 (vidvinkel + ultravid + tele), som skär bort kanten två gånger så fort den ska leverera 16:9.
+- Foto, Pro, Natt och Porträtt ber aldrig kameran om 16:9: sökaren och fotot tas i 4:3 och beskärs till 16:9 eller Helskärm. Telelinsen finns kvar. Sökaren är något mindre skarp i 16:9 och Helskärm; fotona påverkas inte.
+- Video använder telefonens standardkamera 0, samma som LineageOS kameraapp, som filmar utan remsa. .6 och 1× är riktiga linser; 2 och 5 är digital zoom i video.
+
 ## Version 1.6.1 – 2026-11-17
 
 - 16:9 rättat: på OnePlus 13R gav kamerans eget 16:9-läge en randig remsa längs ena kanten av sökaren (till vänster med 1×, till höger med .6). Nu tas fotot i 4:3 och beskärs till 16:9 direkt efteråt, precis som 3:2 och Helskärm. Sökaren är lika skarp som förut och fotot lika stort.

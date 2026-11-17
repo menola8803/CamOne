@@ -169,6 +169,16 @@ private fun Summary(r: CameraReport) {
                 Level.USED
             )
         }
+        // Video använder standardkameran (kamera 5 ger en randig remsa i 16:9 på OnePlus 13R)
+        val videoCam = r.videoBackCamera
+        if (videoCam != null) {
+            val kinds = r.lensesBehind(videoCam).map { kindName(it.kind) }.distinct()
+            StatusRow(
+                stringResource(R.string.cams_video_camera),
+                stringResource(R.string.cams_app_camera_value, videoCam.id, kinds.joinToString(", ")),
+                Level.USED
+            )
+        }
         accessRow(stringResource(R.string.cams_uw), LensKind.ULTRA_WIDE)
         accessRow(stringResource(R.string.cams_tele), LensKind.TELE)
 

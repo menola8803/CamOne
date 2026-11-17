@@ -339,7 +339,8 @@
     <string name="update_channel">Uppdateringar av appen</string>
     <string name="updated_notification_body">Tryck för att öppna SNC Camera</string>
     <string name="pro_long_exposure">Lång exponering – håll telefonen stilla. Sökaren uppdateras långsamt.</string>
-    <string name="cams_app_camera">Bakkamera som appen använder</string>
+    <string name="cams_app_camera">Bakkamera för foto</string>
+    <string name="cams_video_camera">Bakkamera för video</string>
     <string name="cams_app_camera_value">ID %1$s – %2$s</string>
     <string name="cams_ois_phone">Sköts av telefonen – kan inte styras av appar</string>
 </resources>

@@ -35,7 +35,22 @@ object LensSelection {
         else -> LensKind.WIDE
     }
 
-    /** ID för den bakkamera appen använder, eller null om Camera2 inte går att läsa. */
+    /**
+     * Telefonens standardkamera bak: den först listade (kamera 0 på OnePlus 13R, samma som LineageOS
+     * kameraapp). Video använder den, eftersom kamera 5 ger en randig remsa i 16:9.
+     */
+    fun defaultBackCameraId(context: Context): String? {
+        val manager = context.getSystemService(CameraManager::class.java) ?: return null
+        val ids = runCatching { manager.cameraIdList.toList() }.getOrDefault(emptyList())
+        return ids.firstOrNull { id ->
+            val ch = runCatching { manager.getCameraCharacteristics(id) }.getOrNull() ?: return@firstOrNull false
+            val caps = ch.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES) ?: IntArray(0)
+            ch.get(CameraCharacteristics.LENS_FACING) == CameraMetadata.LENS_FACING_BACK &&
+                caps.contains(CameraMetadata.REQUEST_AVAILABLE_CAPABILITIES_BACKWARD_COMPATIBLE)
+        }
+    }
+
+    /** ID för den bakkamera appen använder för foto, eller null om Camera2 inte går att läsa. */
     fun preferredBackCameraId(context: Context): String? {
         val manager = context.getSystemService(CameraManager::class.java) ?: return null
         val ids = runCatching { manager.cameraIdList.toList() }.getOrDefault(emptyList())

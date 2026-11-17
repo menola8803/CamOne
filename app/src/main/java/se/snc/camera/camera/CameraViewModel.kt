@@ -139,6 +139,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     /** Bakkameran med flest linser (t.ex. kamera 5 på OnePlus 13R: vidvinkel + ultravidvinkel + tele). */
     private val preferredBackId: String? by lazy { LensSelection.preferredBackCameraId(context) }
 
+    /**
+     * Standardkameran bak (kamera 0 på OnePlus 13R, samma som LineageOS kameraapp). Video använder den:
+     * kamera 5 ger en randig remsa längs ena kanten så fort den ska leverera 16:9, och film är alltid 16:9.
+     */
+    private val videoBackId: String? by lazy { LensSelection.defaultBackCameraId(context) }
+
     @Volatile private var lensBadges: Map<String, LensBadge> = emptyMap()
     @Volatile private var lastActiveLens: String? = null
 
@@ -280,8 +286,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         if (front && !hasFront) front = false
         if (!front && !hasBack && hasFront) front = true
         val defaultBase = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
-        // Bak: den logiska kameran med flest linser, så att 0,6× och 2× använder de riktiga linserna
-        val backId = if (!front) preferredBackId else null
+        // Bak, foto: den logiska kameran med flest linser, så att 0,6× och 2× använder de riktiga linserna.
+        // Bak, video: standardkameran (0,6× och 1× är riktiga linser, 2× och 5× digital zoom), se videoBackId.
+        val backId = when {
+            front -> null
+            st.mode.isVideo -> videoBackId
+            else -> preferredBackId
+        }
         val base = if (backId != null) {
             CameraSelector.Builder()
                 .requireLensFacing(CameraSelector.LENS_FACING_BACK)
@@ -318,11 +329,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 ext.getExtensionEnabledCameraSelector(cameraBase, wantedExtension)
             } else cameraBase
             val fpsRange = if (st.mode.isVideo && highFps) Range(60, 60) else null
-            // Foton tas alltid i 4:3 (hela sensorn). Kamerans eget 16:9-läge för foton skär bort kanten två
-            // gånger på OnePlus 13R, och då blir en sjättedel av bilden randig. 16:9 beskärs därför efteråt.
+            // Fotolägena ber aldrig kameran om 16:9: kamera 5 på OnePlus 13R skär då bort kanten två gånger och
+            // en sjättedel av bilden blir randig (både sökare och bild). Sökaren och fotot tas i 4:3 (hela
+            // sensorn); sökaren beskärs på skärmen (FILL_CENTER) och fotot direkt efteråt (3:2, 16:9, helskärm).
             val photoAspect = AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY
-            // 16:9 och helskärm: sökaren visar 16:9 (skarp och närmast skärmens form), fotot beskärs efteråt
-            val previewAspect = if (st.mode.isVideo || s.aspect == AspectOption.RATIO_16_9 || s.aspect == AspectOption.FULL) {
+            val previewAspect = if (st.mode.isVideo) {
                 AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY
             } else photoAspect
 
