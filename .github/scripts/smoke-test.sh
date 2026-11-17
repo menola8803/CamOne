@@ -198,8 +198,10 @@ $UI swipe --text "PHOTO" --dx=640 --ms=400 >> "$OUT/ui.log" 2>&1
 sleep 4
 shot 19c-langt-svep
 check "Långt svep på lägesraden hoppar förbi Video (Natt eller Pro)" bash -c "$UI exists --text NIGHT --selected --timeout 2 || $UI exists --text PRO --selected --timeout 2"
-tap --text "PHOTO"
+# Foto syns inte i menyn när Natt eller Pro är valt – gå tillbaka via kamerans fotostart (som dubbeltryck på strömknappen)
+adb shell am start -a android.media.action.STILL_IMAGE_CAMERA -n "$PKG/.MainActivity" >> "$OUT/ui.log" 2>&1
 sleep 4
+check "Tillbaka i Foto" $UI exists --text "PHOTO" --selected --timeout 6
 $UI swipe --y 0.4 --dx=-0.3 >> "$OUT/ui.log" 2>&1
 sleep 4
 check "Svep i sökaren byter till Porträtt" $UI exists --text "PORTRAIT" --selected
