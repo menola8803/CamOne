@@ -93,12 +93,13 @@ echo "::notice title=Starttid::Kallstart median ${MEDIAN:-?} ms · första start
 check "Första starten går fort (${FIRST_MS:-?} ms ≤ $FIRST_LIMIT ms)" [ "${FIRST_MS:-99999}" -le "$FIRST_LIMIT" ]
 check "Kallstart går fort (median ${MEDIAN:-?} ms ≤ $COLD_LIMIT ms)" [ "${MEDIAN:-99999}" -le "$COLD_LIMIT" ]
 
-# Tar en bild, väntar på den nya filen med ändelsen $1 och hämtar den till $OUT/$2. Skriver filnamnet.
+# Tar en bild, väntar (högst $3 s, annars 20) på den nya filen med ändelsen $1 och hämtar den till $OUT/$2.
+# Skriver filnamnet.
 snap() {
-  local ext="$1" dest="$2" before after latest
+  local ext="$1" dest="$2" wait="${3:-20}" before after latest
   before=$(count "\\.$ext")
   key KEYCODE_VOLUME_UP
-  for w in $(seq 1 20); do
+  for w in $(seq 1 "$wait"); do
     sleep 1
     after=$(count "\\.$ext")
     [ "$after" -gt "$before" ] && break
@@ -202,7 +203,7 @@ tap --text "NIGHT"
 sleep 5
 shot 15-natt
 check "Nattläget visar valen Natt, Ljusspår och Silkesvatten" $UI exists --text "Light trails" --timeout 8
-FN=$(snap jpg natt.jpg)
+FN=$(snap jpg natt.jpg 45)
 DN=$(desc "$OUT/natt.jpg")
 log "  Nattbild: ${FN:-?} – ${DN:-?}"
 check "Nattbild sparas (${FN:-ingen fil})" [ -n "$FN" ]
@@ -210,17 +211,24 @@ check "Nattbilden är ihoplagd av flera bilder (${DN:-?})" bash -c "echo '$DN' |
 tap --text "Silky water"; sleep 1
 tap --text "1 s"; sleep 1
 shot 15b-silkesvatten
-FS=$(snap jpg silke.jpg)
+FS=$(snap jpg silke.jpg 30)
 DS=$(desc "$OUT/silke.jpg")
 log "  Silkesvatten: ${FS:-?} – ${DS:-?}"
 check "Silkesvatten 1 s sparas (${DS:-?})" bash -c "echo '$DS' | grep -q 'Silky water: 1 s'"
 tap --text "Light trails"; sleep 1
-FT=$(snap jpg ljusspar.jpg)
+FT=$(snap jpg ljusspar.jpg 30)
 DT=$(desc "$OUT/ljusspar.jpg")
 log "  Ljusspår: ${FT:-?} – ${DT:-?}"
 check "Ljusspår 1 s sparas (${DT:-?})" bash -c "echo '$DT' | grep -q 'Light trails: 1 s'"
 tap --text "Night"; sleep 1
 check "Appen lever efter nattbilderna" alive
+# Nattloggen i resultatet (loggfilerna går inte att hämta härifrån)
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Natt" | tail -8 | while IFS= read -r l; do
+  echo "::notice title=Natt-logg::$(echo "$l" | cut -c1-300)"
+done
+adb logcat -d 2>/dev/null | grep -E "AndroidRuntime|Camera2CameraImpl|ImageAnalysis|CameraX" | grep -E " [EF] " | tail -4 | while IFS= read -r l; do
+  echo "::notice title=Kamerafel::$(echo "$l" | cut -c1-300)"
+done
 tap --text "PRO"
 sleep 5
 shot 16-pro

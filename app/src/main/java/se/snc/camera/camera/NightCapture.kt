@@ -88,8 +88,14 @@ class StackSession(
     var finished = false
         private set
 
+    /** Antal bildrutor som har kommit (för loggen). */
+    @Volatile
+    var seen = 0
+        private set
+
     fun onFrame(f: FrameView, rotationDegrees: Int, timestampNs: Long) {
         synchronized(lock) {
+            seen++
             if (finished) return
             try {
                 rotation = rotationDegrees

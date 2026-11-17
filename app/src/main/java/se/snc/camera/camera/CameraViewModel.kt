@@ -140,6 +140,14 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         try {
             val session = stackSession
             if (session != null && !session.finished) {
+                if (session.seen == 0) {
+                    val p = image.planes
+                    Log.i(
+                        TAG,
+                        "Natt: första bildrutan ${image.width}x${image.height} format=${image.format} " +
+                            "rad=${p[0].rowStride} uv=${p[1].rowStride}/${p[1].pixelStride}"
+                    )
+                }
                 session.onFrame(image.toFrameView(planeBuffers), image.imageInfo.rotationDegrees, image.imageInfo.timestamp)
             }
         } catch (t: Throwable) {
@@ -395,7 +403,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             val stacking = st.mode == CameraMode.NIGHT && !(useExtension && wantedExtension != null)
             if (stacking) {
                 // Natt, ljusspår och silkesvatten: bildrutor i full upplösning (4:3) som läggs ihop i appen.
-                // Analysen är bara aktiv medan en bild tas (setAnalyzer/clearAnalyzer).
+                // Analysen tar emot bildrutor hela tiden i nattläget; de används bara medan en bild tas.
                 na = ImageAnalysis.Builder()
                     .setResolutionSelector(
                         ResolutionSelector.Builder()
@@ -470,6 +478,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 imageCapture = ic
                 videoCapture = vc
                 nightAnalysis = na
+                na?.setAnalyzer(analysisExecutor, stackAnalyzer)
                 rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
@@ -546,6 +555,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         if (nightAnalysis != null) motion.start() else motion.stop()
+        nightAnalysis?.let { Log.i(TAG, "Natt: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
 
         when (st.mode) {
             CameraMode.PRO -> applyProOptions()
@@ -674,7 +684,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(exposureSeconds = seconds.coerceIn(1, 8)) }
     }
 
-    /** Avbryter en pågående nattbild och stänger analysen. */
+    /** Avbryter en pågående nattbild och kopplar bort analysen (innan kameran binds om). */
     private fun stopStacking() {
         stackSession?.cancel()
         stackSession = null
@@ -1030,7 +1040,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
      * (NightStack.kt) och resultatet sparas i valt bildformat och filformat.
      */
     private fun takeStackShot() {
-        val analysis = nightAnalysis ?: return
+        if (nightAnalysis == null) return
         val st = _state.value
         val s = settings.value
         if (st.isCapturing) return
@@ -1046,15 +1056,14 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             var saved: Uri? = null
             try {
                 stackSession = session
-                analysis.setAnalyzer(analysisExecutor, stackAnalyzer)
                 val timeoutMs = if (style == StackStyle.NIGHT) 5_000L + frames * 1_200L else seconds * 1_000L + 6_000L
                 val result = withTimeoutOrNull(timeoutMs) { session.result.await() } ?: run {
                     // Kom inte alla bilder i tid: lägg ihop de som kom (utanför huvudtråden)
                     withContext(Dispatchers.Default) { session.finishNow() }
                     withTimeoutOrNull(5_000L) { session.result.await() }
                 }
-                runCatching { analysis.clearAnalyzer() }
                 if (stackSession === session) stackSession = null
+                Log.i(TAG, "Natt: $style klar med ${result?.frames ?: 0} bilder (${session.seen} bildrutor kom)")
                 if (result != null) {
                     _state.update { it.copy(stackProgress = null, stackMerging = true) }
                     saved = withContext(Dispatchers.Default) { saveStack(result, style, st, s) }
@@ -1062,10 +1071,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: CancellationException) {
                 throw e
             } catch (t: Throwable) {
-                Log.e(TAG, "Nattbilden kunde inte tas", t)
+                Log.e(TAG, "Natt: bilden kunde inte tas ($style, ${session.seen} bildrutor kom): $t", t)
             } finally {
                 if (stackSession === session) stackSession = null
-                if (nightAnalysis === analysis) runCatching { analysis.clearAnalyzer() }
                 _state.update { it.copy(isCapturing = false, stackProgress = null, stackMerging = false) }
                 applyNightOptions()
             }
