@@ -203,7 +203,6 @@
     <string name="about_developer_line" translatable="false">Developer: Claes Sundman S.N.C AB</string>
     <string name="wm_sub">Camera</string>
     <string name="version_footer">Version %1$s</string>
-    <string name="about_package_line">Package %1$s</string>
     <string name="permission_status">Camera access is off</string>
 
     <!-- Uppdateringar (som i Direct-appen) -->

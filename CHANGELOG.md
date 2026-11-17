@@ -9,6 +9,7 @@ Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för 
 - Ljusspår och Silkesvatten i nattläget: 1, 2, 4 eller 8 sekunders exponering. Silkesvatten gör rinnande vatten mjukt, Ljusspår ritar ut lampor som rör sig.
 - Bildformat, live-filter och filformat gäller även nattbilderna. Bilden får datum, kamera, exponering och antal bilder i EXIF.
 - Manualen har ett nytt avsnitt om natt, ljusspår och silkesvatten.
+- Om-sidan visar inte längre paketnamnet.
 
 ## Version 1.6.2 – 2026-11-17
 

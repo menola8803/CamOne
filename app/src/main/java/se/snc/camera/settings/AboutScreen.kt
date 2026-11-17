@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.sp
 import se.snc.camera.BuildConfig
 import se.snc.camera.R
 import se.snc.camera.ui.components.LineDivider
-import se.snc.camera.ui.components.MutedText
 import se.snc.camera.ui.components.ScreenHeader
 import se.snc.camera.ui.components.SectionLabel
 import se.snc.camera.ui.components.UsbCard
@@ -86,11 +85,6 @@ fun AboutScreen(onBack: () -> Unit) {
             License("Plus Jakarta Sans · Cinzel", "SIL OFL 1.1")
         }
 
-        MutedText(
-            stringResource(R.string.about_package_line, BuildConfig.APPLICATION_ID),
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center
-        )
         Text(
             stringResource(R.string.about_copyright),
             color = Ui.Dim,

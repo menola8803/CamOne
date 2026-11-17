@@ -201,7 +201,6 @@
     <string name="about_title_full">Om SNC Camera</string>
     <string name="wm_sub">Kamera</string>
     <string name="version_footer">Version %1$s</string>
-    <string name="about_package_line">Paket %1$s</string>
     <string name="permission_status">Kameraåtkomst är av</string>
 
     <!-- Uppdateringar (som i Direct-appen) -->
