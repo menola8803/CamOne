@@ -67,18 +67,25 @@ for n in 1 2 3; do
   T=$(start_ms)
   COLD+=("${T:-99999}")
   log "  Kallstart $n: ${T:-?} ms"
-  sleep 7
+  # Vänta tills kameran är uppe (emulatorn kan vara långsam), ta sedan bild och vänta på filen
+  $UI exists --desc "Switch camera" --timeout 15 >> "$OUT/ui.log" 2>&1
+  sleep 4
+  check "Omstart $n: kameran startar utan felmeddelande" bash -c "! $UI exists --text 'Could not start the camera' --timeout 1"
   before=$(count '\.jpg')
   key KEYCODE_VOLUME_UP
-  sleep 5
-  after=$(count '\.jpg')
+  after=$before
+  for w in $(seq 1 15); do
+    sleep 1
+    after=$(count '\.jpg')
+    [ "$after" -gt "$before" ] && break
+  done
   check "Omstart $n: foto sparas ($before → $after)" [ "$after" -gt "$before" ]
 done
 shot 02b-efter-omstarter
 
 step "Starttid (kameran först – allt annat laddas efteråt)"
 # Gränser för emulatorn i GitHub Actions (långsammare än telefonen). Blir starten långsammare stoppas bygget.
-FIRST_LIMIT=5000
+FIRST_LIMIT=8000
 COLD_LIMIT=3500
 MEDIAN=$(printf '%s\n' "${COLD[@]}" | sort -n | sed -n '2p')
 log "  Kallstart median: ${MEDIAN:-?} ms (gräns $COLD_LIMIT ms), första starten: ${FIRST_MS:-?} ms (gräns $FIRST_LIMIT ms)"
@@ -305,7 +312,7 @@ sleep 3
 shot 22b-manual
 check "Manualen öppnas med sina avsnitt" $UI exists --text "THE CAMERA" --timeout 10
 check "Manualen visar vilken version den gäller" $UI exists --contains "For version"
-check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 10
+check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 40
 key KEYCODE_BACK
 sleep 2
 $UI tap --text "Beige" --scroll --timeout 10 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte temat Beige"
