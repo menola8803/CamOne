@@ -1096,22 +1096,28 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             AspectOption.RATIO_16_9 -> 16f / 9f
             AspectOption.FULL -> viewfinderLongShort
         }
+        val exif = stackExif(style, r.frames, st.exposureSeconds)
         var bmp = StackRender.toBitmap(r.frame, ratio, r.rotationDegrees, st.lensFront && s.mirrorFront, stackPool, stackParts)
-        if (st.filter.isActive) {
-            val filtered = bmp.withColorMatrix(st.filter.matrix())
+        try {
+            if (st.filter.isActive) {
+                val filtered = bmp.withColorMatrix(st.filter.matrix())
+                bmp.recycle()
+                bmp = filtered
+            }
+            val format = if (s.photoFormat.isRaw) PhotoFormat.JPEG else s.photoFormat
+            return media.saveNewPhoto(bmp, format, s.jpegQuality, exif)
+        } finally {
             bmp.recycle()
-            bmp = filtered
         }
-        val format = if (s.photoFormat.isRaw) PhotoFormat.JPEG else s.photoFormat
-        val uri = media.saveNewPhoto(bmp, format, s.jpegQuality, stackExif(style, r.frames, st.exposureSeconds))
-        bmp.recycle()
-        return uri
     }
 
     private fun stackExif(style: StackStyle, frames: Int, seconds: Int): Map<String, String> {
         val now = Date()
         val date = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).format(now)
-        val offset = SimpleDateFormat("xxx", Locale.US).format(now)
+        // Tidszon som "+01:00" (Androids SimpleDateFormat saknar mönstret "xxx")
+        val offsetMin = java.util.TimeZone.getDefault().getOffset(now.time) / 60_000
+        val absMin = kotlin.math.abs(offsetMin)
+        val offset = String.format(Locale.US, "%s%02d:%02d", if (offsetMin < 0) "-" else "+", absMin / 60, absMin % 60)
         val description = when (style) {
             StackStyle.NIGHT -> "SNC Camera Night: $frames frames"
             StackStyle.TRAILS -> "SNC Camera Light trails: $seconds s, $frames frames"
