@@ -2,6 +2,16 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.5.0 – 2026-11-17
+
+- Samma tema som Alif: typsnitten Plus Jakarta Sans och Cinzel för ordmärket, knappar med guldton, tunn guldkant och guldtext, val i en glasram med ett guldstreck under det valda, kort med tunn kant och rader med ›.
+- Kameran har fått nytt utseende: runda glasknappar, rundad sökare, lägen i en svävande glasmeny, avtryckare med guldring, rundade knappar för senaste bilden och byt kamera, och Pro-värdena i ett glaskort.
+- Temaval under Inställningar: Mörk eller Beige. Kameran, bildvisaren och redigeraren är alltid mörka.
+- Uppdatering som i Alif: kortet "Ny version finns" överst i Inställningar och en lysande ring runt kugghjulet. Tryck Uppdatera – appen laddar ner, kontrollerar och öppnar Androids installationsruta, och startar sedan om av sig själv. Stoppar Android omstarten kommer en avisering att trycka på. Efteråt visar kameran "SNC Camera är uppdaterad till …".
+- Ny manual under Inställningar › Manual, på svenska och engelska. Den följer med och uppdateras i varje version.
+- Snabbare start: kameran startar först, och uppdateringskollen och manualen läses in efteråt. Testet mäter starttiden för varje version.
+- Telefonens APK kontrolleras vid varje bygge så att den bara innehåller arm64-kod, ingen x86.
+
 ## Version 1.4.0 – 2026-11-06
 
 - Nytt: live-filter i kameran. Tryck på filterknappen i övre fältet och välj ett av filtren (Livfull, Varm, Kall, Svartvit, Noir, Sepia …) eller ändra rött, grönt och blått var för sig från 0 till 200 %. Effekten syns direkt i sökaren.

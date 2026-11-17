@@ -44,6 +44,8 @@ import se.snc.camera.ui.theme.Usb
 import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.foundation.border
+import se.snc.camera.ui.theme.GlassLine
 
 @Composable
 fun GridOverlay(grid: GridOption, modifier: Modifier = Modifier) {
@@ -211,6 +213,7 @@ fun InfoPill(text: String, modifier: Modifier = Modifier) {
         modifier
             .clip(RoundedCornerShape(50))
             .background(GlassStrong)
+            .border(1.dp, GlassLine, RoundedCornerShape(50))
             .padding(horizontal = 16.dp, vertical = 8.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {

@@ -352,6 +352,9 @@ class UpdateManager(private val context: Context, private val settings: Settings
                 setDataAndType(uri, "application/vnd.android.package-archive")
                 addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
             }
+            // Som i Alif: när den nya versionen är installerad startar appen om av sig själv
+            val version = (_state.value.check as? CheckState.Available)?.release?.version ?: ""
+            UpdateRestart.markPending(context, version)
             context.startActivity(intent)
             _state.update { it.copy(allowInstallHint = false) }
         } catch (e: Exception) {

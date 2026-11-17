@@ -64,8 +64,17 @@ import se.snc.camera.ui.components.ToggleRow
 import se.snc.camera.ui.components.UsbCard
 import se.snc.camera.ui.theme.BodyFont
 import se.snc.camera.ui.theme.DisplayFont
-import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.theme.Ui
 import java.util.Date
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.core.content.ContextCompat
 
 /**
  * "Uppdateringar" – samma flöde och uppställning som i Direct-appen:
@@ -75,11 +84,37 @@ import java.util.Date
 fun UpdateScreen(
     manager: UpdateManager,
     repository: SettingsRepository,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    autoStart: Boolean = false
 ) {
     val context = LocalContext.current
     val state by manager.state.collectAsStateWithLifecycle()
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
+
+    // Före nedladdningen: be en gång om aviseringar, så att "SNC Camera är uppdaterad – tryck för att
+    // öppna" kan visas om Android stoppar omstarten. Nedladdningen startar oavsett svar.
+    var askedNotifications by rememberSaveable { mutableStateOf(false) }
+    val notificationPermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+        manager.downloadAndInstall()
+    }
+    val startDownload: () -> Unit = {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !askedNotifications &&
+            ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askedNotifications = true
+            notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+        } else {
+            manager.downloadAndInstall()
+        }
+    }
+    // Från kortet "Ny version finns" i Inställningar: ladda ner direkt när versionen är hittad
+    var autoStarted by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(state.check, autoStart) {
+        if (autoStart && !autoStarted && state.check is CheckState.Available && state.download == DownloadState.None) {
+            autoStarted = true
+            startDownload()
+        }
+    }
 
     // Sök direkt när skärmen öppnas första gången
     LaunchedEffect(Unit) {
@@ -101,7 +136,7 @@ fun UpdateScreen(
     Column(
         Modifier
             .fillMaxSize()
-            .background(Usb.Bg)
+            .background(Ui.Bg)
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp)
@@ -190,14 +225,14 @@ fun UpdateScreen(
                     is DownloadState.Failed -> if (download.error == UpdateError.NETWORK || download.error == UpdateError.CHECKSUM) {
                         PrimaryButton(
                             text = stringResource(R.string.update_download_install),
-                            onClick = manager::downloadAndInstall,
+                            onClick = startDownload,
                             icon = Icons.Outlined.Download,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
                     DownloadState.None -> PrimaryButton(
                         text = stringResource(R.string.update_download_install),
-                        onClick = manager::downloadAndInstall,
+                        onClick = startDownload,
                         icon = Icons.Outlined.Download,
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -247,13 +282,13 @@ private fun StatusCard(check: CheckState, current: String, lastCheck: Long) {
     UsbCard(spacing = 12.dp, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 26.dp)) {
         Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
             when (check) {
-                CheckState.Checking -> StatusCircle(null, Usb.Gold) {
-                    CircularProgressIndicator(color = Usb.Gold, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
+                CheckState.Checking -> StatusCircle(null, Ui.Gold) {
+                    CircularProgressIndicator(color = Ui.Gold, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
                 }
-                is CheckState.Failed -> StatusCircle(Icons.Outlined.CloudOff, Usb.Danger)
-                CheckState.NoRelease -> StatusCircle(Icons.Outlined.SystemUpdate, Usb.Teal)
-                CheckState.Idle -> StatusCircle(Icons.Outlined.SystemUpdate, Usb.Teal)
-                else -> StatusCircle(Icons.Outlined.Check, Usb.Gold)
+                is CheckState.Failed -> StatusCircle(Icons.Outlined.CloudOff, Ui.Danger)
+                CheckState.NoRelease -> StatusCircle(Icons.Outlined.SystemUpdate, Ui.Teal)
+                CheckState.Idle -> StatusCircle(Icons.Outlined.SystemUpdate, Ui.Teal)
+                else -> StatusCircle(Icons.Outlined.Check, Ui.Gold)
             }
             Spacer(Modifier.height(16.dp))
             Text(
@@ -266,7 +301,7 @@ private fun StatusCard(check: CheckState, current: String, lastCheck: Long) {
                         else -> R.string.update_up_to_date
                     }
                 ),
-                color = Usb.Text,
+                color = Ui.Text,
                 fontFamily = DisplayFont,
                 fontWeight = FontWeight.Bold,
                 fontSize = 24.sp,
@@ -276,7 +311,7 @@ private fun StatusCard(check: CheckState, current: String, lastCheck: Long) {
             Spacer(Modifier.height(8.dp))
             Text(
                 checkedText,
-                color = Usb.Muted,
+                color = Ui.Muted,
                 fontFamily = BodyFont,
                 fontSize = 14.sp,
                 textAlign = TextAlign.Center
@@ -305,22 +340,22 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
     val context = LocalContext.current
     UsbCard(spacing = 10.dp, padding = androidx.compose.foundation.layout.PaddingValues(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            SectionLabel(stringResource(R.string.update_new), color = Usb.Gold, modifier = Modifier.weight(1f))
+            SectionLabel(stringResource(R.string.update_new), color = Ui.Gold, modifier = Modifier.weight(1f))
             Text(
                 stringResource(if (release.prerelease) R.string.update_prerelease else R.string.update_stable),
-                color = Usb.Bg,
+                color = Ui.Bg,
                 fontFamily = BodyFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 12.sp,
                 modifier = Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(if (release.prerelease) Usb.Dim else Usb.Teal)
+                    .background(if (release.prerelease) Ui.Dim else Ui.Teal)
                     .padding(horizontal = 10.dp, vertical = 3.dp)
             )
         }
         Text(
             "SNC Camera ${release.version}",
-            color = Usb.Text,
+            color = Ui.Text,
             fontFamily = DisplayFont,
             fontWeight = FontWeight.Bold,
             fontSize = 32.sp,
@@ -333,7 +368,7 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
         } else "–"
         Text(
             stringResource(R.string.update_meta, current, size, released),
-            color = Usb.Muted,
+            color = Ui.Muted,
             fontFamily = BodyFont,
             fontSize = 14.sp
         )
@@ -348,8 +383,8 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
         }
         if (download is DownloadState.Downloading && progress < 0f) {
             LinearProgressIndicator(
-                color = Usb.Gold,
-                trackColor = Usb.Card2,
+                color = Ui.Gold,
+                trackColor = Ui.Card2,
                 strokeCap = StrokeCap.Round,
                 modifier = Modifier
                     .fillMaxWidth()
@@ -358,8 +393,8 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
         } else {
             LinearProgressIndicator(
                 progress = { progress.coerceIn(0f, 1f) },
-                color = if (download is DownloadState.Failed) Usb.Danger else Usb.Gold,
-                trackColor = Usb.Card2,
+                color = if (download is DownloadState.Failed) Ui.Danger else Ui.Gold,
+                trackColor = Ui.Card2,
                 strokeCap = StrokeCap.Round,
                 gapSize = 0.dp,
                 drawStopIndicator = {},
@@ -374,7 +409,7 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
             is DownloadState.Ready -> StatusLine(
                 Icons.Outlined.Check,
                 stringResource(if (download.verifiedSha256) R.string.update_verified else R.string.update_downloaded),
-                Usb.TealL
+                Ui.TealL
             )
             is DownloadState.Failed -> StatusLine(
                 Icons.Outlined.ErrorOutline,
@@ -388,12 +423,12 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
                         UpdateError.INSTALL -> R.string.update_err_install
                     }
                 ),
-                Usb.Danger
+                Ui.Danger
             )
             else -> Unit
         }
         if (allowHint && download is DownloadState.Ready) {
-            StatusLine(Icons.Outlined.Shield, stringResource(R.string.update_allow), Usb.GoldL)
+            StatusLine(Icons.Outlined.Shield, stringResource(R.string.update_allow), Ui.GoldL)
         }
 
         // Ändringar i versionen
@@ -406,10 +441,10 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
                             .padding(top = 8.dp)
                             .size(5.dp)
                             .clip(CircleShape)
-                            .background(Usb.Gold)
+                            .background(Ui.Gold)
                     )
                     Spacer(Modifier.width(12.dp))
-                    Text(note, color = Usb.Muted, fontFamily = BodyFont, fontSize = 15.sp, lineHeight = 21.sp)
+                    Text(note, color = Ui.Muted, fontFamily = BodyFont, fontSize = 15.sp, lineHeight = 21.sp)
                 }
             }
         }
@@ -428,8 +463,8 @@ private fun StatusLine(icon: ImageVector, text: String, color: androidx.compose.
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Usb.Dim, fontFamily = BodyFont, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+        Text(label, color = Ui.Dim, fontFamily = BodyFont, fontSize = 15.sp, modifier = Modifier.weight(1f))
+        Text(value, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
     }
 }
 
@@ -438,9 +473,9 @@ private fun InfoRow(label: String, value: String) {
 private fun NoteCard(text: String) {
     UsbCard {
         Row(verticalAlignment = Alignment.Top) {
-            Icon(Icons.Outlined.Shield, contentDescription = null, tint = Usb.Gold, modifier = Modifier.size(18.dp).padding(top = 2.dp))
+            Icon(Icons.Outlined.Shield, contentDescription = null, tint = Ui.Gold, modifier = Modifier.size(18.dp).padding(top = 2.dp))
             Spacer(Modifier.width(12.dp))
-            Text(text, color = Usb.Muted, fontFamily = BodyFont, fontSize = 14.sp, lineHeight = 21.sp)
+            Text(text, color = Ui.Muted, fontFamily = BodyFont, fontSize = 14.sp, lineHeight = 21.sp)
         }
     }
 }

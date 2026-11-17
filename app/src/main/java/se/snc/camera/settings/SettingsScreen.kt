@@ -17,10 +17,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.Camera
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.RestartAlt
-import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,9 +58,18 @@ import se.snc.camera.ui.components.ToggleRow
 import se.snc.camera.ui.components.UsbCard
 import se.snc.camera.ui.theme.BodyFont
 import se.snc.camera.ui.theme.DisplayFont
-import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.theme.Ui
 import se.snc.camera.update.UpdateManager
 import kotlin.math.roundToInt
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import se.snc.camera.data.ThemeOption
+import se.snc.camera.ui.components.PrimaryButton
 
 @StringRes
 fun GridOption.labelRes() = when (this) {
@@ -86,7 +92,9 @@ fun SettingsScreen(
     onBack: () -> Unit,
     onAbout: () -> Unit,
     onUpdates: () -> Unit,
-    onCameras: () -> Unit
+    onCameras: () -> Unit,
+    onManual: () -> Unit,
+    onUpdateNow: () -> Unit
 ) {
     val context = LocalContext.current
     val settings by repository.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
@@ -95,11 +103,13 @@ fun SettingsScreen(
         scope.launch { repository.update(transform) }
     }
     var confirmReset by remember { mutableStateOf(false) }
+    val darkLabel = stringResource(R.string.theme_dark)
+    val beigeLabel = stringResource(R.string.theme_beige)
 
     Column(
         Modifier
             .fillMaxSize()
-            .background(Usb.Bg)
+            .background(Ui.Bg)
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
@@ -107,14 +117,25 @@ fun SettingsScreen(
             .padding(bottom = 16.dp),
         verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
-        ScreenHeader(stringResource(R.string.settings_title), stringResource(R.string.cd_back), onBack)
+        ScreenHeader(
+            stringResource(R.string.settings_title),
+            stringResource(R.string.cd_back),
+            onBack,
+            subtitle = "SNC Camera ${BuildConfig.VERSION_NAME}"
+        )
+
+        // ---------------- Ny version (som i Alif): kort överst med Uppdatera ----------------
+        val newVersion = settings.latestKnownVersion.takeIf { it.isNotBlank() && UpdateManager.isNewer(it) }
+        if (newVersion != null) {
+            UpdateAvailableCard(version = newVersion, onUpdate = onUpdateNow)
+        }
 
         // ---------------- Språk (som i USB-appen) ----------------
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             val localeManager = remember { context.getSystemService(LocaleManager::class.java) }
             val current = if (LocalConfiguration.current.locales[0].language == "sv") "sv" else "en"
             UsbCard {
-                FieldLabel(stringResource(R.string.setting_language))
+                SectionLabel(stringResource(R.string.setting_language))
                 Segmented(
                     options = listOf("sv", "en"),
                     selected = current,
@@ -122,6 +143,24 @@ fun SettingsScreen(
                     onSelect = { tag -> localeManager?.applicationLocales = LocaleList.forLanguageTags(tag) }
                 )
             }
+        }
+
+        // ---------------- Tema (som i Alif): Mörk eller Beige ----------------
+        UsbCard {
+            SectionLabel(stringResource(R.string.setting_theme))
+            Segmented(
+                options = ThemeOption.entries,
+                selected = settings.theme,
+                label = { if (it == ThemeOption.BEIGE) beigeLabel else darkLabel },
+                onSelect = { v -> update { it.copy(theme = v) } }
+            )
+            Text(
+                stringResource(R.string.setting_theme_desc),
+                color = Ui.Muted,
+                fontFamily = BodyFont,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
         }
 
         // ---------------- Foto ----------------
@@ -239,44 +278,49 @@ fun SettingsScreen(
             )
         }
 
-        // ---------------- Kameror: vad telefonen klarar ----------------
-        NavItem(
-            title = stringResource(R.string.cams_title),
-            subtitle = stringResource(R.string.cams_row_sub),
-            onClick = onCameras,
-            leading = Icons.Outlined.Camera
-        )
-
-        // ---------------- Uppdateringar (som i Direct) ----------------
-        val newVersion = settings.latestKnownVersion.takeIf { it.isNotBlank() && UpdateManager.isNewer(it) }
-        NavItem(
-            title = stringResource(R.string.update_title),
-            subtitle = if (newVersion != null) stringResource(R.string.update_row_available, newVersion)
-            else stringResource(R.string.update_row_sub),
-            subtitleColor = if (newVersion != null) Usb.GoldL else Usb.Dim,
-            onClick = onUpdates,
-            leading = Icons.Outlined.SystemUpdate,
-            dot = newVersion != null
-        )
-
-        // ---------------- Om ----------------
-        NavItem(
-            title = stringResource(R.string.about_title),
-            subtitle = stringResource(R.string.about_developer_line),
-            onClick = onAbout,
-            leading = Icons.Outlined.Info
-        )
+        // ---------------- Rader som i Alif: Kameror, Manual, Uppdateringar, Om ----------------
+        UsbCard(padding = PaddingValues(horizontal = 16.dp, vertical = 6.dp), spacing = 0.dp) {
+            NavItem(
+                title = stringResource(R.string.cams_title),
+                subtitle = stringResource(R.string.cams_row_sub),
+                onClick = onCameras,
+                compact = true
+            )
+            NavItem(
+                title = stringResource(R.string.manual_title),
+                subtitle = stringResource(R.string.manual_row_sub),
+                onClick = onManual,
+                compact = true
+            )
+            NavItem(
+                title = stringResource(R.string.update_title),
+                subtitle = if (newVersion != null) stringResource(R.string.update_row_available, newVersion)
+                else stringResource(R.string.update_row_sub),
+                subtitleColor = if (newVersion != null) Ui.Gold else Ui.Muted,
+                onClick = onUpdates,
+                compact = true,
+                dot = newVersion != null,
+                value = "v${BuildConfig.VERSION_NAME}"
+            )
+            NavItem(
+                title = stringResource(R.string.about_title),
+                subtitle = stringResource(R.string.about_developer_line),
+                onClick = onAbout,
+                compact = true
+            )
+        }
 
         SecondaryButton(
             text = stringResource(R.string.setting_reset),
             onClick = { confirmReset = true },
             icon = Icons.Outlined.RestartAlt,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            danger = true
         )
 
         Text(
             stringResource(R.string.version_footer, BuildConfig.VERSION_NAME),
-            color = Usb.Dim,
+            color = Ui.Dim,
             fontFamily = BodyFont,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
@@ -289,18 +333,53 @@ fun SettingsScreen(
     if (confirmReset) {
         AlertDialog(
             onDismissRequest = { confirmReset = false },
-            containerColor = Usb.Card,
+            containerColor = Ui.Card,
             title = { Text(stringResource(R.string.setting_reset), fontFamily = DisplayFont, fontWeight = FontWeight.Bold) },
-            text = { Text(stringResource(R.string.setting_reset_confirm), color = Usb.Muted) },
+            text = { Text(stringResource(R.string.setting_reset_confirm), color = Ui.Muted) },
             confirmButton = {
                 TextButton(onClick = {
                     confirmReset = false
                     update { AppSettings() }
-                }) { Text(stringResource(R.string.reset), color = Usb.Gold, fontWeight = FontWeight.SemiBold) }
+                }) { Text(stringResource(R.string.reset), color = Ui.Danger, fontWeight = FontWeight.Bold) }
             },
             dismissButton = {
-                TextButton(onClick = { confirmReset = false }) { Text(stringResource(R.string.cancel), color = Usb.Muted) }
+                TextButton(onClick = { confirmReset = false }) { Text(stringResource(R.string.cancel), color = Ui.Muted) }
             }
         )
+    }
+}
+
+/** Kortet överst i Inställningar när en ny version finns (som i Alif). */
+@Composable
+private fun UpdateAvailableCard(version: String, onUpdate: () -> Unit) {
+    val shape = RoundedCornerShape(22.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Ui.Card)
+            .border(1.5.dp, Ui.Gold, shape)
+            .padding(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            SectionLabel(stringResource(R.string.update_card_label), color = Ui.Gold)
+            Text(
+                "SNC Camera $version",
+                color = Ui.Text,
+                fontFamily = DisplayFont,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+            Text(
+                stringResource(R.string.update_card_sub),
+                color = Ui.Muted,
+                fontFamily = BodyFont,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
+            )
+        }
+        Spacer(Modifier.width(12.dp))
+        PrimaryButton(text = stringResource(R.string.update_now), onClick = onUpdate, height = 48.dp)
     }
 }

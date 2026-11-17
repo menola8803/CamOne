@@ -29,6 +29,9 @@ enum class VolumeKeyAction { SHUTTER, ZOOM, VOLUME }
 
 enum class GridOption { OFF, THIRDS, GOLDEN, SQUARE }
 
+/** Tema för inställningssidorna, som i Alif. Kameran är alltid mörk. */
+enum class ThemeOption { DARK, BEIGE }
+
 data class AppSettings(
     val aspect: AspectOption = AspectOption.RATIO_4_3,
     val flash: FlashOption = FlashOption.OFF,
@@ -55,7 +58,8 @@ data class AppSettings(
     /** När uppdateringar senast söktes (ms), 0 = aldrig. */
     val lastUpdateCheck: Long = 0L,
     /** Senaste versionen som hittades på GitHub (för pricken på kugghjulet). */
-    val latestKnownVersion: String = ""
+    val latestKnownVersion: String = "",
+    val theme: ThemeOption = ThemeOption.DARK
 )
 
 private val Context.dataStore by preferencesDataStore(name = "snc_camera_settings")
@@ -85,6 +89,7 @@ class SettingsRepository(private val context: Context) {
         val autoUpdate = booleanPreferencesKey("auto_update_check")
         val lastUpdateCheck = longPreferencesKey("last_update_check")
         val latestKnown = stringPreferencesKey("latest_known_version")
+        val theme = stringPreferencesKey("theme")
     }
 
     val settings: Flow<AppSettings> = context.dataStore.data.map { read(it) }
@@ -125,7 +130,8 @@ class SettingsRepository(private val context: Context) {
             lastLensFront = p[K.lastLensFront] ?: d.lastLensFront,
             autoUpdateCheck = p[K.autoUpdate] ?: d.autoUpdateCheck,
             lastUpdateCheck = p[K.lastUpdateCheck] ?: d.lastUpdateCheck,
-            latestKnownVersion = p[K.latestKnown] ?: d.latestKnownVersion
+            latestKnownVersion = p[K.latestKnown] ?: d.latestKnownVersion,
+            theme = p[K.theme]?.let { v -> ThemeOption.entries.firstOrNull { it.name == v } } ?: d.theme
         )
     }
 
@@ -152,5 +158,6 @@ class SettingsRepository(private val context: Context) {
         p[K.autoUpdate] = s.autoUpdateCheck
         p[K.lastUpdateCheck] = s.lastUpdateCheck
         p[K.latestKnown] = s.latestKnownVersion
+        p[K.theme] = s.theme.name
     }
 }

@@ -1,6 +1,8 @@
 package se.snc.camera.ui.components
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
@@ -19,20 +21,22 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -51,10 +55,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -62,57 +66,61 @@ import androidx.compose.ui.unit.sp
 import se.snc.camera.ui.theme.BodyFont
 import se.snc.camera.ui.theme.DisplayFont
 import se.snc.camera.ui.theme.SerifFont
-import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.theme.Ui
+import se.snc.camera.ui.theme.shineBrush
 import java.util.Locale
 
-// Komponenter som efterliknar USB-appens CSS-klasser (.card, .label, .primary, .seg, .presets …)
+// Komponenter i samma stil som Alif (src/ui.tsx): kort med tunn kant, knappar med guldton, guldkant och
+// guldtext, val i en glasram med guldstreck under det valda, rader med › och ett runt reglage.
 
-/** `.card` – rundat kort på mörk botten. */
+/** Alifs `Card` – rundat kort med tunn kantlinje. */
 @Composable
 fun UsbCard(
     modifier: Modifier = Modifier,
     padding: PaddingValues = PaddingValues(16.dp),
-    spacing: Dp = 10.dp,
+    spacing: Dp = 12.dp,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val shape = RoundedCornerShape(22.dp)
     Column(
         modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(18.dp))
-            .background(Usb.Card)
+            .clip(shape)
+            .background(Ui.Card)
+            .border(1.dp, Ui.Line, shape)
             .padding(padding),
         verticalArrangement = Arrangement.spacedBy(spacing),
         content = content
     )
 }
 
-/** `.label` – liten rubrik i versaler med spärrning (teal eller guld). */
+/** Alifs `Label` – liten rubrik i versaler med spärrning (mint, eller guld). */
 @Composable
-fun SectionLabel(text: String, modifier: Modifier = Modifier, color: Color = Usb.Teal) {
+fun SectionLabel(text: String, modifier: Modifier = Modifier, color: Color = Ui.Teal) {
     Text(
         text.uppercase(Locale.getDefault()),
         modifier = modifier,
         color = color,
         fontFamily = BodyFont,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         letterSpacing = 1.2.sp
     )
 }
 
-/** `.flabel` – fältetikett. */
+/** Fältetikett ovanför ett val. */
 @Composable
 fun FieldLabel(text: String, modifier: Modifier = Modifier) {
-    Text(text, modifier = modifier, color = Usb.Muted, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+    Text(text, modifier = modifier, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
 }
 
-/** `.muted` – brödtext. */
+/** Brödtext i dämpad färg. */
 @Composable
 fun MutedText(text: String, modifier: Modifier = Modifier, textAlign: TextAlign? = null) {
     Text(
         text,
         modifier = modifier,
-        color = Usb.Muted,
+        color = Ui.Muted,
         fontFamily = BodyFont,
         fontSize = 14.sp,
         lineHeight = 21.sp,
@@ -120,7 +128,7 @@ fun MutedText(text: String, modifier: Modifier = Modifier, textAlign: TextAlign?
     )
 }
 
-/** `.icon-btn` – kvadratisk knapp med rundade hörn. */
+/** Fyrkantig knapp med rundade hörn: guldton, guldkant och guldikon som i Alif. */
 @Composable
 fun SquareIconButton(
     icon: ImageVector,
@@ -130,26 +138,24 @@ fun SquareIconButton(
     size: Dp = 44.dp,
     glass: Boolean = false,
     enabled: Boolean = true,
-    tint: Color = Usb.Muted
+    tint: Color = Ui.BtnFg
 ) {
+    val shape = RoundedCornerShape(if (size > 48.dp) 16.dp else 14.dp)
     Box(
         modifier
             .size(size)
-            .clip(RoundedCornerShape(if (size > 48.dp) 16.dp else 12.dp))
-            .background(if (glass) Color.White.copy(alpha = 0.06f) else Usb.Card)
-            .then(
-                if (glass) Modifier.border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(12.dp))
-                else Modifier
-            )
+            .clip(shape)
+            .background(if (glass) Ui.Glass else Ui.BtnBg)
+            .border(1.dp, if (glass) Ui.GlassBorder else Ui.BtnBorder, shape)
             .clickable(enabled = enabled, role = Role.Button, onClickLabel = contentDescription, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.35f),
+            .alpha(if (enabled) 1f else 0.4f),
         contentAlignment = Alignment.Center
     ) {
-        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(22.dp))
+        Icon(icon, contentDescription = contentDescription, tint = tint, modifier = Modifier.size(24.dp))
     }
 }
 
-/** Sidhuvud: tillbakaknapp + rubrik (`.top` + `.h1`), valfri underrubrik som i Direct. */
+/** Alifs `Header`: tillbaka-knapp med guldkant, rubrik och valfri underrubrik. */
 @Composable
 fun ScreenHeader(
     title: String,
@@ -161,28 +167,29 @@ fun ScreenHeader(
     Row(
         modifier
             .fillMaxWidth()
-            .padding(top = 20.dp, bottom = 2.dp),
+            .padding(top = 14.dp, bottom = 2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SquareIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, backDescription, onBack, tint = Usb.Muted)
-        Spacer(Modifier.width(14.dp))
+        SquareIconButton(Icons.AutoMirrored.Rounded.KeyboardArrowLeft, backDescription, onBack)
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                color = Usb.Text,
+                color = Ui.Text,
                 fontFamily = DisplayFont,
                 fontWeight = FontWeight.Bold,
-                fontSize = 26.sp,
-                letterSpacing = (-0.3).sp
+                fontSize = 22.sp,
+                letterSpacing = (-0.4).sp
             )
             if (subtitle != null) {
-                Text(subtitle, color = Usb.Dim, fontFamily = BodyFont, fontSize = 14.sp)
+                Spacer(Modifier.height(2.dp))
+                Text(subtitle, color = Ui.Muted, fontFamily = BodyFont, fontSize = 14.sp)
             }
         }
     }
 }
 
-/** `.primary` – guldknapp. */
+/** Alifs knapp: guldton, tunn guldkant och guldtext. Samma utseende för alla knappar. */
 @Composable
 fun PrimaryButton(
     text: String,
@@ -190,28 +197,12 @@ fun PrimaryButton(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
-    height: Dp = 56.dp
+    height: Dp = 52.dp
 ) {
-    Row(
-        modifier
-            .heightIn(min = height)
-            .clip(RoundedCornerShape(20.dp))
-            .background(Usb.Gold)
-            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.4f)
-            .padding(horizontal = 20.dp),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        if (icon != null) {
-            Icon(icon, contentDescription = null, tint = Usb.Bg, modifier = Modifier.size(22.dp))
-            Spacer(Modifier.width(10.dp))
-        }
-        Text(text, color = Usb.Bg, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 17.sp)
-    }
+    AlifButton(text, onClick, modifier, icon, enabled, height, bold = true, danger = false)
 }
 
-/** `.secondary` – kantad knapp. */
+/** Samma knapp med lite lättare text; [danger] = röd kant och text (t.ex. Ta bort, Återställ). */
 @Composable
 fun SecondaryButton(
     text: String,
@@ -221,29 +212,109 @@ fun SecondaryButton(
     enabled: Boolean = true,
     danger: Boolean = false
 ) {
-    val shape = RoundedCornerShape(14.dp)
+    AlifButton(text, onClick, modifier, icon, enabled, 52.dp, bold = false, danger = danger)
+}
+
+@Composable
+private fun AlifButton(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier,
+    icon: ImageVector?,
+    enabled: Boolean,
+    height: Dp,
+    bold: Boolean,
+    danger: Boolean
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val fg = if (danger) Ui.Danger else Ui.BtnFg
     Row(
         modifier
-            .heightIn(min = 50.dp)
+            .heightIn(min = height)
             .clip(shape)
-            .background(if (danger) Usb.DangerBg else Usb.Card)
-            .border(BorderStroke(1.dp, if (danger) Usb.DangerLine else Usb.Line), shape)
+            .background(if (danger) Color.Transparent else Ui.BtnBg)
+            .border(BorderStroke(1.dp, if (danger) Ui.Danger else Ui.BtnBorder), shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .alpha(if (enabled) 1f else 0.45f)
+            .alpha(if (enabled) 1f else 0.5f)
             .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val color = if (danger) Usb.DangerText else Usb.Text
         if (icon != null) {
-            Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(20.dp))
+            Icon(icon, contentDescription = null, tint = fg, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
         }
-        Text(text, color = color, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+        Text(
+            text,
+            color = fg,
+            fontFamily = BodyFont,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.SemiBold,
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center
+        )
     }
 }
 
-/** `.presets` – rutnät med val där det valda är guld. */
+/** Ett val i en glasram: guldton, guldkant, guldtext och ett litet guldstreck under det valda. */
+@Composable
+private fun SegmentOption(
+    text: String,
+    on: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shape = RoundedCornerShape(16.dp)
+    val textColor by animateColorAsState(if (on) Ui.Gold else Ui.Muted, label = "segText")
+    Column(
+        modifier
+            .heightIn(min = 46.dp)
+            .clip(shape)
+            .background(if (on) Ui.BtnBg else Color.Transparent)
+            .border(1.dp, if (on) (if (Ui.isDark) Ui.Gold.copy(alpha = 0.5f) else Ui.Line) else Color.Transparent, shape)
+            .selectable(selected = on, role = Role.RadioButton, onClick = onClick)
+            .padding(horizontal = 6.dp, vertical = 6.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text,
+            color = textColor,
+            fontFamily = BodyFont,
+            fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold,
+            fontSize = 13.sp,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        if (on) {
+            Spacer(Modifier.height(3.dp))
+            Box(
+                Modifier
+                    .width(16.dp)
+                    .height(3.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Ui.Gold)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SegmentFrame(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Column(
+        modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(Ui.Glass)
+            .border(1.dp, Ui.GlassBorder, shape)
+            .padding(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+        content = content
+    )
+}
+
+/** Val i rader om [columns] (t.ex. 4:3 | 1:1 | 16:9), i Alifs glasram. */
 @Composable
 fun <T> ChoiceGrid(
     options: List<T>,
@@ -253,32 +324,11 @@ fun <T> ChoiceGrid(
     modifier: Modifier = Modifier,
     columns: Int = 3
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    SegmentFrame(modifier) {
         options.chunked(columns).forEach { row ->
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 row.forEach { option ->
-                    val on = option == selected
-                    val shape = RoundedCornerShape(12.dp)
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .heightIn(min = 44.dp)
-                            .clip(shape)
-                            .background(if (on) Usb.Gold else Usb.Card2)
-                            .border(1.dp, if (on) Usb.Gold else Usb.Line, shape)
-                            .clickable(role = Role.RadioButton) { onSelect(option) }
-                            .padding(horizontal = 6.dp, vertical = 8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            label(option),
-                            color = if (on) Usb.Bg else Usb.Muted,
-                            fontFamily = BodyFont,
-                            fontWeight = FontWeight.SemiBold,
-                            fontSize = 14.sp,
-                            textAlign = TextAlign.Center
-                        )
-                    }
+                    SegmentOption(label(option), option == selected, { onSelect(option) }, Modifier.weight(1f))
                 }
                 repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
             }
@@ -286,7 +336,7 @@ fun <T> ChoiceGrid(
     }
 }
 
-/** `.seg` – segmenterad knapp (t.ex. Svenska | English). */
+/** Alifs `Segmented` – val sida vid sida (t.ex. Svenska | English). */
 @Composable
 fun <T> Segmented(
     options: List<T>,
@@ -295,56 +345,43 @@ fun <T> Segmented(
     onSelect: (T) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val shape = RoundedCornerShape(12.dp)
-    Row(
-        modifier
-            .fillMaxWidth()
-            .clip(shape)
-            .background(Usb.Card)
-            .border(1.dp, Usb.Line, shape)
-            .padding(3.dp),
-        horizontalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        options.forEach { option ->
-            val on = option == selected
-            Box(
-                Modifier
-                    .heightIn(min = 40.dp)
-                    .clip(RoundedCornerShape(9.dp))
-                    .background(if (on) Usb.Gold else Color.Transparent)
-                    .clickable(role = Role.RadioButton) { onSelect(option) }
-                    .padding(horizontal = 14.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    label(option),
-                    color = if (on) Usb.Bg else Usb.Muted,
-                    fontFamily = BodyFont,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
+    SegmentFrame(modifier) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+            options.forEach { option ->
+                SegmentOption(label(option), option == selected, { onSelect(option) }, Modifier.weight(1f))
             }
         }
     }
 }
 
+/** Alifs reglage: spår i guld med mörk knopp när det är på. */
 @Composable
 fun UsbSwitch(checked: Boolean, onCheckedChange: ((Boolean) -> Unit)?) {
-    Switch(
-        checked = checked,
-        onCheckedChange = onCheckedChange,
-        colors = SwitchDefaults.colors(
-            checkedThumbColor = Usb.Bg,
-            checkedTrackColor = Usb.Gold,
-            checkedBorderColor = Usb.Gold,
-            uncheckedThumbColor = Usb.Dim,
-            uncheckedTrackColor = Usb.Card2,
-            uncheckedBorderColor = Usb.Line
+    val knob by animateDpAsState(if (checked) 20.dp else 0.dp, label = "knob")
+    val track by animateColorAsState(if (checked) Ui.Gold else Ui.Card2, label = "track")
+    val thumb by animateColorAsState(if (checked) Ui.OnGold else Ui.Muted, label = "thumb")
+    Box(
+        Modifier
+            .size(width = 48.dp, height = 28.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(track)
+            .then(
+                if (onCheckedChange != null) Modifier.toggleable(value = checked, role = Role.Switch, onValueChange = onCheckedChange)
+                else Modifier
+            )
+            .padding(3.dp)
+    ) {
+        Box(
+            Modifier
+                .offset(x = knob)
+                .size(22.dp)
+                .clip(CircleShape)
+                .background(thumb)
         )
-    )
+    }
 }
 
-/** Rad med text och reglage (motsvarar `.toggle`). */
+/** Rad med text och reglage (Alifs `Toggle`). */
 @Composable
 fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null) {
     Row(
@@ -352,14 +389,15 @@ fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
             .fillMaxWidth()
             .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(12.dp))
-            .clickable(role = Role.Switch) { onChange(!checked) }
+            .toggleable(value = checked, role = Role.Switch, onValueChange = onChange)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(title, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
             if (subtitle != null) {
-                Text(subtitle, color = Usb.Dim, fontFamily = BodyFont, fontSize = 13.sp, lineHeight = 18.sp)
+                Spacer(Modifier.height(2.dp))
+                Text(subtitle, color = Ui.Muted, fontFamily = BodyFont, fontSize = 13.sp, lineHeight = 18.sp)
             }
         }
         Spacer(Modifier.width(12.dp))
@@ -367,7 +405,8 @@ fun ToggleRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
     }
 }
 
-/** Reglage i guld med rubrik och värde. */
+/** Tunt reglage med rund guldknopp, rubrik och värde. */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GoldSlider(
     title: String,
@@ -378,10 +417,13 @@ fun GoldSlider(
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null
 ) {
+    val gold = Ui.Gold
+    val line = Ui.Line
+    val ring = Ui.Card
     Column(Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(title, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
-            Text(valueText, color = Usb.GoldL, fontFamily = DisplayFont, fontWeight = FontWeight.Bold, fontSize = 17.sp)
+            Text(title, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp, modifier = Modifier.weight(1f))
+            Text(valueText, color = gold, fontFamily = DisplayFont, fontWeight = FontWeight.ExtraBold, fontSize = 15.sp)
         }
         Slider(
             value = value,
@@ -389,98 +431,129 @@ fun GoldSlider(
             onValueChangeFinished = onValueChangeFinished,
             valueRange = valueRange,
             steps = steps,
-            colors = SliderDefaults.colors(
-                thumbColor = Usb.Gold,
-                activeTrackColor = Usb.Gold,
-                inactiveTrackColor = Usb.Card2,
-                activeTickColor = Usb.Bg.copy(alpha = 0.5f),
-                inactiveTickColor = Usb.Dim.copy(alpha = 0.6f)
-            )
+            thumb = {
+                Box(
+                    Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(gold.copy(alpha = 0.55f))
+                        .padding(1.dp)
+                        .clip(CircleShape)
+                        .background(ring)
+                        .padding(3.dp)
+                        .clip(CircleShape)
+                        .background(gold)
+                )
+            },
+            track = { state ->
+                val span = (state.valueRange.endInclusive - state.valueRange.start).takeIf { it > 0f } ?: 1f
+                val fraction = ((state.value - state.valueRange.start) / span).coerceIn(0f, 1f)
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(4.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(line)
+                ) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(fraction)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(gold)
+                    )
+                }
+            }
         )
     }
 }
 
-/** `.item` – klickbar rad med pil. [compact] = rad inuti ett kort (ingen egen bakgrund). */
+/**
+ * Alifs `Row` – rad med titel, undertext, valfritt värde och ›. [compact] = rad inuti ett kort;
+ * annars ett eget kort runt raden.
+ */
 @Composable
 fun NavItem(
     title: String,
     subtitle: String?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    leading: ImageVector? = null,
+    @Suppress("UNUSED_PARAMETER") leading: ImageVector? = null,
     compact: Boolean = false,
-    subtitleColor: Color = Usb.Dim,
-    dot: Boolean = false
+    subtitleColor: Color = Ui.Muted,
+    dot: Boolean = false,
+    value: String? = null
 ) {
+    val shape = RoundedCornerShape(if (compact) 12.dp else 22.dp)
     Row(
         modifier
             .fillMaxWidth()
-            .defaultMinSize(minHeight = if (compact) 48.dp else 56.dp)
-            .clip(RoundedCornerShape(if (compact) 12.dp else 16.dp))
-            .background(if (compact) Color.Transparent else Usb.Card)
-            .clickable(onClick = onClick)
-            .padding(horizontal = if (compact) 0.dp else 16.dp, vertical = if (compact) 6.dp else 14.dp),
+            .defaultMinSize(minHeight = if (compact) 52.dp else 60.dp)
+            .clip(shape)
+            .then(if (compact) Modifier else Modifier.background(Ui.Card).border(1.dp, Ui.Line, shape))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = if (compact) 0.dp else 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (leading != null) {
-            Box {
-                Box(
-                    Modifier
-                        .size(36.dp)
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(Usb.Gold.copy(alpha = 0.14f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(leading, contentDescription = null, tint = Usb.Gold, modifier = Modifier.size(20.dp))
-                }
-                if (dot) {
-                    Box(
-                        Modifier
-                            .align(Alignment.TopEnd)
-                            .size(10.dp)
-                            .clip(CircleShape)
-                            .background(Usb.Bg)
-                            .padding(2.dp)
-                            .clip(CircleShape)
-                            .background(Usb.GoldL)
-                    )
-                }
-            }
-            Spacer(Modifier.width(12.dp))
-        }
         Column(Modifier.weight(1f)) {
-            Text(title, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(title, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             if (subtitle != null) {
-                Spacer(Modifier.height(3.dp))
-                Text(subtitle, color = subtitleColor, fontFamily = BodyFont, fontSize = 13.sp)
+                Spacer(Modifier.height(1.dp))
+                Text(subtitle, color = subtitleColor, fontFamily = BodyFont, fontSize = 13.sp, lineHeight = 18.sp)
             }
         }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = Usb.Dim)
+        if (value != null) {
+            Spacer(Modifier.width(10.dp))
+            Text(
+                value,
+                color = Ui.Muted,
+                fontFamily = BodyFont,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 13.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.widthIn(max = 150.dp)
+            )
+        }
+        if (dot) {
+            Spacer(Modifier.width(10.dp))
+            Box(
+                Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(Ui.Gold)
+            )
+        }
+        Spacer(Modifier.width(6.dp))
+        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, contentDescription = null, tint = Ui.Muted)
     }
 }
 
-/** Tunn avdelare (`border-top: 1px solid var(--line)`). */
+/** Tunn avdelare. */
 @Composable
 fun LineDivider(modifier: Modifier = Modifier) {
     Box(
         modifier
             .fillMaxWidth()
             .height(1.dp)
-            .background(Usb.Line)
+            .background(Ui.Line)
     )
 }
 
-/** `.wm-seal` – runt emblem med guldring. */
+/** Runt emblem med guldring. */
 @Composable
 fun Seal(size: Dp = 48.dp, iconSize: Dp = 22.dp, icon: ImageVector = Icons.Outlined.CameraAlt) {
+    val gold = Ui.Gold
+    val dark = Ui.isDark
+    val inner = if (dark) listOf(Color(0xFF24413F), Color(0xFF142427)) else listOf(Ui.Card, Ui.Card2)
     Box(
         Modifier
             .size(size)
             .drawBehind {
-                // mjukt guldsken under emblemet
+                // mjukt sken under emblemet
                 drawCircle(
                     Brush.radialGradient(
-                        listOf(Usb.Gold.copy(alpha = 0.20f), Color.Transparent),
+                        listOf(gold.copy(alpha = if (dark) 0.20f else 0.10f), Color.Transparent),
                         center = Offset(center.x, center.y + 4.dp.toPx()),
                         radius = this.size.minDimension * 0.85f
                     ),
@@ -494,24 +567,23 @@ fun Seal(size: Dp = 48.dp, iconSize: Dp = 22.dp, icon: ImageVector = Icons.Outli
             val r = this.size.minDimension / 2f
             drawCircle(
                 Brush.radialGradient(
-                    listOf(Color(0xFF24413F), Color(0xFF142427)),
+                    inner,
                     center = Offset(this.size.width * 0.35f, this.size.height * 0.30f),
                     radius = r * 1.4f
                 ),
                 radius = r
             )
-            drawCircle(Usb.Gold.copy(alpha = 0.65f), radius = r - 0.5.dp.toPx(), style = Stroke(1.dp.toPx()))
-            drawCircle(Usb.Gold.copy(alpha = 0.35f), radius = r - 4.5.dp.toPx(), style = Stroke(1.dp.toPx()))
+            drawCircle(gold.copy(alpha = 0.65f), radius = r - 0.5.dp.toPx(), style = Stroke(1.dp.toPx()))
+            drawCircle(gold.copy(alpha = 0.35f), radius = r - 4.5.dp.toPx(), style = Stroke(1.dp.toPx()))
         }
-        Icon(icon, contentDescription = null, tint = Usb.GoldL, modifier = Modifier.size(iconSize))
+        Icon(icon, contentDescription = null, tint = if (dark) Ui.GoldL else Ui.Teal, modifier = Modifier.size(iconSize))
     }
 }
 
 /**
- * `.wordmark` – emblem + "SNC" i guld med glans + tunn linje med undertext.
- * Glansen sveper över namnet en gång, som i USB-appen.
+ * Ordmärket: emblem + "SNC" i Cinzel med guldglans + tunn linje med undertext.
+ * Glansen sveper över namnet en gång.
  */
-@OptIn(ExperimentalTextApi::class)
 @Composable
 fun Wordmark(subtitle: String, modifier: Modifier = Modifier, small: Boolean = false, name: String = "SNC") {
     var textWidth by remember { mutableFloatStateOf(0f) }
@@ -519,16 +591,8 @@ fun Wordmark(subtitle: String, modifier: Modifier = Modifier, small: Boolean = f
     LaunchedEffect(Unit) { shine.animateTo(0f, tween(2800, delayMillis = 200)) }
     val w = if (textWidth > 0f) textWidth else 300f
     val startX = -1.2f * w * shine.value
-    val brush = Brush.linearGradient(
-        0f to Color(0xFFB9822A),
-        0.28f to Color(0xFFF7DA94),
-        0.48f to Color(0xFFE8B04A),
-        0.62f to Color(0xFFFCEBC0),
-        0.80f to Color(0xFFD59A35),
-        1f to Color(0xFFB9822A),
-        start = Offset(startX, 0f),
-        end = Offset(startX + 2.2f * w, 0f)
-    )
+    val brush = Ui.shineBrush(Offset(startX, 0f), Offset(startX + 2.2f * w, 0f))
+    val gold = Ui.Gold
     Row(modifier, verticalAlignment = Alignment.CenterVertically) {
         Seal(size = if (small) 42.dp else 48.dp, iconSize = if (small) 20.dp else 22.dp)
         Spacer(Modifier.width(14.dp))
@@ -538,9 +602,9 @@ fun Wordmark(subtitle: String, modifier: Modifier = Modifier, small: Boolean = f
                 style = TextStyle(
                     brush = brush,
                     fontFamily = SerifFont,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = if (small) 36.sp else 42.sp,
-                    letterSpacing = 0.2.em,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = if (small) 32.sp else 38.sp,
+                    letterSpacing = 0.14.em,
                     lineHeight = if (small) 34.sp else 40.sp
                 ),
                 onTextLayout = { textWidth = it.size.width.toFloat() }
@@ -551,14 +615,14 @@ fun Wordmark(subtitle: String, modifier: Modifier = Modifier, small: Boolean = f
                     Modifier
                         .width(14.dp)
                         .height(1.dp)
-                        .background(Brush.horizontalGradient(listOf(Color.Transparent, Usb.Gold)))
+                        .background(Brush.horizontalGradient(listOf(Color.Transparent, gold)))
                 )
                 Spacer(Modifier.width(8.dp))
                 Text(
                     subtitle.uppercase(Locale.getDefault()),
-                    color = Usb.TealL,
+                    color = Ui.TealL,
                     fontFamily = BodyFont,
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Bold,
                     fontSize = 10.sp,
                     letterSpacing = 0.38.em
                 )
@@ -567,14 +631,14 @@ fun Wordmark(subtitle: String, modifier: Modifier = Modifier, small: Boolean = f
                     Modifier
                         .width(14.dp)
                         .height(1.dp)
-                        .background(Brush.horizontalGradient(listOf(Usb.Gold, Color.Transparent)))
+                        .background(Brush.horizontalGradient(listOf(gold, Color.Transparent)))
                 )
             }
         }
     }
 }
 
-/** `.ring1/.ring2/.mic` – stor rund guldknapp i två ringar (startskärmen i USB-appen). */
+/** Stor rund guldknapp i två ringar (startskärmen när kameran saknar behörighet). */
 @Composable
 fun HeroButton(
     icon: ImageVector,
@@ -583,19 +647,21 @@ fun HeroButton(
     modifier: Modifier = Modifier,
     outer: Dp = 188.dp
 ) {
+    val gold = Ui.Gold
     Box(
         modifier
             .size(outer)
             .clip(CircleShape)
-            .background(Usb.Card)
-            .border(1.dp, Usb.Line, CircleShape),
+            .background(Ui.Glass)
+            .border(1.dp, Ui.GlassBorder, CircleShape),
         contentAlignment = Alignment.Center
     ) {
         Box(
             Modifier
                 .size(outer * 0.72f)
                 .clip(CircleShape)
-                .background(Usb.Card2),
+                .background(Ui.BtnBg)
+                .border(1.dp, Ui.BtnBorder, CircleShape),
             contentAlignment = Alignment.Center
         ) {
             Box(
@@ -604,30 +670,32 @@ fun HeroButton(
                     .drawBehind {
                         drawCircle(
                             Brush.radialGradient(
-                                listOf(Usb.Gold.copy(alpha = 0.28f), Color.Transparent),
+                                listOf(gold.copy(alpha = 0.28f), Color.Transparent),
                                 radius = size.minDimension * 0.8f
                             ),
                             radius = size.minDimension * 0.8f
                         )
                     }
                     .clip(CircleShape)
-                    .background(Usb.Gold)
+                    .background(gold)
                     .clickable(role = Role.Button, onClickLabel = contentDescription, onClick = onClick),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, contentDescription = contentDescription, tint = Usb.Bg, modifier = Modifier.size(outer * 0.2f))
+                Icon(icon, contentDescription = contentDescription, tint = Ui.OnGold, modifier = Modifier.size(outer * 0.2f))
             }
         }
     }
 }
 
-/** `.pill` – liten statusbricka med prick. */
+/** Liten statusbricka med prick. */
 @Composable
-fun StatusPill(text: String, modifier: Modifier = Modifier, color: Color = Usb.TealL, dot: Color = Usb.Teal) {
+fun StatusPill(text: String, modifier: Modifier = Modifier, color: Color = Ui.TealL, dot: Color = Ui.Teal) {
+    val shape = RoundedCornerShape(50)
     Row(
         modifier
-            .clip(RoundedCornerShape(50))
-            .background(Usb.Card2)
+            .clip(shape)
+            .background(Ui.Card2)
+            .border(1.dp, Ui.Line, shape)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

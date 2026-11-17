@@ -36,6 +36,15 @@ import se.snc.camera.text.TextRecognitionScreen
 import se.snc.camera.update.UpdateScreen
 import se.snc.camera.info.CameraInfoScreen
 import se.snc.camera.ui.theme.SncTheme
+import se.snc.camera.ui.theme.CameraTheme
+import se.snc.camera.data.AppSettings
+import se.snc.camera.data.ThemeOption
+import se.snc.camera.manual.ManualScreen
+import se.snc.camera.update.UpdateRestart
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import se.snc.camera.util.HardwareKeys
 import se.snc.camera.util.KeyCommand
 
@@ -46,14 +55,17 @@ sealed interface Screen {
     data class Text(val uri: Uri) : Screen
     data object Settings : Screen
     data object About : Screen
-    data object Update : Screen
+    data class Update(val autoStart: Boolean = false) : Screen
     data object Cameras : Screen
+    data object Manual : Screen
 }
 
 class MainActivity : ComponentActivity() {
 
     private val backStack = mutableStateListOf<Screen>(Screen.Camera)
     private var requestedMode by mutableStateOf<CameraMode?>(null)
+    /** Visas en gång i kameran efter en uppdatering: "SNC Camera är uppdaterad till …". */
+    private var updatedTo by mutableStateOf<String?>(null)
 
     private val app get() = application as SncCameraApp
 
@@ -64,12 +76,28 @@ class MainActivity : ComponentActivity() {
         )
         super.onCreate(savedInstanceState)
         if (savedInstanceState == null) handleIntent(intent)
-        // Sök efter ny version i bakgrunden (om "Sök automatiskt" är på)
-        app.updateManager.autoCheckIfDue()
 
         setContent {
             val cameraViewModel: CameraViewModel = viewModel()
             val screen = backStack.last()
+            val settings by app.settingsRepository.settings.collectAsStateWithLifecycle(initialValue = AppSettings())
+
+            // Kameran först: allt annat startar först när sökaren redan är igång.
+            LaunchedEffect(Unit) {
+                delay(2500)
+                // Sök efter ny version i bakgrunden (om "Sök automatiskt" är på)
+                app.updateManager.autoCheckIfDue()
+                updatedTo = withContext(Dispatchers.IO) { UpdateRestart.consumeJustUpdated(this@MainActivity) }
+            }
+
+            // Ljust tema på inställningssidorna: mörka ikoner i statusfältet
+            val lightBars = settings.theme == ThemeOption.BEIGE && screen.isThemed()
+            LaunchedEffect(lightBars) {
+                val style = if (lightBars) SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
+                else SystemBarStyle.dark(Color.TRANSPARENT)
+                enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style)
+            }
+            val beige = settings.theme == ThemeOption.BEIGE
 
             LaunchedEffect(requestedMode) {
                 requestedMode?.let {
@@ -80,7 +108,7 @@ class MainActivity : ComponentActivity() {
 
             BackHandler(enabled = backStack.size > 1) { pop() }
 
-            SncTheme {
+            CameraTheme {
                 AnimatedContent(
                     targetState = screen,
                     transitionSpec = {
@@ -94,7 +122,9 @@ class MainActivity : ComponentActivity() {
                         Screen.Camera -> CameraScreen(
                             viewModel = cameraViewModel,
                             onOpenGallery = { uri -> push(Screen.Viewer(uri)) },
-                            onOpenSettings = { push(Screen.Settings) }
+                            onOpenSettings = { push(Screen.Settings) },
+                            updatedTo = updatedTo,
+                            onDismissUpdated = { updatedTo = null }
                         )
                         is Screen.Viewer -> ViewerScreen(
                             media = app.mediaRepository,
@@ -114,25 +144,36 @@ class MainActivity : ComponentActivity() {
                             uri = s.uri,
                             onBack = { pop() }
                         )
-                        Screen.Settings -> SettingsScreen(
-                            repository = app.settingsRepository,
-                            onBack = { pop() },
-                            onAbout = { push(Screen.About) },
-                            onUpdates = { push(Screen.Update) },
-                            onCameras = { push(Screen.Cameras) }
-                        )
-                        Screen.Cameras -> CameraInfoScreen(onBack = { pop() })
-                        Screen.Update -> UpdateScreen(
-                            manager = app.updateManager,
-                            repository = app.settingsRepository,
-                            onBack = { pop() }
-                        )
-                        Screen.About -> AboutScreen(onBack = { pop() })
+                        Screen.Settings -> SncTheme(beige) {
+                            SettingsScreen(
+                                repository = app.settingsRepository,
+                                onBack = { pop() },
+                                onAbout = { push(Screen.About) },
+                                onUpdates = { push(Screen.Update()) },
+                                onCameras = { push(Screen.Cameras) },
+                                onManual = { push(Screen.Manual) },
+                                onUpdateNow = { push(Screen.Update(autoStart = true)) }
+                            )
+                        }
+                        Screen.Cameras -> SncTheme(beige) { CameraInfoScreen(onBack = { pop() }) }
+                        is Screen.Update -> SncTheme(beige) {
+                            UpdateScreen(
+                                manager = app.updateManager,
+                                repository = app.settingsRepository,
+                                onBack = { pop() },
+                                autoStart = s.autoStart
+                            )
+                        }
+                        Screen.About -> SncTheme(beige) { AboutScreen(onBack = { pop() }) }
+                        Screen.Manual -> SncTheme(beige) { ManualScreen(onBack = { pop() }) }
                     }
                 }
             }
         }
     }
+
+    private fun Screen.isThemed() = this is Screen.Settings || this is Screen.Cameras || this is Screen.Update ||
+        this is Screen.About || this is Screen.Manual
 
     private fun push(screen: Screen) {
         backStack.add(screen)

@@ -1,0 +1,137 @@
+{
+  "version": "1.5.0",
+  "sv": [
+    {
+      "title": "Kameran",
+      "items": [
+        "Lägena Pro, Natt, Video, Foto och Porträtt ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
+        "Linserna: .6 är ultravidvinkeln (16 mm), 1× huvudkameran (24 mm) och 2× telelinsen (47 mm). Nyp för att zooma upp till 10×. En liten etikett visar vilken lins som tar över.",
+        "Tryck i sökaren för att fokusera och dra sedan uppåt eller nedåt för att ändra exponeringen.",
+        "Övre raden: blixt, självutlösare, bildformat (i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser guld.",
+        "Volymknapparna tar bild. Under Inställningar › Allmänt kan de i stället zooma eller ändra volymen.",
+        "Miniatyren till vänster om avtryckaren öppnar den senaste bilden. Knappen till höger byter till framkameran."
+      ]
+    },
+    {
+      "title": "Pro-läget",
+      "items": [
+        "EV, ISO, slutartid (upp till 30 sekunder), vitbalans och fokus. Tryck på ett värde och dra i reglaget. Auto går tillbaka till automatiskt.",
+        "Vid lång exponering behöver telefonen stå stilla, till exempel på ett stativ."
+      ]
+    },
+    {
+      "title": "Live-filter",
+      "items": [
+        "Filterknappen i övre raden öppnar filtren och reglagen för rött, grönt och blått (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger.",
+        "En etikett i sökaren visar att ett filter är på. Tryck på den för att ändra. Återställ tar bort filtret.",
+        "Filtret gäller Foto, Pro, Natt och Porträtt. Video spelas in utan filter."
+      ]
+    },
+    {
+      "title": "Bildvisaren och redigeraren",
+      "items": [
+        "Bläddra mellan bilder och videor. Nyp eller dubbeltryck för att zooma.",
+        "Redigera: filter med styrka, ljusstyrka, kontrast, mättnad, värme och vinjett, rotera och spegla. Håll in jämför-knappen för att se originalet. Den redigerade bilden sparas alltid som en ny kopia.",
+        "Detaljer visar datum, kamera och exponering. Radera tar bort bilden."
+      ]
+    },
+    {
+      "title": "Text i bilden",
+      "items": [
+        "Texten i bilden hittas automatiskt. Tryck på en rad för att markera den, eller håll in och dra för att markera flera.",
+        "Kopiera eller dela texten, eller öppna länkar, telefonnummer och mejladresser direkt. Det fungerar utan nät och utan Google-tjänster."
+      ]
+    },
+    {
+      "title": "Inställningar",
+      "items": [
+        "Språk (Svenska eller English) och tema (Mörk eller Beige). Kameran, bildvisaren och redigeraren är alltid mörka.",
+        "Foto, Video, Sökare och Allmänt: bildformat, kvalitet, stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration och volymknappar.",
+        "Kameror visar vad telefonen ger appen tillgång till: varje lins, bildfrekvens, slow motion och RAW. Rapporten kan kopieras eller delas."
+      ]
+    },
+    {
+      "title": "Uppdateringar",
+      "items": [
+        "Appen söker efter en ny version högst var sjätte timme när den öppnas. Finns en ny version lyser kugghjulet i kameran och kortet Ny version finns visas överst i Inställningar.",
+        "Tryck Uppdatera. Versionen laddas ner och kontrolleras (kontrollsumma och samma signeringsnyckel), och sedan öppnas Androids installationsruta. Tryck Uppdatera där – det sista trycket kräver Android.",
+        "Bilderna och inställningarna finns kvar. SNC Camera startar om av sig själv efteråt. Stoppar Android det kommer i stället en avisering att trycka på."
+      ]
+    },
+    {
+      "title": "Tips",
+      "items": [
+        "Fjärrkontroll och IR: rikta en fjärrkontroll mot framkameran i ett mörkt rum och tryck på en knapp. Den infraröda dioden syns ofta som en svag lila blinkning. Rött på 200 % i live-filtret gör den tydligare.",
+        "Telefonen har en IR-sändare men ingen värmekamera, så värme går inte att se med mobilens kameror.",
+        "Bilder och videor sparas i mappen DCIM/SNC Camera."
+      ]
+    }
+  ],
+  "en": [
+    {
+      "title": "The camera",
+      "items": [
+        "The modes Pro, Night, Video, Photo and Portrait are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
+        "The lenses: .6 is the ultra-wide (16 mm), 1× the main camera (24 mm) and 2× the telephoto (47 mm). Pinch to zoom up to 10×. A small label shows which lens takes over.",
+        "Tap the viewfinder to focus, then drag up or down to change the exposure.",
+        "Top row: flash, self-timer, aspect ratio (in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow gold.",
+        "The volume keys take a photo. Under Settings › General they can zoom or change the volume instead.",
+        "The thumbnail left of the shutter opens the latest photo. The button on the right switches to the front camera."
+      ]
+    },
+    {
+      "title": "Pro mode",
+      "items": [
+        "EV, ISO, shutter speed (up to 30 seconds), white balance and focus. Tap a value and drag the slider. Auto goes back to automatic.",
+        "For long exposures the phone needs to stay still, for example on a tripod."
+      ]
+    },
+    {
+      "title": "Live filter",
+      "items": [
+        "The filter button in the top row opens the filters and the sliders for red, green and blue (0–200 %). The effect shows in the viewfinder right away and the photo is saved with the same colours.",
+        "A label in the viewfinder shows that a filter is on. Tap it to change it. Reset removes the filter.",
+        "The filter works in Photo, Pro, Night and Portrait. Video is recorded without a filter."
+      ]
+    },
+    {
+      "title": "Viewer and editor",
+      "items": [
+        "Browse photos and videos. Pinch or double-tap to zoom.",
+        "Edit: filters with strength, brightness, contrast, saturation, warmth and vignette, rotate and flip. Hold the compare button to see the original. The edited photo is always saved as a new copy.",
+        "Details shows the date, camera and exposure. Delete removes the photo."
+      ]
+    },
+    {
+      "title": "Text in the picture",
+      "items": [
+        "The text in the picture is found automatically. Tap a line to select it, or hold and drag to select several.",
+        "Copy or share the text, or open links, phone numbers and email addresses directly. It works offline and without Google services."
+      ]
+    },
+    {
+      "title": "Settings",
+      "items": [
+        "Language (Svenska or English) and theme (Dark or Beige). The camera, viewer and editor are always dark.",
+        "Photo, Video, Viewfinder and General: aspect ratio, quality, stabilisation, sound, grid, level, shutter sound, vibration and volume keys.",
+        "Cameras shows what the phone gives the app access to: each lens, frame rate, slow motion and RAW. The report can be copied or shared."
+      ]
+    },
+    {
+      "title": "Updates",
+      "items": [
+        "The app looks for a new version at most every six hours when it is opened. When there is one, the gear in the camera glows and the card New version available is shown at the top of Settings.",
+        "Tap Update. The version is downloaded and checked (checksum and the same signing key), then Android's installer opens. Tap Update there – Android requires that last tap.",
+        "Your photos and settings stay. SNC Camera starts again by itself afterwards. If Android stops that, a notification to tap comes instead."
+      ]
+    },
+    {
+      "title": "Tips",
+      "items": [
+        "Remote control and IR: point a remote at the front camera in a dark room and press a button. The infrared LED often shows as a faint purple flash. Red at 200 % in the live filter makes it clearer.",
+        "The phone has an IR transmitter but no thermal camera, so heat cannot be seen with the phone's cameras.",
+        "Photos and videos are saved in the folder DCIM/SNC Camera."
+      ]
+    }
+  ]
+}

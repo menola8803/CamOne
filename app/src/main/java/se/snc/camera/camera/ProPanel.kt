@@ -43,6 +43,10 @@ import kotlin.math.exp
 import kotlin.math.ln
 import kotlin.math.roundToInt
 import kotlin.math.roundToLong
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.heightIn
+import se.snc.camera.ui.theme.GlassLine
+import se.snc.camera.ui.theme.GoldTint
 
 fun formatShutter(ns: Long): String {
     val seconds = ns / 1_000_000_000.0
@@ -81,8 +85,9 @@ fun ProPanel(
             Column(
                 Modifier
                     .padding(horizontal = 16.dp, vertical = 6.dp)
-                    .clip(RoundedCornerShape(20.dp))
+                    .clip(RoundedCornerShape(22.dp))
                     .background(GlassStrong)
+                    .border(1.dp, GlassLine, RoundedCornerShape(22.dp))
                     .padding(horizontal = 14.dp, vertical = 8.dp)
                     .fillMaxWidth()
             ) {
@@ -152,27 +157,32 @@ fun ProPanel(
             }
         }
 
+        // Värdena i ett glaskort som i Alif: mintfärgade etiketter, det valda guldtonat
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly
+                .padding(horizontal = 16.dp)
+                .clip(RoundedCornerShape(22.dp))
+                .background(GlassStrong)
+                .border(1.dp, GlassLine, RoundedCornerShape(22.dp))
+                .padding(5.dp),
+            horizontalArrangement = Arrangement.spacedBy(3.dp)
         ) {
-            ProItem(stringResource(R.string.pro_ev), formatEv(state.exposureIndex, state.exposureStep), active == ProControl.EV, rotation) {
+            ProItem(stringResource(R.string.pro_ev), formatEv(state.exposureIndex, state.exposureStep), active == ProControl.EV, rotation, Modifier.weight(1f)) {
                 onSelect(ProControl.EV)
             }
             if (pro.supported) {
-                ProItem(stringResource(R.string.pro_iso), if (pro.isoAuto) stringResource(R.string.pro_auto) else "${pro.iso}", active == ProControl.ISO, rotation) {
+                ProItem(stringResource(R.string.pro_iso), if (pro.isoAuto) stringResource(R.string.pro_auto) else "${pro.iso}", active == ProControl.ISO, rotation, Modifier.weight(1f)) {
                     onSelect(ProControl.ISO)
                 }
-                ProItem(stringResource(R.string.pro_shutter_short), if (pro.shutterAuto) stringResource(R.string.pro_auto) else formatShutter(pro.shutterNs), active == ProControl.SHUTTER, rotation) {
+                ProItem(stringResource(R.string.pro_shutter_short), if (pro.shutterAuto) stringResource(R.string.pro_auto) else formatShutter(pro.shutterNs), active == ProControl.SHUTTER, rotation, Modifier.weight(1f)) {
                     onSelect(ProControl.SHUTTER)
                 }
-                ProItem(stringResource(R.string.pro_wb), stringResource(pro.whiteBalance.label), active == ProControl.WB, rotation) {
+                ProItem(stringResource(R.string.pro_wb), stringResource(pro.whiteBalance.label), active == ProControl.WB, rotation, Modifier.weight(1f)) {
                     onSelect(ProControl.WB)
                 }
                 if (pro.focusMaxDiopters > 0f) {
-                    ProItem(stringResource(R.string.pro_focus_short), if (pro.focusAuto) stringResource(R.string.pro_af) else "MF", active == ProControl.FOCUS, rotation) {
+                    ProItem(stringResource(R.string.pro_focus_short), if (pro.focusAuto) stringResource(R.string.pro_af) else "MF", active == ProControl.FOCUS, rotation, Modifier.weight(1f)) {
                         onSelect(ProControl.FOCUS)
                     }
                 }
@@ -198,18 +208,30 @@ fun ProPanel(
 }
 
 @Composable
-private fun ProItem(label: String, value: String, selected: Boolean, rotation: Float, onClick: () -> Unit) {
+private fun ProItem(
+    label: String,
+    value: String,
+    selected: Boolean,
+    rotation: Float,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
+    val shape = RoundedCornerShape(16.dp)
     Column(
-        Modifier
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (selected) Glass else Color.Transparent)
+        modifier
+            .heightIn(min = 52.dp)
+            .clip(shape)
+            .background(if (selected) GoldTint else Color.Transparent)
+            .border(1.dp, if (selected) Usb.Gold.copy(alpha = 0.5f) else Color.Transparent, shape)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 6.dp)
+            .padding(horizontal = 4.dp, vertical = 6.dp)
             .rotate(rotation),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
     ) {
-        Text(label, color = if (selected) CameraYellow else OnGlassDim, fontSize = 10.sp, fontWeight = FontWeight.SemiBold)
-        Text(value, color = if (selected) CameraYellow else OnGlass, fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+        Text(label.uppercase(Locale.getDefault()), color = Usb.Teal, fontSize = 10.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = 1.sp, maxLines = 1)
+        Spacer(Modifier.height(2.dp))
+        Text(value, color = if (selected) CameraYellow else OnGlass, fontSize = 14.sp, fontWeight = if (selected) FontWeight.ExtraBold else FontWeight.Bold, maxLines = 1)
     }
 }
 
@@ -244,17 +266,20 @@ private fun ValueSlider(
     }
 }
 
+/** Litet val som Alifs SmallBtn: det valda får guldton, guldkant och guldtext. */
 @Composable
 fun Chip(text: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(12.dp)
     Text(
         text,
-        color = if (selected) Usb.Bg else OnGlass,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
+        color = if (selected) CameraYellow else OnGlass,
+        fontSize = 13.sp,
+        fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
         modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(if (selected) CameraYellow else Glass)
+            .clip(shape)
+            .background(if (selected) GoldTint else Glass)
+            .border(1.dp, if (selected) Usb.Gold else GlassLine, shape)
             .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .padding(horizontal = 12.dp, vertical = 8.dp)
     )
 }

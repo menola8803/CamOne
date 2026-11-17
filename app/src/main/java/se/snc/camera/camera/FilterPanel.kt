@@ -43,6 +43,8 @@ import se.snc.camera.ui.theme.OnGlass
 import se.snc.camera.ui.theme.OnGlassDim
 import se.snc.camera.ui.theme.Usb
 import kotlin.math.roundToInt
+import androidx.compose.foundation.border
+import se.snc.camera.ui.theme.GlassLine
 
 private val ChannelRed = Color(0xFFE5574F)
 private val ChannelGreen = Color(0xFF4CC38A)
@@ -60,17 +62,18 @@ fun FilterPanel(
     Column(
         modifier
             .padding(horizontal = 16.dp, vertical = 6.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .clip(RoundedCornerShape(22.dp))
             .background(GlassStrong)
+            .border(1.dp, GlassLine, RoundedCornerShape(22.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp)
             .fillMaxWidth()
     ) {
         Row(Modifier.fillMaxWidth().height(30.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.filter_panel_title),
-                color = OnGlassDim,
+                color = se.snc.camera.ui.theme.Usb.Teal,
                 fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+                fontWeight = FontWeight.ExtraBold,
                 letterSpacing = 1.2.sp,
                 modifier = Modifier.weight(1f)
             )
@@ -149,7 +152,8 @@ fun FilterBadge(filter: LiveFilter, onClick: () -> Unit, modifier: Modifier = Mo
     Row(
         modifier
             .clip(RoundedCornerShape(50))
-            .background(Usb.Bg.copy(alpha = 0.72f))
+            .background(GlassStrong)
+            .border(1.dp, GlassLine, RoundedCornerShape(50))
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically

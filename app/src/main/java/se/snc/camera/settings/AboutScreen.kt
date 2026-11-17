@@ -32,14 +32,14 @@ import se.snc.camera.ui.components.SectionLabel
 import se.snc.camera.ui.components.UsbCard
 import se.snc.camera.ui.components.Wordmark
 import se.snc.camera.ui.theme.BodyFont
-import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.theme.Ui
 
 @Composable
 fun AboutScreen(onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Usb.Bg)
+            .background(Ui.Bg)
             .statusBarsPadding()
             .navigationBarsPadding()
             .verticalScroll(rememberScrollState())
@@ -54,7 +54,7 @@ fun AboutScreen(onBack: () -> Unit) {
             Wordmark(subtitle = stringResource(R.string.wm_sub), small = true)
             Text(
                 stringResource(R.string.about_tagline),
-                color = Usb.Muted,
+                color = Ui.Muted,
                 fontFamily = BodyFont,
                 fontSize = 15.sp,
                 lineHeight = 22.sp
@@ -69,7 +69,7 @@ fun AboutScreen(onBack: () -> Unit) {
             // Kravet: "Developer: Claes Sundman S.N.C AB" ska stå i Om
             Text(
                 stringResource(R.string.about_developer_line),
-                color = Usb.Gold,
+                color = Ui.Gold,
                 fontFamily = BodyFont,
                 fontWeight = FontWeight.SemiBold,
                 fontSize = 16.sp
@@ -83,7 +83,7 @@ fun AboutScreen(onBack: () -> Unit) {
             License("AndroidX DataStore", "Apache 2.0")
             License("Kotlin Coroutines", "Apache 2.0")
             License("Google ML Kit", "ML Kit Terms")
-            License("Space Grotesk · IBM Plex Sans · Cormorant Garamond", "SIL OFL 1.1")
+            License("Plus Jakarta Sans · Cinzel", "SIL OFL 1.1")
         }
 
         MutedText(
@@ -93,7 +93,7 @@ fun AboutScreen(onBack: () -> Unit) {
         )
         Text(
             stringResource(R.string.about_copyright),
-            color = Usb.Dim,
+            color = Ui.Dim,
             fontFamily = BodyFont,
             fontSize = 12.sp,
             textAlign = TextAlign.Center,
@@ -106,11 +106,11 @@ fun AboutScreen(onBack: () -> Unit) {
 @Composable
 private fun InfoRow(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Text(label, color = Usb.Dim, fontFamily = BodyFont, fontSize = 15.sp, modifier = Modifier.weight(0.42f))
+        Text(label, color = Ui.Dim, fontFamily = BodyFont, fontSize = 15.sp, modifier = Modifier.weight(0.42f))
         Spacer(Modifier.width(12.dp))
         Text(
             value,
-            color = Usb.Text,
+            color = Ui.Text,
             fontFamily = BodyFont,
             fontWeight = FontWeight.SemiBold,
             fontSize = 15.sp,
@@ -122,8 +122,8 @@ private fun InfoRow(label: String, value: String) {
 @Composable
 private fun License(name: String, license: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Text(name, color = Usb.Muted, fontFamily = BodyFont, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Text(name, color = Ui.Muted, fontFamily = BodyFont, fontSize = 14.sp, modifier = Modifier.weight(1f))
         Spacer(Modifier.width(12.dp))
-        Text(license, color = Usb.TealL, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+        Text(license, color = Ui.TealL, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
     }
 }

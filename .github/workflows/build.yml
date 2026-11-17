@@ -54,6 +54,9 @@ jobs:
             echo "::warning title=Signering::Hemligheten SNC_KEYSTORE_BASE64 saknas – tillfällig nyckel används och ingen release publiceras"
           fi
 
+      - name: Kontrollera manualen (version och svenska/engelska)
+        run: python3 .github/scripts/check-manual.py
+
       - name: Bygg APK för telefonen (arm64)
         run: |
           chmod +x gradlew
@@ -75,6 +78,8 @@ jobs:
           SIZE=$(du -h "$APK" | cut -f1)
           echo "::notice title=APK::$SIZE – $INFO"
           "$BT/apksigner" verify "$APK"
+          # Bara arm64-kod i telefonens APK – ingen x86
+          python3 .github/scripts/check-abi.py "$APK"
           # Fingeravtrycket måste stämma med signing/cert-sha256.txt när appens egen nyckel används
           DIGEST=$("$BT/apksigner" verify --print-certs "$APK" | grep -m1 'certificate SHA-256 digest' | awk '{print $NF}' | tr 'A-F' 'a-f')
           WANT=$(tr -d ':[:space:]' < signing/cert-sha256.txt | tr 'A-F' 'a-f')

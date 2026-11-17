@@ -46,10 +46,11 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - "Visa text" öppnar texten där man kan markera exakt den del man vill ha
 - Fungerar helt offline och **utan Google Play-tjänster**
 
-**Utseende – samma stil som USB-appen**
-- Mörk petrolgrön botten, guld som huvudfärg och teal för rubriker
-- Typsnitten Space Grotesk, IBM Plex Sans och Cormorant Garamond (ordmärket "SNC" i guld)
-- Rundade kort, guldval och reglage, emblem med guldring – även som appikon
+**Utseende – samma tema som Alif**
+- Mörk petrolgrön botten med guld och mint, eller ljust beige (temaval under Inställningar; kameran är alltid mörk)
+- Typsnitten Plus Jakarta Sans och Cinzel (ordmärket "SNC" i guld)
+- Knappar med guldton, tunn guldkant och guldtext, val i glasram med guldstreck, kort med tunn kant, rader med ›
+- Kameran: runda glasknappar, rundad sökare, lägen i en svävande glasmeny, avtryckare med guldring
 
 **Inställningar och Om**
 - Bildformat, kvalitet, JPEG-kvalitet, spegling av frontkamera, videoupplösning,
@@ -57,7 +58,8 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Språkval Svenska/English direkt i appen (Android 13+), som i USB-appen
 - **Kameror** visar vad telefonen ger appen tillgång till: varje lins med brännvidd, megapixlar,
   bildfrekvens, slow motion, RAW och Pro-värden. Rapporten kan kopieras eller delas
-- **Uppdateringar** direkt i appen (se nedan)
+- **Uppdateringar** direkt i appen, som i Alif: kortet "Ny version finns", Uppdatera, och appen startar om av sig själv
+- **Manual** under Inställningar › Manual, på svenska och engelska, uppdateras i varje version
 - **Om**-sidan visar *Developer: Claes Sundman S.N.C AB*, version, enhet och licenser
 - Svenska och engelska (följer telefonens språk)
 
@@ -77,6 +79,10 @@ Varje gång kod skickas till `main` gör GitHub Actions följande automatiskt:
    redigerare, textigenkänning, inställningar och Om (skärmbilder sparas under *Actions → körningen →
    Artifacts → skarmbilder-och-testrapport*),
 3. publicerar APK:n som en ny release om testet gick igenom och appen är signerad med den fasta nyckeln.
+
+Bygget stoppas också om telefonens APK innehåller annan kod än arm64 (ingen x86), om manualen inte är
+uppdaterad till appens version på både svenska och engelska, eller om appen startar för långsamt i testet.
+Grundregeln är att kameran startar först – allt tyngre laddas efteråt.
 
 ### Uppdatera direkt i appen (som i Direct-appen)
 **Inställningar → Uppdateringar** visar installerad version och senaste release här på GitHub.
@@ -154,6 +160,7 @@ app/src/main/java/se/snc/camera/
 ├─ settings/                 inställningar och Om
 ├─ update/                   uppdateringar från GitHub (som i Direct)
 ├─ info/                     Kameror-sidan och kamerarapporten
+├─ manual/                   manualen (texten ligger i assets/manual.json)
 ├─ data/                     inställningar (DataStore) och mediabibliotek (MediaStore)
 └─ ui/, util/                tema, zoombar bild, orientering m.m.
 ```

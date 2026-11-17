@@ -104,12 +104,20 @@ import kotlin.math.abs
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.RenderEffect
 import androidx.compose.material.icons.rounded.PhotoFilter
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.semantics.Role
+import se.snc.camera.ui.theme.GlassStrong
 
 @Composable
 fun CameraScreen(
     viewModel: CameraViewModel,
     onOpenGallery: (Uri?) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    updatedTo: String? = null,
+    onDismissUpdated: () -> Unit = {}
 ) {
     CameraTheme {
         val context = LocalContext.current
@@ -130,7 +138,7 @@ fun CameraScreen(
             }
         }
         if (hasCamera) {
-            CameraContent(viewModel, onOpenGallery, onOpenSettings)
+            CameraContent(viewModel, onOpenGallery, onOpenSettings, updatedTo, onDismissUpdated)
         } else {
             PermissionPrompt(
                 showSettings = askedOnce,
@@ -199,7 +207,9 @@ private fun PermissionPrompt(showSettings: Boolean, onRequest: () -> Unit, onOpe
 private fun CameraContent(
     viewModel: CameraViewModel,
     onOpenGallery: (Uri?) -> Unit,
-    onOpenSettings: () -> Unit
+    onOpenSettings: () -> Unit,
+    updatedTo: String?,
+    onDismissUpdated: () -> Unit
 ) {
     val context = LocalContext.current
     val view = LocalView.current
@@ -328,10 +338,12 @@ private fun CameraContent(
             Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .padding(top = 56.dp)
+                .padding(top = 58.dp)
+                .padding(horizontal = 8.dp)
                 .fillMaxWidth()
                 .aspectRatio(animatedRatio)
-                .clip(RoundedCornerShape(if (settings.aspect.portraitRatio == 1f && !state.mode.isVideo) 0.dp else 4.dp))
+                // Rundade hörn som i Alif-förslaget
+                .clip(RoundedCornerShape(24.dp))
         ) {
             AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
@@ -454,6 +466,24 @@ private fun CameraContent(
             ) {
                 val msg = state.message
                 if (msg != null) InfoPill(stringResource(msg))
+            }
+
+            // Efter en uppdatering (som i Alif): "SNC Camera är uppdaterad till …" – tryck för att stänga
+            if (updatedTo != null) {
+                LaunchedEffect(updatedTo) {
+                    delay(8000)
+                    onDismissUpdated()
+                }
+            }
+            AnimatedVisibility(
+                visible = updatedTo != null,
+                enter = fadeIn() + slideInVertically { -it },
+                exit = fadeOut() + slideOutVertically { -it },
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 12.dp, start = 16.dp, end = 16.dp)
+            ) {
+                UpdatedBanner(version = updatedTo ?: "", onClick = onDismissUpdated)
             }
 
             // Svart blink när bilden tas
@@ -690,7 +720,7 @@ private fun TopBar(
                     )
                 }
             } else {
-                Spacer(Modifier.size(40.dp))
+                Spacer(Modifier.size(44.dp))
             }
 
             if (mode == CameraMode.PHOTO && state.hdrAvailable) {
@@ -720,7 +750,7 @@ private fun TopBar(
                     rotation = rotation
                 )
                 GlassTextButton(
-                    text = "$videoFps",
+                    text = "$videoFps fps",
                     contentDescription = stringResource(R.string.cd_fps),
                     onClick = onFps,
                     rotation = rotation
@@ -759,8 +789,40 @@ private fun TopBar(
                 contentDescription = stringResource(R.string.cd_settings),
                 onClick = onSettings,
                 rotation = rotation,
-                dot = updateAvailable
+                dot = updateAvailable,
+                glow = updateAvailable
             )
+        }
+    }
+}
+
+/** Kortet efter en uppdatering: mint bock, "SNC Camera är uppdaterad till …" och "Allt ditt finns kvar". */
+@Composable
+private fun UpdatedBanner(version: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(20.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(GlassStrong)
+            .border(1.dp, Usb.Teal.copy(alpha = 0.5f), shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(
+            Modifier
+                .size(34.dp)
+                .clip(CircleShape)
+                .background(Usb.Teal.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Rounded.Check, contentDescription = null, tint = Usb.Teal, modifier = Modifier.size(20.dp))
+        }
+        Spacer(Modifier.size(12.dp))
+        Column {
+            Text(stringResource(R.string.updated_title, version), color = Usb.Text, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.updated_sub), color = Usb.Muted, fontSize = 13.sp)
         }
     }
 }

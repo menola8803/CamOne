@@ -51,7 +51,7 @@ import se.snc.camera.ui.components.SectionLabel
 import se.snc.camera.ui.components.UsbCard
 import se.snc.camera.ui.theme.BodyFont
 import se.snc.camera.ui.theme.DisplayFont
-import se.snc.camera.ui.theme.Usb
+import se.snc.camera.ui.theme.Ui
 import se.snc.camera.util.shareText
 import java.util.Locale
 
@@ -68,7 +68,7 @@ fun CameraInfoScreen(onBack: () -> Unit) {
     Column(
         Modifier
             .fillMaxSize()
-            .background(Usb.Bg)
+            .background(Ui.Bg)
             .statusBarsPadding()
             .navigationBarsPadding()
             .padding(horizontal = 16.dp)
@@ -90,7 +90,7 @@ fun CameraInfoScreen(onBack: () -> Unit) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                CircularProgressIndicator(color = Usb.Gold)
+                CircularProgressIndicator(color = Ui.Gold)
                 Spacer(Modifier.height(12.dp))
                 MutedText(stringResource(R.string.cams_loading))
             }
@@ -107,7 +107,7 @@ fun CameraInfoScreen(onBack: () -> Unit) {
             r.lenses.forEach { LensCard(it) }
             Text(
                 "${r.device}\n${r.android}",
-                color = Usb.Dim,
+                color = Ui.Dim,
                 fontFamily = BodyFont,
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
@@ -136,7 +136,7 @@ fun CameraInfoScreen(onBack: () -> Unit) {
 @Composable
 private fun Summary(r: CameraReport) {
     UsbCard(spacing = 12.dp) {
-        SectionLabel(stringResource(R.string.cams_summary), color = Usb.Gold)
+        SectionLabel(stringResource(R.string.cams_summary), color = Ui.Gold)
 
         @Composable
         fun accessRow(label: String, kind: LensKind) {
@@ -232,7 +232,7 @@ private fun Summary(r: CameraReport) {
         )
 
         LineDivider(Modifier.padding(top = 2.dp))
-        Text(stringResource(R.string.cams_legend), color = Usb.Dim, fontFamily = BodyFont, fontSize = 12.sp, lineHeight = 17.sp)
+        Text(stringResource(R.string.cams_legend), color = Ui.Dim, fontFamily = BodyFont, fontSize = 12.sp, lineHeight = 17.sp)
     }
 }
 
@@ -250,9 +250,9 @@ private fun kindName(kind: LensKind) = stringResource(
 @Composable
 private fun StatusRow(label: String, value: String, level: Level) {
     val (icon, color) = when (level) {
-        Level.USED -> Icons.Outlined.Check to Usb.Teal
-        Level.POSSIBLE -> Icons.Outlined.Star to Usb.Gold
-        Level.NO -> Icons.Outlined.Close to Usb.Danger
+        Level.USED -> Icons.Outlined.Check to Ui.Teal
+        Level.POSSIBLE -> Icons.Outlined.Star to Ui.Gold
+        Level.NO -> Icons.Outlined.Close to Ui.Danger
     }
     Row(verticalAlignment = Alignment.Top) {
         Box(
@@ -267,8 +267,8 @@ private fun StatusRow(label: String, value: String, level: Level) {
         }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-            Text(value, color = if (level == Level.NO) Usb.Dim else color, fontFamily = BodyFont, fontSize = 13.sp, lineHeight = 18.sp)
+            Text(label, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+            Text(value, color = if (level == Level.NO) Ui.Dim else color, fontFamily = BodyFont, fontSize = 13.sp, lineHeight = 18.sp)
         }
     }
 }
@@ -282,9 +282,9 @@ private fun LensCard(l: LensInfo) {
                 modifier = Modifier.weight(1f)
             )
             when {
-                !l.listed && l.parentId == null -> Badge(stringResource(R.string.cams_hidden_badge), Usb.Danger)
-                l.parentId != null -> Badge(stringResource(R.string.cams_physical_badge, l.parentId), Usb.Dim)
-                l.logical -> Badge(stringResource(R.string.cams_logical_badge), Usb.Teal)
+                !l.listed && l.parentId == null -> Badge(stringResource(R.string.cams_hidden_badge), Ui.Danger)
+                l.parentId != null -> Badge(stringResource(R.string.cams_physical_badge, l.parentId), Ui.Dim)
+                l.logical -> Badge(stringResource(R.string.cams_logical_badge), Ui.Teal)
             }
         }
         Text(
@@ -302,7 +302,7 @@ private fun LensCard(l: LensInfo) {
                 )
                 l.eqMm?.let { append(" · $it mm") }
             },
-            color = Usb.Text,
+            color = Ui.Text,
             fontFamily = DisplayFont,
             fontWeight = FontWeight.Bold,
             fontSize = 21.sp
@@ -366,8 +366,8 @@ private fun LensCard(l: LensInfo) {
 @Composable
 private fun InfoLine(label: String, value: String) {
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-        Text(label, color = Usb.Dim, fontFamily = BodyFont, fontSize = 14.sp, modifier = Modifier.weight(0.38f))
-        Text(value, color = Usb.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(0.62f))
+        Text(label, color = Ui.Dim, fontFamily = BodyFont, fontSize = 14.sp, modifier = Modifier.weight(0.38f))
+        Text(value, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(0.62f))
     }
 }
 
@@ -375,7 +375,7 @@ private fun InfoLine(label: String, value: String) {
 private fun Badge(text: String, color: Color) {
     Text(
         text,
-        color = Usb.Bg,
+        color = Ui.Bg,
         fontFamily = BodyFont,
         fontWeight = FontWeight.SemiBold,
         fontSize = 11.sp,

@@ -94,8 +94,15 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import kotlinx.coroutines.launch
+import se.snc.camera.ui.theme.GoldTint
+import se.snc.camera.ui.theme.GoldEdge
+import se.snc.camera.ui.theme.GlassLine
+import se.snc.camera.ui.theme.GlassStrong
 
-/** Rund ikonknapp med glaseffekt, roterar med telefonen. */
+/**
+ * Rund glasknapp som i Alif: mörkt glas med tunn guldkant. Påslagen ([tint] = guld eller [active]) får
+ * guldton och tydligare guldkant. [glow] = lysande guldring, t.ex. när en ny version finns.
+ */
 @Composable
 fun GlassIconButton(
     icon: ImageVector,
@@ -104,17 +111,32 @@ fun GlassIconButton(
     modifier: Modifier = Modifier,
     rotation: Float = 0f,
     tint: Color = OnGlass,
-    size: Dp = 40.dp,
-    background: Color = Color.Transparent,
+    size: Dp = 44.dp,
+    @Suppress("UNUSED_PARAMETER") background: Color = Color.Transparent,
     badge: String? = null,
     enabled: Boolean = true,
-    dot: Boolean = false
+    dot: Boolean = false,
+    active: Boolean = tint == CameraYellow,
+    glow: Boolean = false
 ) {
+    val on = active || glow
     Box(
         modifier = modifier
             .size(size)
+            .then(
+                if (glow) Modifier.drawBehind {
+                    drawCircle(
+                        Brush.radialGradient(
+                            listOf(Usb.Gold.copy(alpha = 0.45f), Color.Transparent),
+                            radius = this.size.minDimension * 0.9f
+                        ),
+                        radius = this.size.minDimension * 0.9f
+                    )
+                } else Modifier
+            )
             .clip(CircleShape)
-            .background(background)
+            .background(if (on) GoldTint else Glass)
+            .border(if (glow) 2.dp else 1.dp, if (glow) Usb.Gold else if (on) GoldEdge else GlassLine, CircleShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -122,42 +144,46 @@ fun GlassIconButton(
             Icon(
                 icon,
                 contentDescription = contentDescription,
-                tint = if (enabled) tint else tint.copy(alpha = 0.35f),
-                modifier = Modifier.size(size * 0.58f)
+                tint = when {
+                    !enabled -> tint.copy(alpha = 0.35f)
+                    glow -> Usb.Gold
+                    else -> tint
+                },
+                modifier = Modifier.size(size * 0.5f)
             )
-            if (dot) {
-                // guldprick, t.ex. när en ny version finns
-                Box(
-                    Modifier
-                        .align(Alignment.TopEnd)
-                        .offset(x = 4.dp, y = (-2).dp)
-                        .size(10.dp)
-                        .clip(CircleShape)
-                        .background(Usb.Bg)
-                        .padding(2.dp)
-                        .clip(CircleShape)
-                        .background(Usb.GoldL)
-                )
-            }
             if (badge != null) {
                 Text(
                     badge,
                     color = Usb.Bg,
                     fontSize = 8.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.ExtraBold,
                     modifier = Modifier
                         .align(Alignment.BottomEnd)
-                        .offset(x = 6.dp, y = 4.dp)
+                        .offset(x = 7.dp, y = 5.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(CameraYellow)
                         .padding(horizontal = 3.dp)
                 )
             }
         }
+        if (dot) {
+            // guldprick, t.ex. när en ny version finns
+            Box(
+                Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 2.dp, end = 2.dp)
+                    .size(10.dp)
+                    .clip(CircleShape)
+                    .background(Usb.Bg)
+                    .padding(2.dp)
+                    .clip(CircleShape)
+                    .background(Usb.Gold)
+            )
+        }
     }
 }
 
-/** Textknapp som visar t.ex. bildformat "4:3". */
+/** Textknapp i glas som visar t.ex. bildformat "4:3" eller "60 fps". */
 @Composable
 fun GlassTextButton(
     text: String,
@@ -165,15 +191,18 @@ fun GlassTextButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     rotation: Float = 0f,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    active: Boolean = false
 ) {
     Box(
         modifier = modifier
-            .height(40.dp)
-            .widthIn(min = 40.dp)
-            .clip(RoundedCornerShape(20.dp))
+            .height(44.dp)
+            .widthIn(min = 52.dp)
+            .clip(RoundedCornerShape(22.dp))
+            .background(if (active) GoldTint else Glass)
+            .border(1.dp, if (active) GoldEdge else GlassLine, RoundedCornerShape(22.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
-            .padding(horizontal = 2.dp)
+            .padding(horizontal = 10.dp)
             // Skärmläsare läser t.ex. "Bildformat, 4:3"
             .semantics(mergeDescendants = true) {
                 this.contentDescription = contentDescription
@@ -183,13 +212,14 @@ fun GlassTextButton(
     ) {
         Text(
             text,
-            color = if (enabled) OnGlass else OnGlass.copy(alpha = 0.35f),
-            fontSize = 11.sp,
+            color = when {
+                !enabled -> OnGlass.copy(alpha = 0.35f)
+                active -> CameraYellow
+                else -> OnGlass
+            },
+            fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .rotate(rotation)
-                .border(1.5.dp, if (enabled) OnGlass else OnGlass.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
-                .padding(horizontal = 4.dp, vertical = 1.dp)
+            modifier = Modifier.rotate(rotation)
         )
     }
 }
@@ -215,12 +245,12 @@ fun ShutterButton(
         },
         label = "shutterColor"
     )
-    val innerSize by animateDpAsState(if (isRecording) 30.dp else 62.dp, spring(stiffness = 500f), label = "innerSize")
-    val corner by animateDpAsState(if (isRecording) 8.dp else 31.dp, spring(stiffness = 500f), label = "innerCorner")
+    val innerSize by animateDpAsState(if (isRecording) 30.dp else 64.dp, spring(stiffness = 500f), label = "innerSize")
+    val corner by animateDpAsState(if (isRecording) 8.dp else 32.dp, spring(stiffness = 500f), label = "innerCorner")
 
     Box(
         modifier = modifier
-            .size(78.dp)
+            .size(84.dp)
             .scale(scale)
             .drawBehind {
                 // mjukt sken, som box-shadow på USB-appens .mic
@@ -232,7 +262,7 @@ fun ShutterButton(
                     radius = size.minDimension * 0.85f
                 )
             }
-            .border(3.dp, Usb.Text, CircleShape)
+            .border(3.dp, if (isVideo) RecordRed.copy(alpha = 0.6f) else Usb.Gold.copy(alpha = 0.6f), CircleShape)
             .clip(CircleShape)
             .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
@@ -265,10 +295,10 @@ fun GalleryThumbnail(
 ) {
     Box(
         modifier = modifier
-            .size(52.dp)
+            .size(56.dp)
             .rotate(rotation)
-            .clip(CircleShape)
-            .border(2.dp, Usb.Gold.copy(alpha = 0.75f), CircleShape)
+            .clip(RoundedCornerShape(18.dp))
+            .border(1.5.dp, Usb.Gold.copy(alpha = 0.6f), RoundedCornerShape(18.dp))
             .background(Glass)
             .clickable(role = Role.Button, onClickLabel = stringResource(R.string.cd_open_gallery), onClick = onClick),
         contentAlignment = Alignment.Center
@@ -314,7 +344,7 @@ fun GalleryThumbnail(
 fun SwitchLensButton(rotation: Float, enabled: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var spinTarget by remember { mutableFloatStateOf(0f) }
     val spin by animateFloatAsState(spinTarget, tween(400), label = "lensSpin")
-    GlassIconButton(
+    GoldSquareButton(
         icon = Icons.Rounded.FlipCameraAndroid,
         contentDescription = stringResource(R.string.cd_switch_camera),
         onClick = {
@@ -322,8 +352,6 @@ fun SwitchLensButton(rotation: Float, enabled: Boolean, onClick: () -> Unit, mod
             onClick()
         },
         rotation = rotation + spin,
-        size = 52.dp,
-        background = Glass,
         enabled = enabled,
         modifier = modifier
     )
@@ -331,14 +359,43 @@ fun SwitchLensButton(rotation: Float, enabled: Boolean, onClick: () -> Unit, mod
 
 @Composable
 fun PauseButton(isPaused: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    GlassIconButton(
+    GoldSquareButton(
         icon = if (isPaused) Icons.Rounded.PlayArrow else Icons.Rounded.Pause,
         contentDescription = stringResource(if (isPaused) R.string.cd_resume else R.string.cd_pause),
         onClick = onClick,
-        size = 52.dp,
-        background = Glass,
         modifier = modifier
     )
+}
+
+/** Rundad fyrkant med guldton och guldkant, som Alifs knappar (byt kamera, paus). */
+@Composable
+fun GoldSquareButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    rotation: Float = 0f,
+    enabled: Boolean = true
+) {
+    val shape = RoundedCornerShape(18.dp)
+    Box(
+        modifier = modifier
+            .size(56.dp)
+            .clip(shape)
+            .background(GoldTint)
+            .border(1.dp, GoldEdge, shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            icon,
+            contentDescription = contentDescription,
+            tint = if (enabled) Usb.Gold else Usb.Gold.copy(alpha = 0.35f),
+            modifier = Modifier
+                .size(26.dp)
+                .rotate(rotation)
+        )
+    }
 }
 
 /**
@@ -404,13 +461,22 @@ fun ModeSelector(
         derivedStateOf { if (dragging && !offset.value.isNaN()) closestTo(offset.value) ?: selected else selected }
     }
 
+    // Bredden på läget i mitten – den guldtonade markeringen följer den.
+    val litWidthPx = positions[highlighted]?.second ?: 0f
+    val litWidth by animateDpAsState(with(density) { litWidthPx.toDp() }, spring(stiffness = 500f), label = "litWidth")
+
     // Svepet sitter på hela raden (även tomrummet på sidorna). Ett tryck går fortfarande till lägena,
     // eftersom svepet tar över först när fingret har rört sig en bit.
+    // Utseende som Alifs meny: glas med tunn guldkant och guldtonad markering under läget i mitten.
+    val barShape = RoundedCornerShape(24.dp)
     Box(
         modifier
             .fillMaxWidth()
-            .height(48.dp)
-            .clipToBounds()
+            .padding(horizontal = 16.dp)
+            .height(60.dp)
+            .clip(barShape)
+            .background(GlassStrong)
+            .border(1.dp, GlassLine, barShape)
             .onSizeChanged { widthPx = it.width }
             .draggable(
                 state = dragState,
@@ -438,6 +504,27 @@ fun ModeSelector(
                 }
             )
     ) {
+        if (litWidthPx > 0f) {
+            Box(
+                Modifier
+                    .align(Alignment.Center)
+                    .width(litWidth)
+                    .height(50.dp)
+                    .clip(RoundedCornerShape(19.dp))
+                    .background(GoldTint)
+                    .border(1.dp, Usb.Gold.copy(alpha = 0.5f), RoundedCornerShape(19.dp))
+            ) {
+                Box(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(bottom = 7.dp)
+                        .width(16.dp)
+                        .height(3.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Usb.Gold)
+                )
+            }
+        }
         Row(
             modifier = Modifier
                 .align(Alignment.CenterStart)
@@ -452,16 +539,16 @@ fun ModeSelector(
                 Text(
                     text = stringResource(mode.label).uppercase(Locale.getDefault()),
                     color = color,
-                    fontSize = 13.sp,
-                    fontWeight = if (lit) FontWeight.Bold else FontWeight.Medium,
-                    letterSpacing = 1.2.sp,
+                    fontSize = 12.sp,
+                    fontWeight = if (lit) FontWeight.ExtraBold else FontWeight.Bold,
+                    letterSpacing = 0.6.sp,
                     modifier = Modifier
                         .onGloballyPositioned { c ->
                             positions[mode] = c.positionInParent().x to c.size.width.toFloat()
                         }
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(RoundedCornerShape(19.dp))
                         .selectable(selected = mode == selected, enabled = enabled, role = Role.Tab) { onSelect(mode) }
-                        .padding(horizontal = 14.dp, vertical = 8.dp)
+                        .padding(horizontal = 16.dp, vertical = 14.dp)
                 )
             }
         }
@@ -489,29 +576,31 @@ fun ZoomChips(
     val activeIndex = stops.indices.lastOrNull { zoom >= stops[it] - 0.01f } ?: 0
     Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
+            .clip(RoundedCornerShape(26.dp))
             .background(Glass)
+            .border(1.dp, GlassLine, RoundedCornerShape(26.dp))
             .padding(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         stops.forEachIndexed { index, stop ->
             val active = index == activeIndex
-            val size by animateDpAsState(if (active) 38.dp else 32.dp, label = "chipSize")
+            val size by animateDpAsState(if (active) 42.dp else 38.dp, label = "chipSize")
             val label = if (active) formatZoom(zoom, withX = true) else formatZoom(stop, withX = false)
             Box(
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .background(if (active) Usb.Bg.copy(alpha = 0.8f) else Color.Transparent)
+                    .background(if (active) GoldTint else Color.Transparent)
+                    .border(1.dp, if (active) Usb.Gold.copy(alpha = 0.6f) else Color.Transparent, CircleShape)
                     .clickable(role = Role.Button) { onZoom(stop) },
                 contentAlignment = Alignment.Center
             ) {
                 Text(
                     label,
                     color = if (active) CameraYellow else OnGlass,
-                    fontSize = if (active) 12.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
+                    fontSize = 13.sp,
+                    fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold,
                     modifier = Modifier.rotate(rotation)
                 )
             }
@@ -566,13 +655,14 @@ fun LensPill(badge: LensBadge, rotation: Float, modifier: Modifier = Modifier) {
     )
     Text(
         if (badge.eqMm != null) stringResource(R.string.lens_pill, kind, badge.eqMm) else kind,
-        color = Usb.GoldL,
+        color = OnGlass,
         fontSize = 12.sp,
-        fontWeight = FontWeight.SemiBold,
+        fontWeight = FontWeight.Bold,
         modifier = modifier
             .rotate(rotation)
             .clip(RoundedCornerShape(50))
-            .background(Usb.Bg.copy(alpha = 0.8f))
+            .background(GlassStrong)
+            .border(1.dp, GlassLine, RoundedCornerShape(50))
             .padding(horizontal = 12.dp, vertical = 5.dp)
     )
 }

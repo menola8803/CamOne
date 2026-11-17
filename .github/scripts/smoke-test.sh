@@ -40,8 +40,12 @@ step "Installation"
 check "APK installeras" adb install -r -g "$APK"
 adb logcat -c
 
+# Starttid i ms (am start -W: tills första bilden är ritad)
+start_ms() { adb shell am start -W -n "$PKG/.MainActivity" 2>&1 | tee -a "$OUT/ui.log" | grep -oE 'TotalTime: [0-9]+' | grep -oE '[0-9]+' | head -1; }
+
 step "Kamera"
-adb shell am start -W -n "$PKG/.MainActivity" >> "$OUT/ui.log" 2>&1
+FIRST_MS=$(start_ms)
+log "  Första starten efter installationen: ${FIRST_MS:-?} ms"
 sleep 8
 shot 01-kamera
 check "Appen startar och lever" alive
@@ -56,9 +60,13 @@ after=$(count '\.jpg')
 check "Foto tas med volymknappen och sparas ($before → $after)" [ "$after" -gt "$before" ]
 
 step "Omstart tre gånger (fångar startproblem)"
+COLD=()
 for n in 1 2 3; do
   adb shell am force-stop "$PKG"
-  adb shell am start -W -n "$PKG/.MainActivity" >> "$OUT/ui.log" 2>&1
+  sleep 1
+  T=$(start_ms)
+  COLD+=("${T:-99999}")
+  log "  Kallstart $n: ${T:-?} ms"
   sleep 7
   before=$(count '\.jpg')
   key KEYCODE_VOLUME_UP
@@ -67,6 +75,16 @@ for n in 1 2 3; do
   check "Omstart $n: foto sparas ($before → $after)" [ "$after" -gt "$before" ]
 done
 shot 02b-efter-omstarter
+
+step "Starttid (kameran först – allt annat laddas efteråt)"
+# Gränser för emulatorn i GitHub Actions (långsammare än telefonen). Blir starten långsammare stoppas bygget.
+FIRST_LIMIT=5000
+COLD_LIMIT=3500
+MEDIAN=$(printf '%s\n' "${COLD[@]}" | sort -n | sed -n '2p')
+log "  Kallstart median: ${MEDIAN:-?} ms (gräns $COLD_LIMIT ms), första starten: ${FIRST_MS:-?} ms (gräns $FIRST_LIMIT ms)"
+echo "::notice title=Starttid::Kallstart median ${MEDIAN:-?} ms · första starten ${FIRST_MS:-?} ms (emulator)"
+check "Första starten går fort (${FIRST_MS:-?} ms ≤ $FIRST_LIMIT ms)" [ "${FIRST_MS:-99999}" -le "$FIRST_LIMIT" ]
+check "Kallstart går fort (median ${MEDIAN:-?} ms ≤ $COLD_LIMIT ms)" [ "${MEDIAN:-99999}" -le "$COLD_LIMIT" ]
 
 step "Bildformat, rutnät och självutlösare"
 tap --desc "Aspect ratio"; sleep 3; shot 03-format-1-1
@@ -278,8 +296,29 @@ shot 22-om
 check "Om visar Developer: Claes Sundman S.N.C AB" $UI exists --text "Developer: Claes Sundman S.N.C AB"
 key KEYCODE_BACK
 sleep 2
+
+step "Manual och tema"
+$UI tap --text "Manual" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Manual i inställningarna"
+sleep 3
+shot 22b-manual
+check "Manualen öppnas med sina avsnitt" $UI exists --text "THE CAMERA" --timeout 10
+check "Manualen visar vilken version den gäller" $UI exists --contains "For version"
+check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 10
+key KEYCODE_BACK
+sleep 2
+$UI tap --text "Beige" --scroll --timeout 10 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte temat Beige"
+sleep 2
+shot 22c-tema-beige
+read -r tr tg tb < <($UI rgb --region 0.0,0.0,1.0,0.05 2>> "$OUT/ui.log")
+log "  Inställningar i Beige: R=${tr:-?} G=${tg:-?} B=${tb:-?}"
+check "Temat Beige gör inställningarna ljusa" [ "${tr:-0}" -ge 180 ]
+tap --text "Dark"
+sleep 2
+read -r tr tg tb < <($UI rgb --region 0.0,0.0,1.0,0.05 2>> "$OUT/ui.log")
+check "Temat Mörk gör dem mörka igen" [ "${tr:-255}" -le 60 ]
 key KEYCODE_BACK
 sleep 4
+check "Kameran är mörk även efter temabytet" $UI exists --desc "Switch camera"
 
 step "Text i bild (delas till appen)"
 if python3 -c "import PIL" 2> /dev/null || pip install --quiet pillow > /dev/null 2>&1; then
