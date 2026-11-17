@@ -204,6 +204,7 @@ object CameraProbe {
         )
     }
 
+    @OptIn(androidx.camera.video.ExperimentalHighSpeedVideo::class)
     private suspend fun cameraXExtensions(context: Context, appBackId: String?): ExtensionSupport = try {
         val provider = ProcessCameraProvider.getInstance(context).await()
         val ext = ExtensionsManager.getInstanceAsync(context, provider).await()
