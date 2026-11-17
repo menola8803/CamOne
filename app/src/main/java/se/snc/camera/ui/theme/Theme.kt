@@ -153,6 +153,7 @@ val Glass = Color(0xA6132225)
 val GlassStrong = Color(0xD9132225)
 val GlassLine = DarkPalette.GlassBorder
 val GoldTint = DarkPalette.BtnBg
+val GoldTintStrong = Color(0x40E8B04A)
 val GoldEdge = DarkPalette.BtnBorder
 val OnGlass = DarkPalette.Text
 val OnGlassDim = DarkPalette.Muted

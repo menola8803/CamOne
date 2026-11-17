@@ -194,8 +194,9 @@
 
     <!-- Uppdateringar (som i Direct-appen) -->
     <string name="update_title">Uppdateringar</string>
-    <string name="update_sub">Hämtas från GitHub Releases</string>
-    <string name="update_row_sub">Söker efter ny version på GitHub</string>
+    <string name="update_version_line">Version %1$s</string>
+    <string name="update_sub">Söker efter ny version av SNC Camera</string>
+    <string name="update_row_sub">Söker efter ny version</string>
     <string name="update_row_available">Ny version %1$s finns</string>
     <string name="update_up_to_date">Du har senaste versionen</string>
     <string name="update_checked_at">SNC Camera %1$s · senast kontrollerad %2$s</string>
@@ -207,8 +208,8 @@
     <string name="update_installed">Installerad version</string>
     <string name="update_latest_release">Senaste release på GitHub</string>
     <string name="update_source">Källa</string>
-    <string name="update_auto">Sök automatiskt</string>
-    <string name="update_auto_sub">När appen startar, högst var sjätte timme</string>
+    <string name="update_auto">Sök efter ny version automatiskt</string>
+    <string name="update_auto_sub">SNC Camera söker högst var sjätte timme när appen öppnas. Finns en ny version lyser kugghjulet i kameran och ett kort visas överst i Inställningar. Tryck Uppdatera så laddas versionen ner och kontrolleras, och Androids installationsruta öppnas – tryck Uppdatera där (det sista trycket kräver Android). Bilder och inställningar finns kvar, och SNC Camera startar om av sig själv efteråt; stoppar Android det kommer en avisering att trycka på.</string>
     <string name="update_privacy">Sökningen visar din IP-adress för GitHub. Stäng av automatisk sökning om du inte vill det.</string>
     <string name="update_install_note">Uppdateringen installeras ovanpå appen. Bilder och inställningar behålls. Android frågar om du vill installera.</string>
     <string name="update_new">Ny version</string>
@@ -224,7 +225,7 @@
     <string name="update_allow">Android frågar om du vill tillåta installation från SNC Camera. Tillåt och tryck Installera igen.</string>
     <string name="update_open_page">Öppna nedladdningssidan</string>
     <string name="update_err_network">Nedladdningen misslyckades. Kontrollera anslutningen och försök igen.</string>
-    <string name="update_err_checksum">Filen stämde inte med kontrollsumman på GitHub och togs bort.</string>
+    <string name="update_err_checksum">Filen stämde inte med den publicerade kontrollsumman och togs bort.</string>
     <string name="update_err_package">Filen är inte en uppdatering av SNC Camera.</string>
     <string name="update_err_older">Filen är inte nyare än den installerade versionen.</string>
     <string name="update_err_signature">Den nya versionen är signerad med en annan nyckel och kan inte installeras ovanpå. Avinstallera SNC Camera och installera den nya från nedladdningssidan – dina bilder behålls.</string>

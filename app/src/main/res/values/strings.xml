@@ -196,21 +196,22 @@
 
     <!-- Uppdateringar (som i Direct-appen) -->
     <string name="update_title">Updates</string>
-    <string name="update_sub">From GitHub Releases</string>
-    <string name="update_row_sub">Checks GitHub for a new version</string>
+    <string name="update_version_line">Version %1$s</string>
+    <string name="update_sub">Looks for a new version of SNC Camera</string>
+    <string name="update_row_sub">Looks for a new version</string>
     <string name="update_row_available">New version %1$s available</string>
     <string name="update_up_to_date">You have the latest version</string>
     <string name="update_checked_at">SNC Camera %1$s · last checked %2$s</string>
     <string name="update_never_checked">SNC Camera %1$s · not checked yet</string>
     <string name="update_checking">Checking…</string>
-    <string name="update_check">Check for updates</string>
+    <string name="update_check">Check for update</string>
     <string name="update_failed">Could not check for updates</string>
     <string name="update_no_release">No release found</string>
     <string name="update_installed">Installed version</string>
     <string name="update_latest_release">Latest release on GitHub</string>
     <string name="update_source">Source</string>
-    <string name="update_auto">Check automatically</string>
-    <string name="update_auto_sub">When the app starts, at most every 6 hours</string>
+    <string name="update_auto">Look for a new version automatically</string>
+    <string name="update_auto_sub">SNC Camera looks at most every six hours when the app is opened. When there is a new version the gear in the camera glows and a card is shown at the top of Settings. Tap Update and the new version is downloaded and checked, and Android\'s installer opens – tap Update there (Android requires that last tap). Your photos and settings stay, and SNC Camera starts again by itself afterwards; if Android stops that, a notification to tap comes instead.</string>
     <string name="update_privacy">Checking shows your IP address to GitHub. Turn off automatic checking if you don\'t want that.</string>
     <string name="update_install_note">The update is installed on top of the app. Photos and settings are kept. Android asks whether you want to install.</string>
     <string name="update_new">New version</string>
@@ -226,7 +227,7 @@
     <string name="update_allow">Android asks whether to allow installs from SNC Camera. Allow it and tap Install again.</string>
     <string name="update_open_page">Open the download page</string>
     <string name="update_err_network">The download failed. Check the connection and try again.</string>
-    <string name="update_err_checksum">The file did not match the checksum on GitHub and was deleted.</string>
+    <string name="update_err_checksum">The file did not match the published checksum and was deleted.</string>
     <string name="update_err_package">The file is not an update of SNC Camera.</string>
     <string name="update_err_older">The file is not newer than the installed version.</string>
     <string name="update_err_signature">The new version is signed with a different key, so it can\'t be installed on top. Uninstall SNC Camera and install the new version from the download page – your photos are kept.</string>

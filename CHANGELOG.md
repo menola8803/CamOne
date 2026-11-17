@@ -2,6 +2,11 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.5.1 – 2026-11-17
+
+- Uppdateringar ser ut som i Alif: kortet "Version 1.5.1" med knappen Sök efter uppdatering direkt under, och sist valet Sök efter ny version automatiskt med en förklaring av hur det går till. Raden Källa är borta.
+- Knapparna överst i kameran har Alifs utseende: guldton, guldkant och guldikoner. Påslagna knappar får starkare guld.
+
 ## Version 1.5.0 – 2026-11-17
 
 - Samma tema som Alif: typsnitten Plus Jakarta Sans och Cinzel för ordmärket, knappar med guldton, tunn guldkant och guldtext, val i en glasram med ett guldstreck under det valda, kort med tunn kant och rader med ›.

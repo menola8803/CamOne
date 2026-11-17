@@ -23,13 +23,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material.icons.outlined.CloudOff
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.automirrored.outlined.OpenInNew
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Shield
-import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -55,12 +52,10 @@ import se.snc.camera.R
 import se.snc.camera.data.AppSettings
 import se.snc.camera.data.SettingsRepository
 import se.snc.camera.ui.components.LineDivider
-import se.snc.camera.ui.components.NavItem
 import se.snc.camera.ui.components.PrimaryButton
 import se.snc.camera.ui.components.ScreenHeader
 import se.snc.camera.ui.components.SecondaryButton
 import se.snc.camera.ui.components.SectionLabel
-import se.snc.camera.ui.components.ToggleRow
 import se.snc.camera.ui.components.UsbCard
 import se.snc.camera.ui.theme.BodyFont
 import se.snc.camera.ui.theme.DisplayFont
@@ -75,10 +70,13 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
+import se.snc.camera.ui.components.UsbSwitch
 
 /**
- * "Uppdateringar" – samma flöde och uppställning som i Direct-appen:
- * senaste versionen (bock) eller NY VERSION med storlek, förlopp, verifiering och ändringar.
+ * "Uppdateringar" – samma uppställning som i Alif: versionskort med knappen Sök efter uppdatering
+ * direkt under, eller NY VERSION med förlopp, kontroll och ändringar, och sist valet att söka automatiskt.
  */
 @Composable
 fun UpdateScreen(
@@ -133,13 +131,19 @@ fun UpdateScreen(
     val available = (check as? CheckState.Available)?.release
     val current = BuildConfig.VERSION_NAME
 
+    val checking = check == CheckState.Checking
+
+    // Som Alifs Uppdateringar: rubrik, versionskort, knappen direkt under, sist valet "sök automatiskt"
     Column(
         Modifier
             .fillMaxSize()
             .background(Ui.Bg)
             .statusBarsPadding()
             .navigationBarsPadding()
+            .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp)
+            .padding(bottom = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         ScreenHeader(
             title = stringResource(R.string.update_title),
@@ -147,65 +151,10 @@ fun UpdateScreen(
             backDescription = stringResource(R.string.cd_back),
             onBack = onBack
         )
-        Spacer(Modifier.height(14.dp))
 
-        Column(
-            Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            if (available != null) {
-                NewVersionCard(available, current, download, state.allowInstallHint)
-            } else {
-                StatusCard(check, current, settings.lastUpdateCheck)
-            }
-
-            // Versioner och källa (som Directs informationskort)
-            if (available == null) {
-                UsbCard {
-                    InfoRow(stringResource(R.string.update_installed), current)
-                    InfoRow(
-                        stringResource(R.string.update_latest_release),
-                        when (check) {
-                            is CheckState.UpToDate -> check.latest.tag
-                            CheckState.NoRelease -> "–"
-                            else -> settings.latestKnownVersion.takeIf { it.isNotBlank() }?.let { "v$it" } ?: "–"
-                        }
-                    )
-                    InfoRow(stringResource(R.string.update_source), UpdateManager.UPDATE_REPO.lowercase())
-                }
-            }
-
-            UsbCard(spacing = 6.dp) {
-                ToggleRow(
-                    title = stringResource(R.string.update_auto),
-                    subtitle = stringResource(R.string.update_auto_sub),
-                    checked = settings.autoUpdateCheck,
-                    onChange = manager::setAutoCheck
-                )
-                if (available != null) {
-                    NavItem(
-                        title = stringResource(R.string.update_source),
-                        subtitle = "GitHub · ${UpdateManager.UPDATE_REPO.lowercase()}",
-                        onClick = manager::openRepository,
-                        modifier = Modifier.padding(top = 2.dp),
-                        compact = true
-                    )
-                }
-            }
-
-            NoteCard(
-                stringResource(if (available != null) R.string.update_install_note else R.string.update_privacy)
-            )
-        }
-
-        // Knappar längst ner
-        Column(
-            Modifier.padding(top = 12.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            if (available != null && available.apkUrl != null) {
+        if (available != null) {
+            NewVersionCard(available, current, download, state.allowInstallHint)
+            if (available.apkUrl != null) {
                 when (download) {
                     is DownloadState.Ready -> PrimaryButton(
                         text = stringResource(R.string.update_install, available.version),
@@ -238,7 +187,7 @@ fun UpdateScreen(
                     )
                 }
             }
-            if (available != null && (download is DownloadState.Failed || available.apkUrl == null)) {
+            if (download is DownloadState.Failed || available.apkUrl == null) {
                 SecondaryButton(
                     text = stringResource(R.string.update_open_page),
                     onClick = manager::openReleasePage,
@@ -246,30 +195,44 @@ fun UpdateScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            val checking = check == CheckState.Checking
-            if (available == null) {
-                PrimaryButton(
-                    text = stringResource(if (checking) R.string.update_checking else R.string.update_check),
-                    onClick = manager::check,
-                    icon = Icons.Outlined.Search,
-                    enabled = !checking,
-                    modifier = Modifier.fillMaxWidth()
+        } else {
+            VersionCard(check, current, settings.lastUpdateCheck)
+            PrimaryButton(
+                text = stringResource(if (checking) R.string.update_checking else R.string.update_check),
+                onClick = manager::check,
+                enabled = !checking,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+
+        // Sök automatiskt – med Alifs förklaring av hela flödet
+        UsbCard(spacing = 10.dp) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    stringResource(R.string.update_auto),
+                    color = Ui.Text,
+                    fontFamily = BodyFont,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp,
+                    modifier = Modifier.weight(1f)
                 )
-            } else {
-                SecondaryButton(
-                    text = stringResource(if (checking) R.string.update_checking else R.string.update_check),
-                    onClick = manager::check,
-                    enabled = !checking && download !is DownloadState.Downloading,
-                    modifier = Modifier.fillMaxWidth()
-                )
+                Spacer(Modifier.width(12.dp))
+                UsbSwitch(checked = settings.autoUpdateCheck, onCheckedChange = manager::setAutoCheck)
             }
+            Text(
+                stringResource(R.string.update_auto_sub),
+                color = Ui.Muted,
+                fontFamily = BodyFont,
+                fontSize = 14.sp,
+                lineHeight = 21.sp
+            )
         }
     }
 }
 
-/** Kortet överst när det inte finns någon ny version: bock, sökning eller fel. */
+/** Alifs versionskort: "Version 1.5.0" och en rad om senaste sökningen. */
 @Composable
-private fun StatusCard(check: CheckState, current: String, lastCheck: Long) {
+private fun VersionCard(check: CheckState, current: String, lastCheck: Long) {
     val context = LocalContext.current
     val checkedText = if (lastCheck > 0) {
         val time = DateFormat.getTimeFormat(context).format(Date(lastCheck))
@@ -279,58 +242,38 @@ private fun StatusCard(check: CheckState, current: String, lastCheck: Long) {
     } else {
         stringResource(R.string.update_never_checked, current)
     }
-    UsbCard(spacing = 12.dp, padding = androidx.compose.foundation.layout.PaddingValues(horizontal = 20.dp, vertical = 26.dp)) {
-        Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-            when (check) {
-                CheckState.Checking -> StatusCircle(null, Ui.Gold) {
-                    CircularProgressIndicator(color = Ui.Gold, strokeWidth = 3.dp, modifier = Modifier.size(34.dp))
-                }
-                is CheckState.Failed -> StatusCircle(Icons.Outlined.CloudOff, Ui.Danger)
-                CheckState.NoRelease -> StatusCircle(Icons.Outlined.SystemUpdate, Ui.Teal)
-                CheckState.Idle -> StatusCircle(Icons.Outlined.SystemUpdate, Ui.Teal)
-                else -> StatusCircle(Icons.Outlined.Check, Ui.Gold)
+    UsbCard(spacing = 4.dp, padding = PaddingValues(horizontal = 20.dp, vertical = 18.dp)) {
+        Text(
+            stringResource(R.string.update_version_line, current),
+            color = Ui.Text,
+            fontFamily = BodyFont,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 18.sp
+        )
+        when (check) {
+            CheckState.Checking -> Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(color = Ui.Gold, strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(8.dp))
+                Text(stringResource(R.string.update_checking), color = Ui.Muted, fontFamily = BodyFont, fontSize = 14.sp)
             }
-            Spacer(Modifier.height(16.dp))
-            Text(
-                stringResource(
-                    when (check) {
-                        CheckState.Checking -> R.string.update_checking
-                        is CheckState.Failed -> R.string.update_failed
-                        CheckState.NoRelease -> R.string.update_no_release
-                        CheckState.Idle -> R.string.update_check
-                        else -> R.string.update_up_to_date
-                    }
-                ),
-                color = Ui.Text,
-                fontFamily = DisplayFont,
-                fontWeight = FontWeight.Bold,
-                fontSize = 24.sp,
-                lineHeight = 28.sp,
-                textAlign = TextAlign.Center
-            )
-            Spacer(Modifier.height(8.dp))
-            Text(
-                checkedText,
-                color = Ui.Muted,
+            is CheckState.Failed -> Text(
+                stringResource(R.string.update_failed),
+                color = Ui.Danger,
                 fontFamily = BodyFont,
-                fontSize = 14.sp,
-                textAlign = TextAlign.Center
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
+            )
+            CheckState.NoRelease -> Text(stringResource(R.string.update_no_release), color = Ui.Muted, fontFamily = BodyFont, fontSize = 14.sp)
+            CheckState.Idle -> Unit
+            else -> Text(
+                stringResource(R.string.update_up_to_date),
+                color = Ui.Teal,
+                fontFamily = BodyFont,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 14.sp
             )
         }
-    }
-}
-
-@Composable
-private fun StatusCircle(icon: ImageVector?, color: androidx.compose.ui.graphics.Color, content: (@Composable () -> Unit)? = null) {
-    Box(
-        Modifier
-            .size(68.dp)
-            .clip(CircleShape)
-            .background(color.copy(alpha = 0.16f)),
-        contentAlignment = Alignment.Center
-    ) {
-        if (content != null) content()
-        else if (icon != null) Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(34.dp))
+        Text(checkedText, color = Ui.Muted, fontFamily = BodyFont, fontSize = 13.sp)
     }
 }
 
@@ -338,7 +281,16 @@ private fun StatusCircle(icon: ImageVector?, color: androidx.compose.ui.graphics
 @Composable
 private fun NewVersionCard(release: ReleaseInfo, current: String, download: DownloadState, allowHint: Boolean) {
     val context = LocalContext.current
-    UsbCard(spacing = 10.dp, padding = androidx.compose.foundation.layout.PaddingValues(18.dp)) {
+    val cardShape = RoundedCornerShape(22.dp)
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(cardShape)
+            .background(Ui.Card)
+            .border(1.5.dp, Ui.Gold, cardShape)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             SectionLabel(stringResource(R.string.update_new), color = Ui.Gold, modifier = Modifier.weight(1f))
             Text(
@@ -358,8 +310,8 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
             color = Ui.Text,
             fontFamily = DisplayFont,
             fontWeight = FontWeight.Bold,
-            fontSize = 32.sp,
-            letterSpacing = (-0.5).sp
+            fontSize = 22.sp,
+            letterSpacing = (-0.4).sp
         )
         val size = if (release.apkSize > 0) Formatter.formatShortFileSize(context, release.apkSize) else "–"
         val released = if (release.publishedAt > 0) {
@@ -460,22 +412,4 @@ private fun StatusLine(icon: ImageVector, text: String, color: androidx.compose.
     }
 }
 
-@Composable
-private fun InfoRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, color = Ui.Dim, fontFamily = BodyFont, fontSize = 15.sp, modifier = Modifier.weight(1f))
-        Text(value, color = Ui.Text, fontFamily = BodyFont, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
-    }
-}
 
-/** Liten notis med sköld (som i Direct). */
-@Composable
-private fun NoteCard(text: String) {
-    UsbCard {
-        Row(verticalAlignment = Alignment.Top) {
-            Icon(Icons.Outlined.Shield, contentDescription = null, tint = Ui.Gold, modifier = Modifier.size(18.dp).padding(top = 2.dp))
-            Spacer(Modifier.width(12.dp))
-            Text(text, color = Ui.Muted, fontFamily = BodyFont, fontSize = 14.sp, lineHeight = 21.sp)
-        }
-    }
-}

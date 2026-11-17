@@ -99,6 +99,7 @@ import se.snc.camera.ui.theme.GoldEdge
 import se.snc.camera.ui.theme.GlassLine
 import se.snc.camera.ui.theme.GlassStrong
 import androidx.compose.foundation.layout.width
+import se.snc.camera.ui.theme.GoldTintStrong
 
 /**
  * Rund glasknapp som i Alif: mörkt glas med tunn guldkant. Påslagen ([tint] = guld eller [active]) får
@@ -136,8 +137,9 @@ fun GlassIconButton(
                 } else Modifier
             )
             .clip(CircleShape)
-            .background(if (on) GoldTint else Glass)
-            .border(if (glow) 2.dp else 1.dp, if (glow) Usb.Gold else if (on) GoldEdge else GlassLine, CircleShape)
+            // Alifs knapp: guldton och guldkant – påslagen får starkare ton och hel guldkant
+            .background(if (on) GoldTintStrong else GoldTint)
+            .border(if (glow) 2.dp else 1.dp, if (on) Usb.Gold else GoldEdge, CircleShape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -146,8 +148,8 @@ fun GlassIconButton(
                 icon,
                 contentDescription = contentDescription,
                 tint = when {
-                    !enabled -> tint.copy(alpha = 0.35f)
-                    glow -> Usb.Gold
+                    !enabled -> Usb.Gold.copy(alpha = 0.35f)
+                    tint == OnGlass || tint == CameraYellow -> Usb.Gold
                     else -> tint
                 },
                 modifier = Modifier.size(size * 0.5f)
@@ -200,8 +202,8 @@ fun GlassTextButton(
             .height(44.dp)
             .widthIn(min = 52.dp)
             .clip(RoundedCornerShape(22.dp))
-            .background(if (active) GoldTint else Glass)
-            .border(1.dp, if (active) GoldEdge else GlassLine, RoundedCornerShape(22.dp))
+            .background(if (active) GoldTintStrong else GoldTint)
+            .border(1.dp, if (active) Usb.Gold else GoldEdge, RoundedCornerShape(22.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 10.dp)
             // Skärmläsare läser t.ex. "Bildformat, 4:3"
@@ -213,13 +215,9 @@ fun GlassTextButton(
     ) {
         Text(
             text,
-            color = when {
-                !enabled -> OnGlass.copy(alpha = 0.35f)
-                active -> CameraYellow
-                else -> OnGlass
-            },
+            color = if (enabled) Usb.Gold else Usb.Gold.copy(alpha = 0.35f),
             fontSize = 13.sp,
-            fontWeight = FontWeight.Bold,
+            fontWeight = FontWeight.ExtraBold,
             modifier = Modifier.rotate(rotation)
         )
     }
