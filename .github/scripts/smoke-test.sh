@@ -115,6 +115,11 @@ ratio() { python3 -c "from PIL import Image; w,h=Image.open('$1').size; print(f'
 step "Bildformat (4:3 → 1:1 → 16:9 → 3:2 → Helskärm), rutnät och självutlösare"
 tap --desc "Aspect ratio"; sleep 3; shot 03-format-1-1
 tap --desc "Aspect ratio"; sleep 3; shot 04-format-16-9
+# 16:9 tas i 4:3 och beskärs efteråt (kamerans eget 16:9-läge gav en randig remsa på OnePlus 13R)
+F169=$(snap jpg format-16-9.jpg)
+R169=$(ratio "$OUT/format-16-9.jpg")
+log "  16:9-bild: ${F169:-?} form ${R169:-?}"
+check "16:9 ger en bild i formatet 16:9 (${R169:-?})" python3 -c "import sys; sys.exit(0 if abs(float('${R169:-0}')-16/9)<0.03 else 1)"
 tap --desc "Aspect ratio"; sleep 3; shot 04b-format-3-2
 F32=$(snap jpg format-3-2.jpg)
 R32=$(ratio "$OUT/format-3-2.jpg")

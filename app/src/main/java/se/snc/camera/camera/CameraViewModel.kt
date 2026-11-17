@@ -318,11 +318,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 ext.getExtensionEnabledCameraSelector(cameraBase, wantedExtension)
             } else cameraBase
             val fpsRange = if (st.mode.isVideo && highFps) Range(60, 60) else null
-            val photoAspect = if (s.aspect == AspectOption.RATIO_16_9) {
-                AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY
-            } else AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY
-            // Helskärm: sökaren visar 16:9 (närmast skärmens form), bilden tas i 4:3 och beskärs efteråt
-            val previewAspect = if (st.mode.isVideo || s.aspect == AspectOption.FULL) {
+            // Foton tas alltid i 4:3 (hela sensorn). Kamerans eget 16:9-läge för foton skär bort kanten två
+            // gånger på OnePlus 13R, och då blir en sjättedel av bilden randig. 16:9 beskärs därför efteråt.
+            val photoAspect = AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY
+            // 16:9 och helskärm: sökaren visar 16:9 (skarp och närmast skärmens form), fotot beskärs efteråt
+            val previewAspect = if (st.mode.isVideo || s.aspect == AspectOption.RATIO_16_9 || s.aspect == AspectOption.FULL) {
                 AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY
             } else photoAspect
 
@@ -610,7 +610,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Gör färdigt en tagen JPEG i ett steg: beskär till 3:2 eller helskärm, lägger på live-filtret och
+     * Gör färdigt en tagen JPEG i ett steg: beskär till 3:2, 16:9 eller helskärm, lägger på live-filtret och
      * sparar i valt filformat (HEIF eller PNG). Bilden avkodas och sparas bara en gång, i full upplösning,
      * och EXIF-uppgifterna följer med. Ger adressen till den färdiga bilden.
      */
@@ -628,7 +628,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             }
             var bmp = source
             if (crop) {
-                val ratio = if (aspect == AspectOption.RATIO_3_2) 1.5f else viewfinderLongShort
+                val ratio = when (aspect) {
+                    AspectOption.RATIO_3_2 -> 1.5f
+                    AspectOption.RATIO_16_9 -> 16f / 9f
+                    else -> viewfinderLongShort
+                }
                 bmp = bmp.centerCropToRatio(ratio).also { if (it !== source) source.recycle() }
             }
             if (filter.isActive) {
@@ -877,7 +881,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                             showMessage(R.string.msg_processing_portrait)
                             portrait.process(uri, s.jpegQuality)
                         }
-                        // Beskärning (3:2, helskärm), live-filter och filformat i ett steg
+                        // Beskärning (3:2, 16:9, helskärm), live-filter och filformat i ett steg
                         val format = if (raw != null) PhotoFormat.JPEG else s.photoFormat
                         val final = runCatching {
                             finishPhoto(uri, if (raw != null) AspectOption.RATIO_4_3 else s.aspect, st.filter, format, s.jpegQuality)

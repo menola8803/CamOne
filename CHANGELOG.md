@@ -2,6 +2,11 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.6.1 – 2026-11-17
+
+- 16:9 rättat: på OnePlus 13R gav kamerans eget 16:9-läge en randig remsa längs ena kanten av sökaren (till vänster med 1×, till höger med .6). Nu tas fotot i 4:3 och beskärs till 16:9 direkt efteråt, precis som 3:2 och Helskärm. Sökaren är lika skarp som förut och fotot lika stort.
+- Testet i emulatorn kontrollerar nu att ett 16:9-foto verkligen blir 16:9.
+
 ## Version 1.6.0 – 2026-11-17
 
 - Nya bildformat: 3:2 och Helskärm. Helskärm fyller hela skärmen och bilden får skärmens form. Båda beskärs direkt efter fotograferingen, precis som sökaren visar.

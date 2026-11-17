@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.6.1",
   "sv": [
     {
       "title": "Kameran",
@@ -30,7 +30,7 @@
     {
       "title": "Bildformat och filformat",
       "items": [
-        "Bildformat: 4:3 (hela sensorn), 3:2, 16:9, 1:1 och Full. Full fyller hela skärmen och bilden får skärmens form. 3:2 och Full beskärs direkt efter fotograferingen, precis som sökaren visar.",
+        "Bildformat: 4:3 (hela sensorn), 3:2, 16:9, 1:1 och Full. Full fyller hela skärmen och bilden får skärmens form. 3:2, 16:9 och Full beskärs direkt efter fotograferingen från sensorns hela 4:3-bild, precis som sökaren visar.",
         "Filformat under Inställningar › Foto: JPEG fungerar överallt, HEIF är ungefär hälften så stor med samma kvalitet och PNG är förlustfritt men omkring 20 MB per bild.",
         "RAW sparar sensorns obehandlade data som DNG för t.ex. Lightroom, och RAW + JPEG sparar båda. RAW gäller i Foto och Pro och är alltid 4:3. Filter och porträtt gäller inte RAW-filen. Stöder kameran inte RAW sparas JPEG."
       ]
@@ -105,7 +105,7 @@
     {
       "title": "Aspect ratio and file format",
       "items": [
-        "Aspect ratio: 4:3 (the whole sensor), 3:2, 16:9, 1:1 and Full. Full fills the whole screen and the photo gets the screen's shape. 3:2 and Full are cropped right after the photo is taken, exactly as the viewfinder shows.",
+        "Aspect ratio: 4:3 (the whole sensor), 3:2, 16:9, 1:1 and Full. Full fills the whole screen and the photo gets the screen's shape. 3:2, 16:9 and Full are cropped from the sensor's whole 4:3 picture right after the photo is taken, exactly as the viewfinder shows.",
         "File format under Settings › Photo: JPEG works everywhere, HEIF is about half the size at the same quality and PNG is lossless but about 20 MB per photo.",
         "RAW saves the sensor's unprocessed data as DNG for e.g. Lightroom, and RAW + JPEG saves both. RAW works in Photo and Pro and is always 4:3. Filters and portrait do not apply to the RAW file. If the camera has no RAW, JPEG is saved."
       ]

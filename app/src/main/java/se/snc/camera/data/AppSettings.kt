@@ -21,8 +21,11 @@ enum class AspectOption(val label: String, val portraitRatio: Float) {
     /** Helskärm: sökaren fyller hela skärmen och bilden beskärs till skärmens format (ca 20:9). */
     FULL("Full", 0f);
 
-    /** Formatet beskärs efter fotograferingen (3:2 och helskärm), inte av kameran. */
-    val croppedAfter get() = this == RATIO_3_2 || this == FULL
+    /**
+     * Formatet beskärs efter fotograferingen (3:2, 16:9 och helskärm), inte av kameran. Kameran tar alltid
+     * fotot i 4:3 – OnePlus 13R:s eget 16:9-läge för foton ger en randig remsa på ena sidan.
+     */
+    val croppedAfter get() = this == RATIO_3_2 || this == RATIO_16_9 || this == FULL
 }
 
 /** Filformat för bilder. RAW (DNG) kräver att kameran stöder det; RAW gäller i Foto och Pro. */
