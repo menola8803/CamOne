@@ -47,6 +47,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.heightIn
 import se.snc.camera.ui.theme.GlassLine
 import se.snc.camera.ui.theme.GoldTint
+import androidx.compose.foundation.layout.height
 
 fun formatShutter(ns: Long): String {
     val seconds = ns / 1_000_000_000.0

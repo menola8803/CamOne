@@ -98,6 +98,7 @@ import se.snc.camera.ui.theme.GoldTint
 import se.snc.camera.ui.theme.GoldEdge
 import se.snc.camera.ui.theme.GlassLine
 import se.snc.camera.ui.theme.GlassStrong
+import androidx.compose.foundation.layout.width
 
 /**
  * Rund glasknapp som i Alif: mörkt glas med tunn guldkant. Påslagen ([tint] = guld eller [active]) får
