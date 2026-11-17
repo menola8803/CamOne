@@ -60,14 +60,14 @@ jobs:
       - name: Bygg APK för telefonen (arm64)
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          .github/scripts/gradle.sh assembleRelease
           mkdir -p out
           cp app/build/outputs/apk/release/app-release.apk "out/SNC-Camera-${{ steps.version.outputs.version }}.apk"
 
       - name: Bygg test-APK (alla arkitekturer, för emulatorn)
         run: |
           # Låg version så att testet kan hitta senaste release på GitHub som en "ny version"
-          ./gradlew --no-daemon assembleRelease -PsncAllAbis=true -PsncVersionName=0.9.0 -PsncVersionCode=1
+          .github/scripts/gradle.sh assembleRelease -PsncAllAbis=true -PsncVersionName=0.9.0 -PsncVersionCode=1
           cp app/build/outputs/apk/release/app-release.apk out/test-alla-abi.apk
 
       - name: Kontrollera APK
