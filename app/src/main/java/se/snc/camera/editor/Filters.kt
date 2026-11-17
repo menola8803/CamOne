@@ -131,6 +131,32 @@ fun Bitmap.withColorMatrix(m: ColorMatrix): Bitmap {
     return out
 }
 
+/**
+ * Beskär från mitten till förhållandet [longOverShort] (lång sida / kort sida) i bildens egen riktning,
+ * t.ex. 1.5 för 3:2. Samma beskärning som sökaren visar (den fyller sin ruta från mitten).
+ */
+fun Bitmap.centerCropToRatio(longOverShort: Float): Bitmap {
+    val landscape = width >= height
+    val long = if (landscape) width else height
+    val short = if (landscape) height else width
+    val current = long.toFloat() / short
+    if (kotlin.math.abs(current - longOverShort) < 0.01f) return this
+    val newLong: Int
+    val newShort: Int
+    if (current < longOverShort) {
+        // för hög, t.ex. 4:3 → 3:2: kapa den korta sidan
+        newLong = long
+        newShort = (long / longOverShort).toInt().coerceIn(1, short)
+    } else {
+        // för lång: kapa den långa sidan
+        newLong = (short * longOverShort).toInt().coerceIn(1, long)
+        newShort = short
+    }
+    val w = if (landscape) newLong else newShort
+    val h = if (landscape) newShort else newLong
+    return Bitmap.createBitmap(this, (width - w) / 2, (height - h) / 2, w, h)
+}
+
 /** Roterar/speglar en bitmapp. */
 fun Bitmap.transformed(rotation: Int, flipHorizontal: Boolean): Bitmap {
     if (rotation % 360 == 0 && !flipHorizontal) return this

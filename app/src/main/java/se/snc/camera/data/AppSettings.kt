@@ -16,7 +16,24 @@ import kotlinx.coroutines.flow.map
 enum class AspectOption(val label: String, val portraitRatio: Float) {
     RATIO_4_3("4:3", 3f / 4f),
     RATIO_1_1("1:1", 1f),
-    RATIO_16_9("16:9", 9f / 16f)
+    RATIO_16_9("16:9", 9f / 16f),
+    RATIO_3_2("3:2", 2f / 3f),
+    /** Helskärm: sökaren fyller hela skärmen och bilden beskärs till skärmens format (ca 20:9). */
+    FULL("Full", 0f);
+
+    /** Formatet beskärs efter fotograferingen (3:2 och helskärm), inte av kameran. */
+    val croppedAfter get() = this == RATIO_3_2 || this == FULL
+}
+
+/** Filformat för bilder. RAW (DNG) kräver att kameran stöder det; RAW gäller i Foto och Pro. */
+enum class PhotoFormat(val label: String, val extension: String, val mime: String) {
+    JPEG("JPEG", "jpg", "image/jpeg"),
+    HEIF("HEIF", "heic", "image/heic"),
+    PNG("PNG", "png", "image/png"),
+    RAW("RAW", "dng", "image/x-adobe-dng"),
+    RAW_JPEG("RAW + JPEG", "jpg", "image/jpeg");
+
+    val isRaw get() = this == RAW || this == RAW_JPEG
 }
 
 enum class FlashOption { OFF, AUTO, ON }
@@ -34,6 +51,7 @@ enum class ThemeOption { DARK, BEIGE }
 
 data class AppSettings(
     val aspect: AspectOption = AspectOption.RATIO_4_3,
+    val photoFormat: PhotoFormat = PhotoFormat.JPEG,
     val flash: FlashOption = FlashOption.OFF,
     val timer: TimerOption = TimerOption.OFF,
     val hdr: Boolean = false,
@@ -68,6 +86,7 @@ class SettingsRepository(private val context: Context) {
 
     private object K {
         val aspect = stringPreferencesKey("aspect")
+        val photoFormat = stringPreferencesKey("photo_format")
         val flash = stringPreferencesKey("flash")
         val timer = stringPreferencesKey("timer")
         val hdr = booleanPreferencesKey("hdr")
@@ -110,6 +129,7 @@ class SettingsRepository(private val context: Context) {
         val d = AppSettings()
         return AppSettings(
             aspect = p.enumOr(K.aspect, d.aspect),
+            photoFormat = p.enumOr(K.photoFormat, d.photoFormat),
             flash = p.enumOr(K.flash, d.flash),
             timer = p.enumOr(K.timer, d.timer),
             hdr = p[K.hdr] ?: d.hdr,
@@ -137,6 +157,7 @@ class SettingsRepository(private val context: Context) {
 
     private fun write(p: MutablePreferences, s: AppSettings) {
         p[K.aspect] = s.aspect.name
+        p[K.photoFormat] = s.photoFormat.name
         p[K.flash] = s.flash.name
         p[K.timer] = s.timer.name
         p[K.hdr] = s.hdr

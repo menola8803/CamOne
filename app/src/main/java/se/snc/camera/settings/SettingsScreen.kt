@@ -70,6 +70,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.clip
 import se.snc.camera.data.ThemeOption
 import se.snc.camera.ui.components.PrimaryButton
+import se.snc.camera.data.PhotoFormat
 
 @StringRes
 fun GridOption.labelRes() = when (this) {
@@ -168,10 +169,35 @@ fun SettingsScreen(
             SectionLabel(stringResource(R.string.section_photo))
             FieldLabel(stringResource(R.string.setting_aspect))
             ChoiceGrid(
-                options = AspectOption.entries,
+                options = listOf(
+                    AspectOption.RATIO_4_3, AspectOption.RATIO_3_2, AspectOption.RATIO_16_9,
+                    AspectOption.RATIO_1_1, AspectOption.FULL
+                ),
                 selected = settings.aspect,
-                label = { it.label },
+                label = { if (it == AspectOption.FULL) stringResource(R.string.aspect_full) else it.label },
                 onSelect = { v -> update { it.copy(aspect = v) } }
+            )
+            FieldLabel(stringResource(R.string.setting_format))
+            ChoiceGrid(
+                options = PhotoFormat.entries,
+                selected = settings.photoFormat,
+                label = { it.label },
+                onSelect = { v -> update { it.copy(photoFormat = v) } }
+            )
+            Text(
+                stringResource(
+                    when (settings.photoFormat) {
+                        PhotoFormat.JPEG -> R.string.format_desc_jpeg
+                        PhotoFormat.HEIF -> R.string.format_desc_heif
+                        PhotoFormat.PNG -> R.string.format_desc_png
+                        PhotoFormat.RAW -> R.string.format_desc_raw
+                        PhotoFormat.RAW_JPEG -> R.string.format_desc_raw_jpeg
+                    }
+                ),
+                color = Ui.Muted,
+                fontFamily = BodyFont,
+                fontSize = 13.sp,
+                lineHeight = 18.sp
             )
             Spacer(Modifier.height(2.dp))
             ToggleRow(

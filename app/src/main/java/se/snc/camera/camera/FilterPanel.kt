@@ -45,6 +45,9 @@ import se.snc.camera.ui.theme.Usb
 import kotlin.math.roundToInt
 import androidx.compose.foundation.border
 import se.snc.camera.ui.theme.GlassLine
+import androidx.compose.material.icons.rounded.RestartAlt
+import se.snc.camera.ui.theme.GoldTint
+import se.snc.camera.ui.theme.GoldEdge
 
 private val ChannelRed = Color(0xFFE5574F)
 private val ChannelGreen = Color(0xFF4CC38A)
@@ -77,9 +80,8 @@ fun FilterPanel(
                 letterSpacing = 1.2.sp,
                 modifier = Modifier.weight(1f)
             )
-            if (filter.isActive) {
-                Chip(text = stringResource(R.string.reset), selected = false, onClick = onReset)
-            }
+            // Liten Återställ-knapp – syns alltid, nedtonad när inget filter är på
+            ResetButton(enabled = filter.isActive, onClick = onReset)
         }
         Spacer(Modifier.height(6.dp))
         Row(
@@ -130,13 +132,18 @@ private fun ChannelSlider(short: String, name: String, color: Color, value: Floa
                 .padding(horizontal = 8.dp)
                 .semantics { contentDescription = name }
         )
+        // Tryck på siffran: just den färgen tillbaka till 100 %
         Text(
             "${(value * 100).roundToInt()} %",
             color = if (value == 1f) OnGlassDim else OnGlass,
             fontSize = 12.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.End,
-            modifier = Modifier.width(48.dp)
+            modifier = Modifier
+                .width(52.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .clickable(role = Role.Button, onClickLabel = name) { onValue(1f) }
+                .padding(vertical = 6.dp)
         )
     }
 }
@@ -161,5 +168,34 @@ fun FilterBadge(filter: LiveFilter, onClick: () -> Unit, modifier: Modifier = Mo
         Icon(Icons.Rounded.PhotoFilter, contentDescription = null, tint = CameraYellow, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(6.dp))
         Text(name, color = Usb.Text, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+/** Liten Återställ-knapp med ikon (Alifs SmallBtn). */
+@Composable
+private fun ResetButton(enabled: Boolean, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .clip(shape)
+            .background(if (enabled) GoldTint else Color.Transparent)
+            .border(1.dp, if (enabled) GoldEdge else GlassLine, shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .padding(horizontal = 10.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            Icons.Rounded.RestartAlt,
+            contentDescription = null,
+            tint = if (enabled) CameraYellow else OnGlassDim,
+            modifier = Modifier.size(16.dp)
+        )
+        Spacer(Modifier.width(5.dp))
+        Text(
+            stringResource(R.string.reset),
+            color = if (enabled) CameraYellow else OnGlassDim,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold
+        )
     }
 }

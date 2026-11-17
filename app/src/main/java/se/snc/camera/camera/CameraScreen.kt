@@ -110,6 +110,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.semantics.Role
 import se.snc.camera.ui.theme.GlassStrong
+import androidx.compose.ui.layout.onSizeChanged
+import se.snc.camera.data.AspectOption
 
 @Composable
 fun CameraScreen(
@@ -321,7 +323,9 @@ private fun CameraContent(
         }
     }
 
-    val previewRatio = if (state.mode.isVideo) 9f / 16f else settings.aspect.portraitRatio
+    // Helskärm: sökaren fyller hela skärmen, knapparna ligger ovanpå
+    val fullScreen = !state.mode.isVideo && settings.aspect == AspectOption.FULL
+    val previewRatio = if (state.mode.isVideo) 9f / 16f else settings.aspect.portraitRatio.takeIf { it > 0f } ?: (3f / 4f)
     val animatedRatio by animateFloatAsState(previewRatio, tween(280), label = "previewRatio")
     val modes = CameraMode.entries
 
@@ -335,15 +339,16 @@ private fun CameraContent(
     ) {
         // --------------------------- Sökare ---------------------------
         Box(
-            Modifier
+            (if (fullScreen) Modifier.fillMaxSize() else Modifier
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
                 .padding(top = 58.dp)
                 .padding(horizontal = 8.dp)
                 .fillMaxWidth()
-                .aspectRatio(animatedRatio)
+                .aspectRatio(animatedRatio))
+                .onSizeChanged { viewModel.setViewfinderSize(it.width, it.height) }
                 // Rundade hörn som i Alif-förslaget
-                .clip(RoundedCornerShape(24.dp))
+                .clip(RoundedCornerShape(if (fullScreen) 0.dp else 24.dp))
         ) {
             AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
@@ -502,7 +507,7 @@ private fun CameraContent(
             timer = settings.timer,
             hdr = settings.hdr,
             grid = settings.grid,
-            aspectLabel = settings.aspect.label,
+            aspectLabel = if (settings.aspect == AspectOption.FULL) stringResource(R.string.aspect_full_short) else settings.aspect.label,
             videoQualityLabel = settings.videoQuality.label,
             videoFps = settings.videoFps,
             onFps = viewModel::cycleFps,

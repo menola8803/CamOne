@@ -83,6 +83,8 @@ import se.snc.camera.editor.PhotoFilter
 import se.snc.camera.editor.withColorMatrix
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import se.snc.camera.data.PhotoFormat
+import se.snc.camera.editor.centerCropToRatio
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -108,6 +110,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var extensionsTried = false
     private var camera: Camera? = null
     private var imageCapture: ImageCapture? = null
+    /** RAW eller RAW + JPEG när kameran är bunden med RAW, annars null (vanlig JPEG). */
+    private var rawFormat: PhotoFormat? = null
+    /** Sökarens form (lång sida / kort sida) – helskärmsbilder beskärs till exakt den. */
+    private var viewfinderLongShort: Float = 20f / 9f
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
     private var zoomLiveData: LiveData<ZoomState>? = null
@@ -304,6 +310,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         zoomLiveData?.removeObserver(zoomObserver)
         zoomLiveData = null
 
+        var pendingRaw: PhotoFormat? = null
+        var rawUnsupported = false
+        var allowRaw = true
         fun attempt(useExtension: Boolean, stabilization: Boolean, highFps: Boolean, cameraBase: CameraSelector): Camera? {
             val selector = if (useExtension && wantedExtension != null && ext != null) {
                 ext.getExtensionEnabledCameraSelector(cameraBase, wantedExtension)
@@ -312,7 +321,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             val photoAspect = if (s.aspect == AspectOption.RATIO_16_9) {
                 AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY
             } else AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY
-            val previewAspect = if (st.mode.isVideo) AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY else photoAspect
+            // Helskärm: sökaren visar 16:9 (närmast skärmens form), bilden tas i 4:3 och beskärs efteråt
+            val previewAspect = if (st.mode.isVideo || s.aspect == AspectOption.FULL) {
+                AspectRatioStrategy.RATIO_16_9_FALLBACK_AUTO_STRATEGY
+            } else photoAspect
 
             val previewBuilder = Preview.Builder()
                 .setResolutionSelector(ResolutionSelector.Builder().setAspectRatioStrategy(previewAspect).build())
@@ -342,7 +354,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 vc = videoBuilder.build()
                 useCases += vc
             } else {
-                ic = ImageCapture.Builder()
+                // RAW (DNG) i Foto och Pro om kameran stöder det
+                val wantRaw = allowRaw && s.photoFormat.isRaw && (st.mode == CameraMode.PHOTO || st.mode == CameraMode.PRO) &&
+                    !(useExtension && wantedExtension != null)
+                val rawOutput = if (wantRaw) {
+                    val formats = runCatching {
+                        ImageCapture.getImageCaptureCapabilities(cp.getCameraInfo(selector)).supportedOutputFormats
+                    }.getOrDefault(emptySet())
+                    when {
+                        s.photoFormat == PhotoFormat.RAW && ImageCapture.OUTPUT_FORMAT_RAW in formats -> ImageCapture.OUTPUT_FORMAT_RAW
+                        s.photoFormat == PhotoFormat.RAW_JPEG && ImageCapture.OUTPUT_FORMAT_RAW_JPEG in formats -> ImageCapture.OUTPUT_FORMAT_RAW_JPEG
+                        else -> null
+                    }
+                } else null
+                if (wantRaw && rawOutput == null) rawUnsupported = true
+                val icBuilder = ImageCapture.Builder()
+                if (rawOutput != null) icBuilder.setOutputFormat(rawOutput)
+                ic = icBuilder
                     .setCaptureMode(
                         if (s.maxQuality) ImageCapture.CAPTURE_MODE_MAXIMIZE_QUALITY
                         else ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY
@@ -357,7 +385,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     .setTargetRotation(targetRotation)
                     .setFlashMode(flashModeFor(s.flash, front))
                     .build()
-                if (s.aspect == AspectOption.RATIO_1_1) ic.setCropAspectRatio(Rational(1, 1))
+                if (s.aspect == AspectOption.RATIO_1_1 && rawOutput == null) ic.setCropAspectRatio(Rational(1, 1))
+                pendingRaw = when (rawOutput) {
+                    ImageCapture.OUTPUT_FORMAT_RAW -> PhotoFormat.RAW
+                    ImageCapture.OUTPUT_FORMAT_RAW_JPEG -> PhotoFormat.RAW_JPEG
+                    else -> null
+                }
                 useCases += ic
             }
 
@@ -366,6 +399,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 val cam = cp.bindToLifecycle(owner, selector, *useCases.toTypedArray())
                 imageCapture = ic
                 videoCapture = vc
+                rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
                 Log.w(TAG, "Bindning misslyckades (extension=$useExtension, stab=$stabilization, 60fps=$highFps)", e)
@@ -391,10 +425,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 break
             }
         }
+        // Gick det inte med RAW: försök igen utan RAW, så att kameran alltid startar
+        if (bound == null && s.photoFormat.isRaw) {
+            allowRaw = false
+            rawUnsupported = true
+            for (t in tries) {
+                bound = attempt(t.extension, t.stabilization, t.highFps, t.selector)
+                if (bound != null) {
+                    used = t
+                    break
+                }
+            }
+        }
         val cam: Camera = bound ?: return false
         camera = cam
         val extensionActive = used?.extension == true && wantedExtension != null && imageCapture != null
         if (wantHighFps && used?.highFps != true) showMessage(R.string.msg_fps_unsupported)
+        if (rawUnsupported && rawFormat == null) showMessage(R.string.msg_raw_unsupported)
 
         // Linserna bakom kameran, för etiketten som visar aktiv lins
         val boundId = runCatching { Camera2CameraInfo.from(cam.cameraInfo).cameraId }.getOrNull()
@@ -557,17 +604,51 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         _state.update { it.copy(filter = LiveFilter()) }
     }
 
-    /** Lägger live-filtret på den sparade bilden i full upplösning och behåller EXIF-data. */
-    private suspend fun applyLiveFilter(uri: Uri, filter: LiveFilter, jpegQuality: Int): Boolean =
+    /** Sökarens form från skärmen (lång sida / kort sida), för helskärmsbilder. */
+    fun setViewfinderSize(width: Int, height: Int) {
+        if (width > 0 && height > 0) viewfinderLongShort = maxOf(width, height).toFloat() / minOf(width, height)
+    }
+
+    /**
+     * Gör färdigt en tagen JPEG i ett steg: beskär till 3:2 eller helskärm, lägger på live-filtret och
+     * sparar i valt filformat (HEIF eller PNG). Bilden avkodas och sparas bara en gång, i full upplösning,
+     * och EXIF-uppgifterna följer med. Ger adressen till den färdiga bilden.
+     */
+    private suspend fun finishPhoto(uri: Uri, aspect: AspectOption, filter: LiveFilter, format: PhotoFormat, quality: Int): Uri =
         withContext(Dispatchers.Default) {
+            val convert = format == PhotoFormat.HEIF || format == PhotoFormat.PNG
+            val crop = aspect.croppedAfter
+            if (!convert && !crop && !filter.isActive) return@withContext uri
             val media = sncApp.mediaRepository
+            if (convert) showMessage(R.string.msg_saving_format)
             val exif = media.readExif(uri)
-            val source = media.loadBitmap(uri, maxDimension = 8192) ?: return@withContext false
-            val filtered = source.withColorMatrix(filter.matrix())
-            source.recycle()
-            val ok = media.overwriteJpeg(uri, filtered, jpegQuality, exif)
-            filtered.recycle()
-            ok
+            val source = media.loadBitmap(uri, maxDimension = 8192) ?: run {
+                showMessage(R.string.msg_filter_failed)
+                return@withContext uri
+            }
+            var bmp = source
+            if (crop) {
+                val ratio = if (aspect == AspectOption.RATIO_3_2) 1.5f else viewfinderLongShort
+                bmp = bmp.centerCropToRatio(ratio).also { if (it !== source) source.recycle() }
+            }
+            if (filter.isActive) {
+                val filtered = bmp.withColorMatrix(filter.matrix())
+                bmp.recycle()
+                bmp = filtered
+            }
+            val result = if (convert) {
+                media.replaceWithFormat(uri, bmp, format, quality, exif) ?: run {
+                    // Gick inte att spara i formatet: behåll en JPEG med samma innehåll
+                    showMessage(R.string.msg_format_failed)
+                    media.overwriteJpeg(uri, bmp, quality, exif)
+                    uri
+                }
+            } else {
+                if (!media.overwriteJpeg(uri, bmp, quality, exif)) showMessage(R.string.msg_filter_failed)
+                uri
+            }
+            bmp.recycle()
+            result
         }
 
     // ---------------------------------------------------------------------------------------------
@@ -751,29 +832,44 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 _state.update { it.copy(screenFlash = true) }
                 delay(500) // låt skärmen lysa upp ansiktet och exponeringen ställa in sig
             }
-            val values = ContentValues().apply {
-                put(MediaStore.MediaColumns.DISPLAY_NAME, MediaRepository.newFileName("IMG", "jpg"))
-                put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
-                put(MediaStore.MediaColumns.RELATIVE_PATH, MediaRepository.RELATIVE_PATH)
-            }
+            val raw = rawFormat
+            val baseName = MediaRepository.newFileName("IMG", "x").substringBeforeLast('.')
             val metadata = ImageCapture.Metadata().apply {
                 isReversedHorizontal = st.lensFront && s.mirrorFront
             }
-            val options = ImageCapture.OutputFileOptions.Builder(
+            fun outputOptions(extension: String, mime: String) = ImageCapture.OutputFileOptions.Builder(
                 context.contentResolver,
                 MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
-                values
+                ContentValues().apply {
+                    put(MediaStore.MediaColumns.DISPLAY_NAME, "$baseName.$extension")
+                    put(MediaStore.MediaColumns.MIME_TYPE, mime)
+                    put(MediaStore.MediaColumns.RELATIVE_PATH, MediaRepository.RELATIVE_PATH)
+                }
             ).setMetadata(metadata).build()
+            val options = if (raw == PhotoFormat.RAW) outputOptions("dng", "image/x-adobe-dng") else outputOptions("jpg", "image/jpeg")
+            val rawOptions = if (raw == PhotoFormat.RAW_JPEG) outputOptions("dng", "image/x-adobe-dng") else null
+            // RAW + JPEG ger två filer – vänta på båda innan kameran är redo igen
+            var remaining = if (rawOptions != null) 2 else 1
+            var jpegUri: Uri? = null
+            var dngUri: Uri? = null
 
             if (s.shutterSound) sound.play(MediaActionSound.SHUTTER_CLICK)
             _state.update { it.copy(shutterBlink = System.currentTimeMillis()) }
 
-            ic.takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
+            val callback = object : ImageCapture.OnImageSavedCallback {
                 override fun onImageSaved(output: ImageCapture.OutputFileResults) {
                     _state.update { it.copy(screenFlash = false) }
-                    val uri = output.savedUri
+                    val saved = output.savedUri
+                    val isDng = saved != null && runCatching { context.contentResolver.getType(saved) }.getOrNull()
+                        ?.contains("dng") == true || (raw == PhotoFormat.RAW && saved != null)
+                    if (isDng) dngUri = saved else jpegUri = saved
+                    remaining--
+                    if (remaining > 0) return
+                    val uri = jpegUri
                     if (uri == null) {
+                        // Bara RAW (DNG): ingen efterbehandling
                         _state.update { it.copy(isCapturing = false) }
+                        dngUri?.let { onMediaSaved(it, isVideo = false) }
                         return
                     }
                     viewModelScope.launch {
@@ -781,13 +877,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                             showMessage(R.string.msg_processing_portrait)
                             portrait.process(uri, s.jpegQuality)
                         }
-                        // Live-filtret (samma färger som i sökaren när bilden togs)
-                        if (st.filter.isActive) {
-                            val ok = runCatching { applyLiveFilter(uri, st.filter, s.jpegQuality) }.getOrDefault(false)
-                            if (!ok) showMessage(R.string.msg_filter_failed)
-                        }
+                        // Beskärning (3:2, helskärm), live-filter och filformat i ett steg
+                        val format = if (raw != null) PhotoFormat.JPEG else s.photoFormat
+                        val final = runCatching {
+                            finishPhoto(uri, if (raw != null) AspectOption.RATIO_4_3 else s.aspect, st.filter, format, s.jpegQuality)
+                        }.getOrDefault(uri)
                         _state.update { it.copy(isCapturing = false) }
-                        onMediaSaved(uri, isVideo = false)
+                        onMediaSaved(final, isVideo = false)
                     }
                 }
 
@@ -796,7 +892,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     _state.update { it.copy(isCapturing = false, screenFlash = false) }
                     showMessage(R.string.msg_capture_failed)
                 }
-            })
+            }
+            if (rawOptions != null) {
+                ic.takePicture(rawOptions, options, ContextCompat.getMainExecutor(context), callback)
+            } else {
+                ic.takePicture(options, ContextCompat.getMainExecutor(context), callback)
+            }
         }
     }
 

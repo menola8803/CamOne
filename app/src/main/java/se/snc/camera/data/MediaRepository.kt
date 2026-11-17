@@ -20,6 +20,8 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.max
 import androidx.exifinterface.media.ExifInterface
+import androidx.heifwriter.HeifWriter
+import android.util.Log
 
 data class MediaItem(
     val id: Long,
@@ -239,6 +241,82 @@ class MediaRepository(private val context: Context) {
             }
             ok
         }
+
+    /**
+     * Sparar [bitmap] som en ny bild i [format] (HEIF eller PNG) bredvid originalet och tar bort
+     * originalet (en JPEG som appen själv tog). Datum och, för PNG, bilduppgifterna följer med.
+     * Ger den nya bildens adress, eller null om det inte gick (då ligger originalet kvar).
+     */
+    suspend fun replaceWithFormat(
+        original: Uri,
+        bitmap: Bitmap,
+        format: PhotoFormat,
+        quality: Int,
+        exif: Map<String, String>
+    ): Uri? = withContext(Dispatchers.IO) {
+        if (format != PhotoFormat.HEIF && format != PhotoFormat.PNG) return@withContext null
+        val baseName = runCatching {
+            resolver.query(original, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getString(0) else null
+            }
+        }.getOrNull()?.substringBeforeLast('.') ?: newFileName("IMG", "x").substringBeforeLast('.')
+        val taken = runCatching {
+            resolver.query(original, arrayOf(MediaStore.MediaColumns.DATE_TAKEN), null, null, null)?.use { c ->
+                if (c.moveToFirst()) c.getLong(0) else null
+            }
+        }.getOrNull()?.takeIf { it > 0 } ?: System.currentTimeMillis()
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, "$baseName.${format.extension}")
+            put(MediaStore.MediaColumns.MIME_TYPE, format.mime)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, RELATIVE_PATH)
+            put(MediaStore.MediaColumns.DATE_TAKEN, taken)
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = runCatching { resolver.insert(collection, values) }.getOrNull() ?: return@withContext null
+        val ok = runCatching {
+            when (format) {
+                PhotoFormat.PNG -> resolver.openOutputStream(uri, "w")?.use { out ->
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+                } ?: false
+                else -> resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                    val writer = HeifWriter.Builder(pfd.fileDescriptor, bitmap.width, bitmap.height, HeifWriter.INPUT_MODE_BITMAP)
+                        .setQuality(quality.coerceIn(50, 100))
+                        .build()
+                    try {
+                        writer.start()
+                        writer.addBitmap(bitmap)
+                        writer.stop(20_000L)
+                    } finally {
+                        writer.close()
+                    }
+                    true
+                } ?: false
+            }
+        }.getOrElse { e ->
+            Log.w("MediaRepository", "Kunde inte spara som ${format.label}", e)
+            false
+        }
+        if (!ok) {
+            runCatching { resolver.delete(uri, null, null) }
+            return@withContext null
+        }
+        if (format == PhotoFormat.PNG && exif.isNotEmpty()) {
+            runCatching {
+                resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                    val e = ExifInterface(pfd.fileDescriptor)
+                    exif.forEach { (tag, value) -> e.setAttribute(tag, value) }
+                    e.saveAttributes()
+                }
+            }
+        }
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
+        runCatching { resolver.delete(original, null, null) }
+        notifyChanged()
+        uri
+    }
 
     /** Systemdialog för att ta bort filer (krävs för filer appen inte själv äger). */
     fun deleteRequest(uris: List<Uri>): IntentSender =

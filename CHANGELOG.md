@@ -2,6 +2,14 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.6.0 – 2026-11-17
+
+- Nya bildformat: 3:2 och Helskärm. Helskärm fyller hela skärmen och bilden får skärmens form. Båda beskärs direkt efter fotograferingen, precis som sökaren visar.
+- Filformat under Inställningar › Foto: JPEG, HEIF (ungefär halva storleken), PNG (förlustfritt), RAW (DNG) och RAW + JPEG. RAW gäller i Foto och Pro.
+- Live-filtret har fått en liten Återställ-knapp i menyns hörn som alltid syns, och ett tryck på procentsiffran sätter just den färgen till 100 %.
+- Kameror-sidan visar nu också om telefonen klarar 1440p-video, Ultra HDR, HDR-video och om det finns dolda högupplösta inställningar (t.ex. för 50 MP).
+- Nyare kamerabibliotek (CameraX 1.5.1) som grund för RAW och kommande slow motion.
+
 ## Version 1.5.1 – 2026-11-17
 
 - Uppdateringar ser ut som i Alif: kortet "Version 1.5.1" med knappen Sök efter uppdatering direkt under, och sist valet Sök efter ny version automatiskt med en förklaring av hur det går till. Raden Källa är borta.

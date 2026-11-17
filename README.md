@@ -15,7 +15,8 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Lägen i en svepbar karusell som i OnePlus: **Pro · Natt · Video · Foto · Porträtt**
   (svep i sidled på lägesraden eller i sökaren, eller tryck på läget – raden följer fingret)
 - Övre fältet: blixt (av/auto/på, skärmblixt på frontkameran), HDR, självutlösare 3/5/10 s,
-  bildformat 4:3 / 1:1 / 16:9, rutnät och inställningar
+  bildformat 4:3 / 1:1 / 16:9 / 3:2 / Helskärm, live-filter, rutnät och inställningar
+- Filformat: JPEG, HEIF, PNG, RAW (DNG) och RAW + JPEG
 - **Riktiga linser**: appen väljer den bakkamera som har flest linser (på OnePlus 13R kamera 5).
   0,6× = ultravidvinkel 16 mm, 1× = huvudkamera 24 mm, 2× = tele 47 mm – en etikett visar vilken lins som tar över
 - Zoomknappar (.6 / 1× / 2× / 5×) och nyp-zoom upp till 10×

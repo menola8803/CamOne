@@ -24,6 +24,14 @@ import kotlin.math.atan
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kotlin.math.sqrt
+import android.media.CamcorderProfile
+import android.media.MediaCodecList
+import android.media.MediaFormat
+import android.hardware.camera2.params.DynamicRangeProfiles
+import androidx.camera.core.DynamicRange
+import androidx.camera.core.ImageCapture
+import androidx.camera.video.Recorder
+import androidx.camera.camera2.interop.Camera2CameraInfo
 
 /** Typ av lins, räknad från brännvidden (35 mm-ekvivalent). */
 enum class LensKind { ULTRA_WIDE, WIDE, TELE, FRONT, OTHER }
@@ -67,11 +75,30 @@ data class LensInfo(
     val isoMax: Int?,
     val hardwareLevel: String,
     /** Tillverkarens tillägg via Camera2 (Android 12+): NIGHT, BOKEH, HDR, AUTO, FACE_RETOUCH. */
-    val camera2Extensions: List<String>
+    val camera2Extensions: List<String>,
+    /** 1440p-video (QHD) via inspelningsprofil eller strömstorlek. */
+    val qhdVideo: Boolean = false,
+    /** Ultra HDR-foton (JPEG_R, Android 14+). */
+    val ultraHdr: Boolean = false,
+    /** 10-bitars HDR-video: profiler som HLG10, HDR10, HDR10+ (Android 13+). */
+    val hdrVideo: List<String> = emptyList(),
+    /** Tillverkarens egna inställningar som ser ut att gälla högupplöst läge (t.ex. 50 MP). */
+    val vendorHiRes: List<String> = emptyList()
 )
 
 /** Vad appen faktiskt kan använda via CameraX-tilläggen (tillverkarens nattläge, porträtt, HDR …). */
-data class ExtensionSupport(val back: List<String>, val front: List<String>)
+data class ExtensionSupport(
+    val back: List<String>,
+    val front: List<String>,
+    /** Bildformat som CameraX erbjuder på appens bakkamera (JPEG, ULTRA_HDR, RAW, RAW+JPEG). */
+    val backFormats: List<String> = emptyList(),
+    /** Slow motion via CameraX (höghastighetsvideo) på appens bakkamera. */
+    val highSpeed: Boolean = false,
+    /** Videodynamik som CameraX kan spela in (SDR, HLG …). */
+    val videoRanges: List<String> = emptyList(),
+    /** Telefonen har en HEVC-kodare (H.265). */
+    val hevcEncoder: Boolean = false
+)
 
 data class CameraReport(
     val lenses: List<LensInfo>,
@@ -124,6 +151,9 @@ data class CameraReport(
     val maxResMp: Float? get() = back.filter { usable(it) }.mapNotNull { it.maxResMegapixels }.maxOrNull()
     val manual: Boolean get() = back.any { usable(it) && it.manualSensor }
     val raw: Boolean get() = back.any { usable(it) && it.raw }
+    val qhdVideo: Boolean get() = back.any { usable(it) && it.qhdVideo }
+    val ultraHdr: Boolean get() = back.any { usable(it) && it.ultraHdr }
+    val hdrVideo: List<String> get() = back.filter { usable(it) }.flatMap { it.hdrVideo }.distinct()
     val dualView: Boolean
         get() = concurrent.any { set ->
             set.any { id -> lenses.any { it.id == id && it.front } } && set.any { id -> lenses.any { it.id == id && !it.front } }
@@ -132,6 +162,7 @@ data class CameraReport(
 
 enum class Access { ZOOM, OWN_CAMERA, PHYSICAL, HIDDEN, NONE }
 
+@androidx.annotation.OptIn(androidx.camera.camera2.interop.ExperimentalCamera2Interop::class)
 object CameraProbe {
     private const val TAG = "SncCameraInfo"
 
@@ -160,7 +191,8 @@ object CameraProbe {
             runCatching { manager.concurrentCameraIds.map { it.toSet() } }.getOrDefault(emptyList())
         } else emptyList()
 
-        val ext = withContext(Dispatchers.Main) { cameraXExtensions(context) }
+        val appBack = LensSelection.preferredBackCameraId(context)
+        val ext = withContext(Dispatchers.Main) { cameraXExtensions(context, appBack) }
 
         CameraReport(
             lenses = result.values.sortedWith(compareBy<LensInfo>({ it.front }, { !it.listed }, { it.eqMm ?: 999 })),
@@ -168,11 +200,11 @@ object CameraProbe {
             extensions = ext,
             device = "${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})",
             android = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.DISPLAY}",
-            appBackCameraId = LensSelection.preferredBackCameraId(context)
+            appBackCameraId = appBack
         )
     }
 
-    private suspend fun cameraXExtensions(context: Context): ExtensionSupport = try {
+    private suspend fun cameraXExtensions(context: Context, appBackId: String?): ExtensionSupport = try {
         val provider = ProcessCameraProvider.getInstance(context).await()
         val ext = ExtensionsManager.getInstanceAsync(context, provider).await()
         val modes = listOf(
@@ -185,13 +217,57 @@ object CameraProbe {
         fun list(sel: CameraSelector) = if (runCatching { provider.hasCamera(sel) }.getOrDefault(false)) {
             modes.filter { (m, _) -> runCatching { ext.isExtensionAvailable(sel, m) }.getOrDefault(false) }.map { it.second }
         } else emptyList()
-        ExtensionSupport(list(CameraSelector.DEFAULT_BACK_CAMERA), list(CameraSelector.DEFAULT_FRONT_CAMERA))
+        // Appens bakkamera i CameraX: bildformat, slow motion och videodynamik
+        val backInfo = provider.availableCameraInfos.firstOrNull { info ->
+            runCatching { Camera2CameraInfo.from(info).cameraId }.getOrNull() == appBackId
+        } ?: runCatching { provider.getCameraInfo(CameraSelector.DEFAULT_BACK_CAMERA) }.getOrNull()
+        val formats = backInfo?.let { info ->
+            runCatching { ImageCapture.getImageCaptureCapabilities(info).supportedOutputFormats }.getOrDefault(emptySet())
+        }.orEmpty().map {
+            when (it) {
+                ImageCapture.OUTPUT_FORMAT_JPEG -> "JPEG"
+                ImageCapture.OUTPUT_FORMAT_JPEG_ULTRA_HDR -> "ULTRA_HDR"
+                ImageCapture.OUTPUT_FORMAT_RAW -> "RAW"
+                ImageCapture.OUTPUT_FORMAT_RAW_JPEG -> "RAW+JPEG"
+                else -> "format $it"
+            }
+        }
+        val highSpeed = backInfo?.let { runCatching { Recorder.getHighSpeedVideoCapabilities(it) != null }.getOrDefault(false) } ?: false
+        val ranges = backInfo?.let { info ->
+            runCatching { Recorder.getVideoCapabilities(info).supportedDynamicRanges.map { dynamicRangeName(it) } }
+                .getOrDefault(emptyList())
+        }.orEmpty()
+        val hevc = runCatching {
+            MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.any { ci ->
+                ci.isEncoder && ci.supportedTypes.any { it.equals(MediaFormat.MIMETYPE_VIDEO_HEVC, ignoreCase = true) }
+            }
+        }.getOrDefault(false)
+        ExtensionSupport(
+            list(CameraSelector.DEFAULT_BACK_CAMERA),
+            list(CameraSelector.DEFAULT_FRONT_CAMERA),
+            backFormats = formats,
+            highSpeed = highSpeed,
+            videoRanges = ranges,
+            hevcEncoder = hevc
+        )
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
         Log.w(TAG, "Kunde inte läsa kameratillägg", e)
         ExtensionSupport(emptyList(), emptyList())
     }
+
+    private fun dynamicRangeName(r: DynamicRange): String = when (r) {
+        DynamicRange.SDR -> "SDR"
+        DynamicRange.HLG_10_BIT -> "HLG"
+        DynamicRange.HDR10_10_BIT -> "HDR10"
+        DynamicRange.HDR10_PLUS_10_BIT -> "HDR10+"
+        DynamicRange.DOLBY_VISION_10_BIT -> "Dolby Vision"
+        else -> r.toString()
+    }
+
+    /** Mönster i namnen på tillverkarens egna inställningar som brukar gälla högupplöst läge. */
+    private val hiResKeyPattern = Regex("(?i)(remosaic|hi_?res|high_?res|highresolution|fullsize|full_size|super_?res|50m|quad|binning|ultra_?res)")
 
     private fun readLens(
         manager: CameraManager,
@@ -319,7 +395,30 @@ object CameraProbe {
             isoMin = iso?.lower,
             isoMax = iso?.upper,
             hardwareLevel = level,
-            camera2Extensions = camera2Ext
+            camera2Extensions = camera2Ext,
+            qhdVideo = runCatching {
+                id.toIntOrNull()?.let { CamcorderProfile.hasProfile(it, CamcorderProfile.QUALITY_QHD) } == true ||
+                    map?.getOutputSizes(MediaRecorder::class.java)?.any { max(it.width, it.height) == 2560 && minOf(it.width, it.height) == 1440 } == true
+            }.getOrDefault(false),
+            ultraHdr = Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                runCatching { map?.outputFormats?.contains(ImageFormat.JPEG_R) == true }.getOrDefault(false),
+            hdrVideo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) runCatching {
+                ch.get(CameraCharacteristics.REQUEST_AVAILABLE_DYNAMIC_RANGE_PROFILES)?.supportedProfiles.orEmpty()
+                    .mapNotNull { p ->
+                        when (p) {
+                            DynamicRangeProfiles.HLG10 -> "HLG10"
+                            DynamicRangeProfiles.HDR10 -> "HDR10"
+                            DynamicRangeProfiles.HDR10_PLUS -> "HDR10+"
+                            DynamicRangeProfiles.STANDARD -> null
+                            else -> if (p >= DynamicRangeProfiles.DOLBY_VISION_10B_HDR_REF) "Dolby Vision" else null
+                        }
+                    }.distinct()
+            }.getOrDefault(emptyList()) else emptyList(),
+            vendorHiRes = runCatching {
+                (ch.keys.map { it.name } + (ch.availableCaptureRequestKeys?.map { it.name } ?: emptyList()))
+                    .filter { !it.startsWith("android.") && hiResKeyPattern.containsMatchIn(it) }
+                    .distinct().sorted().take(12)
+            }.getOrDefault(emptyList())
         )
     }
 
@@ -339,6 +438,9 @@ object CameraProbe {
         appendLine("Manuell sensor: ${r.manual} · RAW: ${r.raw}")
         appendLine("CameraX-tillägg bak: ${r.extensions.back.ifEmpty { listOf("-") }.joinToString()}")
         appendLine("CameraX-tillägg fram: ${r.extensions.front.ifEmpty { listOf("-") }.joinToString()}")
+        appendLine("CameraX bildformat bak: ${r.extensions.backFormats.ifEmpty { listOf("-") }.joinToString()}")
+        appendLine("CameraX slow motion: ${if (r.extensions.highSpeed) "ja" else "nej"} · videodynamik: ${r.extensions.videoRanges.ifEmpty { listOf("-") }.joinToString()}")
+        appendLine("1440p-video: ${if (r.qhdVideo) "ja" else "nej"} · Ultra HDR: ${if (r.ultraHdr) "ja" else "nej"} · HDR-video: ${r.hdrVideo.ifEmpty { listOf("nej") }.joinToString()} · HEVC-kodare: ${if (r.extensions.hevcEncoder) "ja" else "nej"}")
         appendLine()
         r.lenses.forEach { l ->
             append("ID ${l.id}")
@@ -363,6 +465,10 @@ object CameraProbe {
                 "  blixt ${l.flash} · fokus ${if (l.fixedFocus) "fast" else "${l.minFocusCm} cm"} · " +
                     "längsta exp ${l.maxExposureSec?.let { String.format(Locale.US, "%.1f s", it) } ?: "-"} · ISO ${l.isoMin}-${l.isoMax}" +
                     " · tillägg ${l.camera2Extensions.ifEmpty { listOf("-") }.joinToString()}"
+            )
+            appendLine(
+                "  1440p ${l.qhdVideo} · Ultra HDR ${l.ultraHdr} · HDR-video ${l.hdrVideo.ifEmpty { listOf("-") }.joinToString()}" +
+                    " · dolda högupplösta inställningar ${l.vendorHiRes.ifEmpty { listOf("-") }.joinToString()}"
             )
         }
     }

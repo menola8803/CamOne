@@ -86,7 +86,7 @@ kotlin {
 }
 
 dependencies {
-    val cameraX = "1.4.2"
+    val cameraX = "1.5.1"
     val composeBom = platform("androidx.compose:compose-bom:2025.06.01")
 
     implementation(composeBom)
@@ -113,6 +113,8 @@ dependencies {
 
     implementation("androidx.datastore:datastore-preferences:1.1.7")
     implementation("androidx.exifinterface:exifinterface:1.4.1")
+    // HEIF-bilder (telefonens HEVC-kodare)
+    implementation("androidx.heifwriter:heifwriter:1.0.0")
 
     // Textigenkänning – inbäddad modell, kräver INTE Google Play-tjänster (fungerar på LineageOS utan GApps)
     implementation("com.google.mlkit:text-recognition:16.0.1")

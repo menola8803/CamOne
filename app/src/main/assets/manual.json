@@ -1,5 +1,5 @@
 {
-  "version": "1.5.1",
+  "version": "1.6.0",
   "sv": [
     {
       "title": "Kameran",
@@ -7,7 +7,7 @@
         "Lägena Pro, Natt, Video, Foto och Porträtt ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
         "Linserna: .6 är ultravidvinkeln (16 mm), 1× huvudkameran (24 mm) och 2× telelinsen (47 mm). Nyp för att zooma upp till 10×. En liten etikett visar vilken lins som tar över.",
         "Tryck i sökaren för att fokusera och dra sedan uppåt eller nedåt för att ändra exponeringen.",
-        "Övre raden: blixt, självutlösare, bildformat (i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser guld.",
+        "Övre raden: blixt, självutlösare, bildformat (4:3, 1:1, 16:9, 3:2 eller Full – i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser starkare guld.",
         "Volymknapparna tar bild. Under Inställningar › Allmänt kan de i stället zooma eller ändra volymen.",
         "Miniatyren till vänster om avtryckaren öppnar den senaste bilden. Knappen till höger byter till framkameran."
       ]
@@ -23,8 +23,16 @@
       "title": "Live-filter",
       "items": [
         "Filterknappen i övre raden öppnar filtren och reglagen för rött, grönt och blått (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger.",
-        "En etikett i sökaren visar att ett filter är på. Tryck på den för att ändra. Återställ tar bort filtret.",
+        "En etikett i sökaren visar att ett filter är på. Tryck på den för att ändra. Den lilla knappen Återställ i menyns hörn tar bort filtret, och ett tryck på procentsiffran sätter just den färgen till 100 %.",
         "Filtret gäller Foto, Pro, Natt och Porträtt. Video spelas in utan filter."
+      ]
+    },
+    {
+      "title": "Bildformat och filformat",
+      "items": [
+        "Bildformat: 4:3 (hela sensorn), 3:2, 16:9, 1:1 och Full. Full fyller hela skärmen och bilden får skärmens form. 3:2 och Full beskärs direkt efter fotograferingen, precis som sökaren visar.",
+        "Filformat under Inställningar › Foto: JPEG fungerar överallt, HEIF är ungefär hälften så stor med samma kvalitet och PNG är förlustfritt men omkring 20 MB per bild.",
+        "RAW sparar sensorns obehandlade data som DNG för t.ex. Lightroom, och RAW + JPEG sparar båda. RAW gäller i Foto och Pro och är alltid 4:3. Filter och porträtt gäller inte RAW-filen. Stöder kameran inte RAW sparas JPEG."
       ]
     },
     {
@@ -46,8 +54,8 @@
       "title": "Inställningar",
       "items": [
         "Språk (Svenska eller English) och tema (Mörk eller Beige). Kameran, bildvisaren och redigeraren är alltid mörka.",
-        "Foto, Video, Sökare och Allmänt: bildformat, kvalitet, stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration och volymknappar.",
-        "Kameror visar vad telefonen ger appen tillgång till: varje lins, bildfrekvens, slow motion och RAW. Rapporten kan kopieras eller delas."
+        "Foto, Video, Sökare och Allmänt: bildformat, filformat, kvalitet, stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration och volymknappar.",
+        "Kameror visar vad telefonen ger appen tillgång till: varje lins, bildfrekvens, slow motion, RAW, 1440p-video, Ultra HDR, HDR-video och dolda högupplösta inställningar. Rapporten kan kopieras eller delas."
       ]
     },
     {
@@ -74,7 +82,7 @@
         "The modes Pro, Night, Video, Photo and Portrait are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
         "The lenses: .6 is the ultra-wide (16 mm), 1× the main camera (24 mm) and 2× the telephoto (47 mm). Pinch to zoom up to 10×. A small label shows which lens takes over.",
         "Tap the viewfinder to focus, then drag up or down to change the exposure.",
-        "Top row: flash, self-timer, aspect ratio (in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow gold.",
+        "Top row: flash, self-timer, aspect ratio (4:3, 1:1, 16:9, 3:2 or Full – in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow brighter gold.",
         "The volume keys take a photo. Under Settings › General they can zoom or change the volume instead.",
         "The thumbnail left of the shutter opens the latest photo. The button on the right switches to the front camera."
       ]
@@ -90,8 +98,16 @@
       "title": "Live filter",
       "items": [
         "The filter button in the top row opens the filters and the sliders for red, green and blue (0–200 %). The effect shows in the viewfinder right away and the photo is saved with the same colours.",
-        "A label in the viewfinder shows that a filter is on. Tap it to change it. Reset removes the filter.",
+        "A label in the viewfinder shows that a filter is on. Tap it to change it. The small Reset button in the corner of the menu removes the filter, and tapping a percentage sets just that colour back to 100 %.",
         "The filter works in Photo, Pro, Night and Portrait. Video is recorded without a filter."
+      ]
+    },
+    {
+      "title": "Aspect ratio and file format",
+      "items": [
+        "Aspect ratio: 4:3 (the whole sensor), 3:2, 16:9, 1:1 and Full. Full fills the whole screen and the photo gets the screen's shape. 3:2 and Full are cropped right after the photo is taken, exactly as the viewfinder shows.",
+        "File format under Settings › Photo: JPEG works everywhere, HEIF is about half the size at the same quality and PNG is lossless but about 20 MB per photo.",
+        "RAW saves the sensor's unprocessed data as DNG for e.g. Lightroom, and RAW + JPEG saves both. RAW works in Photo and Pro and is always 4:3. Filters and portrait do not apply to the RAW file. If the camera has no RAW, JPEG is saved."
       ]
     },
     {
@@ -113,8 +129,8 @@
       "title": "Settings",
       "items": [
         "Language (Svenska or English) and theme (Dark or Beige). The camera, viewer and editor are always dark.",
-        "Photo, Video, Viewfinder and General: aspect ratio, quality, stabilisation, sound, grid, level, shutter sound, vibration and volume keys.",
-        "Cameras shows what the phone gives the app access to: each lens, frame rate, slow motion and RAW. The report can be copied or shared."
+        "Photo, Video, Viewfinder and General: aspect ratio, file format, quality, stabilisation, sound, grid, level, shutter sound, vibration and volume keys.",
+        "Cameras shows what the phone gives the app access to: each lens, frame rate, slow motion, RAW, 1440p video, Ultra HDR, HDR video and hidden high-resolution settings. The report can be copied or shared."
       ]
     },
     {

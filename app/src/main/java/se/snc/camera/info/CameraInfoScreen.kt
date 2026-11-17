@@ -212,10 +212,50 @@ private fun Summary(r: CameraReport) {
             stringResource(if (r.manual) R.string.cams_used else R.string.cams_no),
             if (r.manual) Level.USED else Level.NO
         )
+        val rawCameraX = r.extensions.backFormats.any { it.startsWith("RAW") }
         StatusRow(
             stringResource(R.string.cams_raw),
-            stringResource(if (r.raw) R.string.cams_can_not_built else R.string.cams_no),
-            if (r.raw) Level.POSSIBLE else Level.NO
+            stringResource(
+                when {
+                    rawCameraX -> R.string.cams_raw_used
+                    r.raw -> R.string.cams_raw_camera2_only
+                    else -> R.string.cams_no
+                }
+            ),
+            when {
+                rawCameraX -> Level.USED
+                r.raw -> Level.POSSIBLE
+                else -> Level.NO
+            }
+        )
+        StatusRow(
+            stringResource(R.string.cams_qhd),
+            stringResource(if (r.qhdVideo) R.string.cams_can_not_built else R.string.cams_no),
+            if (r.qhdVideo) Level.POSSIBLE else Level.NO
+        )
+        StatusRow(
+            stringResource(R.string.cams_ultrahdr),
+            stringResource(if (r.ultraHdr || "ULTRA_HDR" in r.extensions.backFormats) R.string.cams_can_not_built else R.string.cams_no),
+            if (r.ultraHdr || "ULTRA_HDR" in r.extensions.backFormats) Level.POSSIBLE else Level.NO
+        )
+        val hdrRanges = (r.hdrVideo + r.extensions.videoRanges.filter { it != "SDR" }).distinct()
+        StatusRow(
+            stringResource(R.string.cams_hdrvideo),
+            if (hdrRanges.isNotEmpty()) stringResource(R.string.cams_not_built_value, hdrRanges.joinToString(", "))
+            else stringResource(R.string.cams_no),
+            if (hdrRanges.isNotEmpty()) Level.POSSIBLE else Level.NO
+        )
+        StatusRow(
+            stringResource(R.string.cams_hevc),
+            stringResource(if (r.extensions.hevcEncoder) R.string.cams_hevc_yes else R.string.cams_no),
+            if (r.extensions.hevcEncoder) Level.POSSIBLE else Level.NO
+        )
+        val hiddenHiRes = r.backListed.flatMap { it.vendorHiRes }.distinct()
+        StatusRow(
+            stringResource(R.string.cams_hidden_hires),
+            if (hiddenHiRes.isNotEmpty()) stringResource(R.string.cams_hidden_hires_found, hiddenHiRes.size)
+            else stringResource(R.string.cams_no),
+            if (hiddenHiRes.isNotEmpty()) Level.POSSIBLE else Level.NO
         )
         val ois = r.backListed.any { it.ois }
         StatusRow(

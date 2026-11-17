@@ -93,9 +93,41 @@ echo "::notice title=Starttid::Kallstart median ${MEDIAN:-?} ms · första start
 check "Första starten går fort (${FIRST_MS:-?} ms ≤ $FIRST_LIMIT ms)" [ "${FIRST_MS:-99999}" -le "$FIRST_LIMIT" ]
 check "Kallstart går fort (median ${MEDIAN:-?} ms ≤ $COLD_LIMIT ms)" [ "${MEDIAN:-99999}" -le "$COLD_LIMIT" ]
 
-step "Bildformat, rutnät och självutlösare"
+# Tar en bild, väntar på den nya filen med ändelsen $1 och hämtar den till $OUT/$2. Skriver filnamnet.
+snap() {
+  local ext="$1" dest="$2" before after latest
+  before=$(count "\\.$ext")
+  key KEYCODE_VOLUME_UP
+  for w in $(seq 1 20); do
+    sleep 1
+    after=$(count "\\.$ext")
+    [ "$after" -gt "$before" ] && break
+  done
+  # vänta på efterbehandlingen (beskärning, filter, filformat) innan filen hämtas
+  sleep 4
+  latest=$(adb shell "ls -t '$DIR' | grep '\\.$ext\$' | head -1" | tr -d '\r')
+  [ -n "$latest" ] && adb pull "$DIR/$latest" "$OUT/$dest" >> "$OUT/ui.log" 2>&1
+  [ "$after" -gt "$before" ] && echo "$latest"
+}
+# Bildens form: lång sida / kort sida (två decimaler)
+ratio() { python3 -c "from PIL import Image; w,h=Image.open('$1').size; print(f'{max(w,h)/min(w,h):.2f}')" 2>> "$OUT/ui.log"; }
+
+step "Bildformat (4:3 → 1:1 → 16:9 → 3:2 → Helskärm), rutnät och självutlösare"
 tap --desc "Aspect ratio"; sleep 3; shot 03-format-1-1
 tap --desc "Aspect ratio"; sleep 3; shot 04-format-16-9
+tap --desc "Aspect ratio"; sleep 3; shot 04b-format-3-2
+F32=$(snap jpg format-3-2.jpg)
+R32=$(ratio "$OUT/format-3-2.jpg")
+log "  3:2-bild: ${F32:-?} form ${R32:-?}"
+check "3:2 ger en bild i formatet 3:2 (${R32:-?})" python3 -c "import sys; sys.exit(0 if abs(float('${R32:-0}')-1.5)<0.03 else 1)"
+tap --desc "Aspect ratio"; sleep 4; shot 04c-format-helskarm
+FFULL=$(snap jpg format-full.jpg)
+RFULL=$(ratio "$OUT/format-full.jpg")
+SCREEN=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1)
+SR=$(python3 -c "w,h=map(int,'${SCREEN:-1080x2400}'.split('x')); print(f'{max(w,h)/min(w,h):.2f}')")
+log "  Helskärmsbild: ${FFULL:-?} form ${RFULL:-?} (skärmen ${SCREEN:-?} = ${SR})"
+check "Helskärm ger en bild i skärmens form (${RFULL:-?} ≈ ${SR})" python3 -c "import sys; sys.exit(0 if abs(float('${RFULL:-0}')-float('${SR}'))<0.08 else 1)"
+check "Appen lever efter 3:2 och helskärm" alive
 tap --desc "Aspect ratio"; sleep 3
 tap --desc "Grid"; sleep 1; shot 05-rutnat
 tap --desc "Grid"; tap --desc "Grid"; tap --desc "Grid"
@@ -328,6 +360,39 @@ check "Temat Mörk gör dem mörka igen" [ "${tr:-255}" -le 60 ]
 key KEYCODE_BACK
 sleep 4
 check "Kameran är mörk även efter temabytet" $UI exists --desc "Switch camera"
+
+step "Filformat (PNG, HEIF, RAW)"
+# Väljer filformat i Inställningar › Foto och går tillbaka till kameran
+set_format() {
+  tap --desc "Settings"; sleep 3
+  $UI tap --text "$1" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte filformatet $1"
+  sleep 1
+  key KEYCODE_BACK; sleep 4
+}
+set_format "PNG"
+FPNG=$(snap png format.png)
+KIND=$(python3 -c "from PIL import Image; print(Image.open('$OUT/format.png').format)" 2>> "$OUT/ui.log")
+log "  PNG: ${FPNG:-?} ($KIND)"
+check "PNG sparas som en riktig PNG-fil" [ "$KIND" = "PNG" ]
+check "Ingen JPEG ligger kvar bredvid PNG-bilden" bash -c "! adb shell \"ls '$DIR'\" | grep -q \"${FPNG%.png}.jpg\""
+set_format "HEIF"
+FHEIC=$(snap heic format.heic)
+BRAND=$(python3 -c "d=open('$OUT/format.heic','rb').read(12); print(d[4:12].decode('latin1'))" 2>> "$OUT/ui.log")
+log "  HEIF: ${FHEIC:-?} (${BRAND:-?})"
+check "HEIF sparas som en riktig HEIF-fil (${BRAND:-?})" bash -c "echo '${BRAND}' | grep -qE 'ftyp(heic|mif1|heix|msf1)'"
+set_format "RAW"
+JB=$(count '\.jpg')
+FDNG=$(snap dng format.dng)
+if [ -n "$FDNG" ]; then
+  log "  RAW: ${FDNG}"
+  check "RAW sparas som DNG" bash -c "head -c 4 '$OUT/format.dng' | od -An -c | grep -qE 'I +I|M +M'"
+else
+  JA=$(count '\.jpg')
+  log "  RAW finns inte i emulatorns kamera – appen sparade JPEG ($JB → $JA)"
+  check "Utan RAW sparas en vanlig JPEG i stället" [ "$JA" -gt "$JB" ]
+fi
+check "Appen lever efter filformaten" alive
+set_format "JPEG"
 
 step "Text i bild (delas till appen)"
 if python3 -c "import PIL" 2> /dev/null || pip install --quiet pillow > /dev/null 2>&1; then
