@@ -197,6 +197,7 @@
     <!-- Uppdateringar (som i Direct-appen) -->
     <string name="update_title">Updates</string>
     <string name="update_version_line">Version %1$s</string>
+    <string name="update_whats_new">What\'s new</string>
     <string name="update_sub">Looks for a new version of SNC Camera</string>
     <string name="update_row_sub">Looks for a new version</string>
     <string name="update_row_available">New version %1$s available</string>

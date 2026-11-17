@@ -6,6 +6,7 @@ Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för 
 
 - Uppdateringar ser ut som i Alif: kortet "Version 1.5.1" med knappen Sök efter uppdatering direkt under, och sist valet Sök efter ny version automatiskt med en förklaring av hur det går till. Raden Källa är borta.
 - Knapparna överst i kameran har Alifs utseende: guldton, guldkant och guldikoner. Påslagna knappar får starkare guld.
+- Knappen Ladda ner och installera syns direkt när en ny version finns; vad som är nytt visas i ett eget kort under knappen.
 
 ## Version 1.5.0 – 2026-11-17
 

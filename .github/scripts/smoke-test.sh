@@ -408,7 +408,7 @@ sleep 2
 if $UI exists --text "NEW VERSION" --timeout 25 >> "$OUT/ui.log" 2>&1; then
   ok "Ny version hittas på GitHub"
   shot 29-uppdatering-ny-version
-  tap --text "Download and install"
+  tap --text "Download and install" --scroll
   RESULT=""
   for i in $(seq 1 60); do
     if $UI exists --contains "verified (SHA-256)" --timeout 1 >> "$OUT/ui.log" 2>&1; then RESULT="verifierad"; break; fi

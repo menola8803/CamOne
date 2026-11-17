@@ -195,6 +195,8 @@ fun UpdateScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
             }
+            // Vad som är nytt – under knappen, så att knappen alltid syns direkt
+            if (available.notes.isNotEmpty()) NotesCard(available.notes)
         } else {
             VersionCard(check, current, settings.lastUpdateCheck)
             PrimaryButton(
@@ -383,23 +385,6 @@ private fun NewVersionCard(release: ReleaseInfo, current: String, download: Down
             StatusLine(Icons.Outlined.Shield, stringResource(R.string.update_allow), Ui.GoldL)
         }
 
-        // Ändringar i versionen
-        if (release.notes.isNotEmpty()) {
-            LineDivider(Modifier.padding(vertical = 4.dp))
-            release.notes.forEach { note ->
-                Row(verticalAlignment = Alignment.Top) {
-                    Box(
-                        Modifier
-                            .padding(top = 8.dp)
-                            .size(5.dp)
-                            .clip(CircleShape)
-                            .background(Ui.Gold)
-                    )
-                    Spacer(Modifier.width(12.dp))
-                    Text(note, color = Ui.Muted, fontFamily = BodyFont, fontSize = 15.sp, lineHeight = 21.sp)
-                }
-            }
-        }
     }
 }
 
@@ -412,4 +397,23 @@ private fun StatusLine(icon: ImageVector, text: String, color: androidx.compose.
     }
 }
 
-
+/** Vad som är nytt i versionen (punkterna från CHANGELOG). */
+@Composable
+private fun NotesCard(notes: List<String>) {
+    UsbCard(spacing = 10.dp) {
+        SectionLabel(stringResource(R.string.update_whats_new))
+        notes.forEach { note ->
+            Row(verticalAlignment = Alignment.Top) {
+                Box(
+                    Modifier
+                        .padding(top = 8.dp)
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(Ui.Gold)
+                )
+                Spacer(Modifier.width(12.dp))
+                Text(note, color = Ui.Muted, fontFamily = BodyFont, fontSize = 15.sp, lineHeight = 21.sp)
+            }
+        }
+    }
+}
