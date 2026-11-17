@@ -109,6 +109,8 @@ snap() {
   [ -n "$latest" ] && adb pull "$DIR/$latest" "$OUT/$dest" >> "$OUT/ui.log" 2>&1
   [ "$after" -gt "$before" ] && echo "$latest"
 }
+# Bildbeskrivningen i EXIF (ImageDescription) – nattbilderna skriver hur många bilder som lades ihop
+desc() { python3 -c "from PIL import Image; print(Image.open('$1').getexif().get(270, ''))" 2>> "$OUT/ui.log"; }
 # Bildens form: lång sida / kort sida (två decimaler)
 ratio() { python3 -c "from PIL import Image; w,h=Image.open('$1').size; print(f'{max(w,h)/min(w,h):.2f}')" 2>> "$OUT/ui.log"; }
 
@@ -195,15 +197,30 @@ check "Video spelas in och sparas ($before → $after)" [ "$after" -gt "$before"
 tap --desc "Frame rate"
 sleep 4
 
-step "Natt, Pro och Porträtt"
+step "Natt (flera bilder läggs ihop), Ljusspår, Silkesvatten, Pro och Porträtt"
 tap --text "NIGHT"
 sleep 5
 shot 15-natt
-before=$(count '\.jpg')
-key KEYCODE_VOLUME_UP
-sleep 8
-after=$(count '\.jpg')
-check "Nattbild sparas ($before → $after)" [ "$after" -gt "$before" ]
+check "Nattläget visar valen Natt, Ljusspår och Silkesvatten" $UI exists --text "Light trails" --timeout 8
+FN=$(snap jpg natt.jpg)
+DN=$(desc "$OUT/natt.jpg")
+log "  Nattbild: ${FN:-?} – ${DN:-?}"
+check "Nattbild sparas (${FN:-ingen fil})" [ -n "$FN" ]
+check "Nattbilden är ihoplagd av flera bilder (${DN:-?})" bash -c "echo '$DN' | grep -qE 'Night: ([2-9]|1[0-9]) frames'"
+tap --text "Silky water"; sleep 1
+tap --text "1 s"; sleep 1
+shot 15b-silkesvatten
+FS=$(snap jpg silke.jpg)
+DS=$(desc "$OUT/silke.jpg")
+log "  Silkesvatten: ${FS:-?} – ${DS:-?}"
+check "Silkesvatten 1 s sparas (${DS:-?})" bash -c "echo '$DS' | grep -q 'Silky water: 1 s'"
+tap --text "Light trails"; sleep 1
+FT=$(snap jpg ljusspar.jpg)
+DT=$(desc "$OUT/ljusspar.jpg")
+log "  Ljusspår: ${FT:-?} – ${DT:-?}"
+check "Ljusspår 1 s sparas (${DT:-?})" bash -c "echo '$DT' | grep -q 'Light trails: 1 s'"
+tap --text "Night"; sleep 1
+check "Appen lever efter nattbilderna" alive
 tap --text "PRO"
 sleep 5
 shot 16-pro

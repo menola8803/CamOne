@@ -274,29 +274,7 @@ class MediaRepository(private val context: Context) {
         }
         val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
         val uri = runCatching { resolver.insert(collection, values) }.getOrNull() ?: return@withContext null
-        val ok = runCatching {
-            when (format) {
-                PhotoFormat.PNG -> resolver.openOutputStream(uri, "w")?.use { out ->
-                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
-                } ?: false
-                else -> resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
-                    val writer = HeifWriter.Builder(pfd.fileDescriptor, bitmap.width, bitmap.height, HeifWriter.INPUT_MODE_BITMAP)
-                        .setQuality(quality.coerceIn(50, 100))
-                        .build()
-                    try {
-                        writer.start()
-                        writer.addBitmap(bitmap)
-                        writer.stop(20_000L)
-                    } finally {
-                        writer.close()
-                    }
-                    true
-                } ?: false
-            }
-        }.getOrElse { e ->
-            Log.w("MediaRepository", "Kunde inte spara som ${format.label}", e)
-            false
-        }
+        val ok = writeEncoded(uri, bitmap, format, quality)
         if (!ok) {
             runCatching { resolver.delete(uri, null, null) }
             return@withContext null
@@ -314,6 +292,76 @@ class MediaRepository(private val context: Context) {
         values.put(MediaStore.MediaColumns.IS_PENDING, 0)
         resolver.update(uri, values, null, null)
         runCatching { resolver.delete(original, null, null) }
+        notifyChanged()
+        uri
+    }
+
+    /** Skriver [bitmap] till [uri] som JPEG, PNG eller HEIF. RAW-format skrivs som JPEG. */
+    private fun writeEncoded(uri: Uri, bitmap: Bitmap, format: PhotoFormat, quality: Int): Boolean = runCatching {
+        when (format) {
+            PhotoFormat.PNG -> resolver.openOutputStream(uri, "w")?.use { out ->
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, out)
+            } ?: false
+            PhotoFormat.HEIF -> resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                val writer = HeifWriter.Builder(pfd.fileDescriptor, bitmap.width, bitmap.height, HeifWriter.INPUT_MODE_BITMAP)
+                    .setQuality(quality.coerceIn(50, 100))
+                    .build()
+                try {
+                    writer.start()
+                    writer.addBitmap(bitmap)
+                    writer.stop(20_000L)
+                } finally {
+                    writer.close()
+                }
+                true
+            } ?: false
+            else -> resolver.openOutputStream(uri, "w")?.use { out ->
+                bitmap.compress(Bitmap.CompressFormat.JPEG, quality.coerceIn(50, 100), out)
+            } ?: false
+        }
+    }.getOrElse { e ->
+        Log.w("MediaRepository", "Kunde inte spara som ${format.label}", e)
+        false
+    }
+
+    /**
+     * Sparar en ny bild som appen själv har räknat fram (nattfoto, ljusspår, silkesvatten) i valt
+     * filformat, med EXIF-uppgifterna [exif] (inte i HEIF). Ger bildens adress, eller null.
+     */
+    suspend fun saveNewPhoto(
+        bitmap: Bitmap,
+        format: PhotoFormat,
+        quality: Int,
+        exif: Map<String, String>,
+        prefix: String = "IMG"
+    ): Uri? = withContext(Dispatchers.IO) {
+        val fmt = if (format == PhotoFormat.HEIF || format == PhotoFormat.PNG) format else PhotoFormat.JPEG
+        val values = ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, newFileName(prefix, fmt.extension))
+            put(MediaStore.MediaColumns.MIME_TYPE, fmt.mime)
+            put(MediaStore.MediaColumns.RELATIVE_PATH, RELATIVE_PATH)
+            put(MediaStore.MediaColumns.DATE_TAKEN, System.currentTimeMillis())
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }
+        val collection = MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
+        val uri = runCatching { resolver.insert(collection, values) }.getOrNull() ?: return@withContext null
+        if (!writeEncoded(uri, bitmap, fmt, quality)) {
+            runCatching { resolver.delete(uri, null, null) }
+            return@withContext null
+        }
+        if (fmt != PhotoFormat.HEIF && exif.isNotEmpty()) {
+            runCatching {
+                resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
+                    val e = ExifInterface(pfd.fileDescriptor)
+                    exif.forEach { (tag, value) -> e.setAttribute(tag, value) }
+                    e.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
+                    e.saveAttributes()
+                }
+            }.onFailure { Log.w("MediaRepository", "EXIF kunde inte skrivas", it) }
+        }
+        values.clear()
+        values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+        resolver.update(uri, values, null, null)
         notifyChanged()
         uri
     }

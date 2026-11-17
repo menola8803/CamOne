@@ -85,6 +85,15 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import se.snc.camera.data.PhotoFormat
 import se.snc.camera.editor.centerCropToRatio
+import androidx.camera.core.ImageAnalysis
+import androidx.exifinterface.media.ExifInterface
+import kotlinx.coroutines.withTimeoutOrNull
+import se.snc.camera.BuildConfig
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -116,6 +125,29 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var viewfinderLongShort: Float = 20f / 9f
     private var videoCapture: VideoCapture<Recorder>? = null
     private var recording: Recording? = null
+
+    // Nattläget utan tillverkarens extension: bildrutor i full upplösning som läggs ihop (NightStack.kt)
+    private var nightAnalysis: ImageAnalysis? = null
+    private val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val stackParts = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
+    private val stackPool: ExecutorService = Executors.newFixedThreadPool(stackParts)
+    private val planeBuffers = PlaneBuffers()
+    @Volatile private var stackSession: StackSession? = null
+    @Volatile private var lastExposureNs: Long = 0L
+    @Volatile private var lastIso: Int = 0
+    private val motion by lazy { MotionMeter(context) { steady -> onSteadyChanged(steady) } }
+    private val stackAnalyzer = ImageAnalysis.Analyzer { image ->
+        try {
+            val session = stackSession
+            if (session != null && !session.finished) {
+                session.onFrame(image.toFrameView(planeBuffers), image.imageInfo.rotationDegrees, image.imageInfo.timestamp)
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Bildrutan kunde inte läsas", t)
+        } finally {
+            image.close()
+        }
+    }
     private var zoomLiveData: LiveData<ZoomState>? = null
     private val zoomObserver = Observer<ZoomState> { z ->
         _state.update { it.copy(zoomRatio = z.zoomRatio, minZoom = z.minZoomRatio, maxZoom = z.maxZoomRatio) }
@@ -151,6 +183,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     /** Läser vilken fysisk lins den logiska kameran använder i varje bildruta. */
     private val lensCallback = object : CameraCaptureSession.CaptureCallback() {
         override fun onCaptureCompleted(session: CameraCaptureSession, request: CaptureRequest, result: TotalCaptureResult) {
+            // Exponering och ISO till nattbildens EXIF
+            result.get(CaptureResult.SENSOR_EXPOSURE_TIME)?.let { lastExposureNs = it }
+            result.get(CaptureResult.SENSOR_SENSITIVITY)?.let { lastIso = it }
             if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return
             val id = result.get(CaptureResult.LOGICAL_MULTI_CAMERA_ACTIVE_PHYSICAL_ID) ?: return
             if (id == lastActiveLens) return
@@ -216,6 +251,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         countdownJob?.cancel()
         recording?.stop()
         recording = null
+        stopStacking()
+        motion.stop()
         bindJob?.cancel()
         zoomLiveData?.removeObserver(zoomObserver)
         zoomLiveData = null
@@ -230,6 +267,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     override fun onCleared() {
         detach()
+        analysisExecutor.shutdown()
+        stackPool.shutdown()
         sound.release()
         portrait.close()
         super.onCleared()
@@ -316,6 +355,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             else -> null
         }
 
+        // En pågående nattbild avbryts (kameran binds om)
+        stopStacking()
+
         // Ta bort ev. manuella Camera2-värden från förra läget
         camera?.let { old -> runCatching { Camera2CameraControl.from(old.cameraControl).clearCaptureRequestOptions() } }
         zoomLiveData?.removeObserver(zoomObserver)
@@ -349,7 +391,24 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             val useCases = mutableListOf<UseCase>(preview)
             var ic: ImageCapture? = null
             var vc: VideoCapture<Recorder>? = null
-            if (st.mode.isVideo) {
+            var na: ImageAnalysis? = null
+            val stacking = st.mode == CameraMode.NIGHT && !(useExtension && wantedExtension != null)
+            if (stacking) {
+                // Natt, ljusspår och silkesvatten: bildrutor i full upplösning (4:3) som läggs ihop i appen.
+                // Analysen är bara aktiv medan en bild tas (setAnalyzer/clearAnalyzer).
+                na = ImageAnalysis.Builder()
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+                            .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                            .build()
+                    )
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                    .setTargetRotation(targetRotation)
+                    .build()
+                useCases += na
+            } else if (st.mode.isVideo) {
                 val quality = when (s.videoQuality) {
                     VideoQualityOption.HD -> Quality.HD
                     VideoQualityOption.FHD -> Quality.FHD
@@ -410,6 +469,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 val cam = cp.bindToLifecycle(owner, selector, *useCases.toTypedArray())
                 imageCapture = ic
                 videoCapture = vc
+                nightAnalysis = na
                 rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
@@ -481,13 +541,15 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 exposureMin = exposure.exposureCompensationRange.lower,
                 exposureMax = exposure.exposureCompensationRange.upper,
                 exposureStep = exposure.exposureCompensationStep.toFloat(),
-                pro = pro
+                pro = pro,
+                stackAvailable = nightAnalysis != null
             )
         }
+        if (nightAnalysis != null) motion.start() else motion.stop()
 
         when (st.mode) {
             CameraMode.PRO -> applyProOptions()
-            CameraMode.NIGHT -> if (!extensionActive) applySoftwareNightOptions(cam)
+            CameraMode.NIGHT -> if (!extensionActive) applyNightOptions()
             else -> Unit
         }
 
@@ -564,20 +626,60 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Nattläge utan tillverkarens extension: tillåter längre exponering genom att sänka lägsta
-     * bildfrekvens och slå på högkvalitativ brusreducering.
+     * Nattläge utan tillverkarens extension. Natt: i handen högst 1/15 s per bild (skarpa bilder, fler
+     * läggs ihop), på stativ kamerans längsta exponering. Ljusspår och silkesvatten: 30 bilder per
+     * sekund utan luckor. Snabb brusreducering – bruset minskar när bilderna läggs ihop.
      */
-    private fun applySoftwareNightOptions(cam: Camera) {
+    private fun applyNightOptions() {
+        val cam = camera ?: return
+        val st = _state.value
+        if (st.mode != CameraMode.NIGHT || nightAnalysis == null) return
         runCatching {
             val info = Camera2CameraInfo.from(cam.cameraInfo)
             val ranges = info.getCameraCharacteristic(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
-            val slow: Range<Int>? = ranges?.minWithOrNull(compareBy<Range<Int>>({ it.lower }, { -it.upper }))
+                ?.toList().orEmpty()
+            val slowest = compareBy<Range<Int>>({ it.lower }, { -it.upper })
+            val range: Range<Int>? = when {
+                st.nightStyle != StackStyle.NIGHT ->
+                    ranges.firstOrNull { it.lower == 30 && it.upper == 30 }
+                        ?: ranges.maxWithOrNull(compareBy<Range<Int>>({ it.lower }, { it.upper }))
+                st.steady -> ranges.minWithOrNull(slowest)
+                else -> ranges.filter { it.lower >= 15 }.minWithOrNull(slowest) ?: ranges.minWithOrNull(slowest)
+            }
             val builder = CaptureRequestOptions.Builder()
-                .setCaptureRequestOption(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_HIGH_QUALITY)
-                .setCaptureRequestOption(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_HIGH_QUALITY)
-            if (slow != null) builder.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, slow)
+                .setCaptureRequestOption(CaptureRequest.NOISE_REDUCTION_MODE, CaptureRequest.NOISE_REDUCTION_MODE_FAST)
+                .setCaptureRequestOption(CaptureRequest.EDGE_MODE, CaptureRequest.EDGE_MODE_FAST)
+            if (range != null) builder.setCaptureRequestOption(CaptureRequest.CONTROL_AE_TARGET_FPS_RANGE, range)
             Camera2CameraControl.from(cam.cameraControl).setCaptureRequestOptions(builder.build())
         }.onFailure { Log.w(TAG, "Nattinställningar kunde inte sättas", it) }
+    }
+
+    private fun onSteadyChanged(steady: Boolean) {
+        _state.update { it.copy(steady = steady) }
+        if (!_state.value.isCapturing) applyNightOptions()
+    }
+
+    /** Natt, Ljusspår eller Silkesvatten. */
+    fun setNightStyle(style: StackStyle) {
+        val st = _state.value
+        if (st.isCapturing || st.countdown > 0 || style == st.nightStyle) return
+        _state.update { it.copy(nightStyle = style) }
+        applyNightOptions()
+    }
+
+    /** Exponeringstid för ljusspår och silkesvatten (sekunder). */
+    fun setExposureSeconds(seconds: Int) {
+        val st = _state.value
+        if (st.isCapturing || st.countdown > 0) return
+        _state.update { it.copy(exposureSeconds = seconds.coerceIn(1, 8)) }
+    }
+
+    /** Avbryter en pågående nattbild och stänger analysen. */
+    private fun stopStacking() {
+        stackSession?.cancel()
+        stackSession = null
+        runCatching { nightAnalysis?.clearAnalyzer() }
+        nightAnalysis = null
     }
 
     fun updatePro(transform: (ProState) -> ProState) {
@@ -678,6 +780,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun setMode(mode: CameraMode) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0 || mode == st.mode) return
+        if (st.isCapturing && st.mode == CameraMode.NIGHT) return // nattbilden tas fortfarande
         _state.update { it.copy(mode = mode, activeProControl = null, filterPanelOpen = it.filterPanelOpen && !mode.isVideo) }
         if (mode.isVideo && st.filter.isActive) showMessage(R.string.msg_filter_not_video)
         viewModelScope.launch { settingsRepo.update { it.copy(lastMode = mode.name) } }
@@ -687,6 +790,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun switchLens() {
         val st = _state.value
         if (st.isRecording || st.countdown > 0) return
+        if (st.isCapturing && st.mode == CameraMode.NIGHT) return
         if (!st.hasFrontCamera || !st.hasBackCamera) return
         val front = !st.lensFront
         _state.update { it.copy(lensFront = front, zoomRatio = 1f) }
@@ -799,6 +903,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         if (targetRotation == surfaceRotation) return
         targetRotation = surfaceRotation
         imageCapture?.targetRotation = surfaceRotation
+        if (stackSession == null) nightAnalysis?.targetRotation = surfaceRotation
         if (!_state.value.isRecording) videoCapture?.targetRotation = surfaceRotation
     }
 
@@ -816,7 +921,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (st.isCapturing) return
-        runWithTimer { takePhoto() }
+        if (st.mode == CameraMode.NIGHT && nightAnalysis != null) {
+            runWithTimer { takeStackShot() }
+        } else {
+            runWithTimer { takePhoto() }
+        }
     }
 
     private fun runWithTimer(action: () -> Unit) {
@@ -914,6 +1023,108 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 ic.takePicture(options, ContextCompat.getMainExecutor(context), callback)
             }
         }
+    }
+
+    /**
+     * Nattfoto, ljusspår eller silkesvatten: analysen slås på, bildrutorna läggs ihop medan de kommer
+     * (NightStack.kt) och resultatet sparas i valt bildformat och filformat.
+     */
+    private fun takeStackShot() {
+        val analysis = nightAnalysis ?: return
+        val st = _state.value
+        val s = settings.value
+        if (st.isCapturing) return
+        val style = st.nightStyle
+        val frames = NightFrames.forSteady(st.steady)
+        val seconds = st.exposureSeconds
+        viewModelScope.launch {
+            _state.update { it.copy(isCapturing = true, stackProgress = 0f, stackMerging = false, stackFrames = frames) }
+            if (s.shutterSound) sound.play(MediaActionSound.SHUTTER_CLICK)
+            val session = StackSession(style, frames, seconds * 1_000_000_000L, stackPool, stackParts) { p ->
+                _state.update { it.copy(stackProgress = p) }
+            }
+            var saved: Uri? = null
+            try {
+                stackSession = session
+                analysis.setAnalyzer(analysisExecutor, stackAnalyzer)
+                val timeoutMs = if (style == StackStyle.NIGHT) 5_000L + frames * 1_200L else seconds * 1_000L + 6_000L
+                val result = withTimeoutOrNull(timeoutMs) { session.result.await() } ?: run {
+                    // Kom inte alla bilder i tid: lägg ihop de som kom (utanför huvudtråden)
+                    withContext(Dispatchers.Default) { session.finishNow() }
+                    withTimeoutOrNull(5_000L) { session.result.await() }
+                }
+                runCatching { analysis.clearAnalyzer() }
+                if (stackSession === session) stackSession = null
+                if (result != null) {
+                    _state.update { it.copy(stackProgress = null, stackMerging = true) }
+                    saved = withContext(Dispatchers.Default) { saveStack(result, style, st, s) }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Log.e(TAG, "Nattbilden kunde inte tas", t)
+            } finally {
+                if (stackSession === session) stackSession = null
+                if (nightAnalysis === analysis) runCatching { analysis.clearAnalyzer() }
+                _state.update { it.copy(isCapturing = false, stackProgress = null, stackMerging = false) }
+                applyNightOptions()
+            }
+            val uri = saved
+            if (uri != null) {
+                _state.update { it.copy(shutterBlink = System.currentTimeMillis()) }
+                onMediaSaved(uri, isVideo = false)
+            } else {
+                showMessage(R.string.msg_stack_failed)
+            }
+        }
+    }
+
+    /** Gör bild av de ihoplagda bildrutorna: beskärning, rotation, live-filter, EXIF och filformat. */
+    private suspend fun saveStack(r: StackSession.Result, style: StackStyle, st: CameraUiState, s: AppSettings): Uri? {
+        val ratio: Float? = when (s.aspect) {
+            AspectOption.RATIO_4_3 -> null
+            AspectOption.RATIO_1_1 -> 1f
+            AspectOption.RATIO_3_2 -> 1.5f
+            AspectOption.RATIO_16_9 -> 16f / 9f
+            AspectOption.FULL -> viewfinderLongShort
+        }
+        var bmp = StackRender.toBitmap(r.frame, ratio, r.rotationDegrees, st.lensFront && s.mirrorFront, stackPool, stackParts)
+        if (st.filter.isActive) {
+            val filtered = bmp.withColorMatrix(st.filter.matrix())
+            bmp.recycle()
+            bmp = filtered
+        }
+        val format = if (s.photoFormat.isRaw) PhotoFormat.JPEG else s.photoFormat
+        val uri = media.saveNewPhoto(bmp, format, s.jpegQuality, stackExif(style, r.frames, st.exposureSeconds))
+        bmp.recycle()
+        return uri
+    }
+
+    private fun stackExif(style: StackStyle, frames: Int, seconds: Int): Map<String, String> {
+        val now = Date()
+        val date = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).format(now)
+        val offset = SimpleDateFormat("xxx", Locale.US).format(now)
+        val description = when (style) {
+            StackStyle.NIGHT -> "SNC Camera Night: $frames frames"
+            StackStyle.TRAILS -> "SNC Camera Light trails: $seconds s, $frames frames"
+            StackStyle.SILK -> "SNC Camera Silky water: $seconds s, $frames frames"
+        }
+        val exif = mutableMapOf(
+            ExifInterface.TAG_DATETIME to date,
+            ExifInterface.TAG_DATETIME_ORIGINAL to date,
+            ExifInterface.TAG_DATETIME_DIGITIZED to date,
+            ExifInterface.TAG_OFFSET_TIME to offset,
+            ExifInterface.TAG_OFFSET_TIME_ORIGINAL to offset,
+            ExifInterface.TAG_MAKE to Build.MANUFACTURER,
+            ExifInterface.TAG_MODEL to Build.MODEL,
+            ExifInterface.TAG_SOFTWARE to "SNC Camera ${BuildConfig.VERSION_NAME}",
+            ExifInterface.TAG_IMAGE_DESCRIPTION to description
+        )
+        // ExposureTime skrivs som decimaltal (androidx ExifInterface räknar om det)
+        val exposureNs = if (style == StackStyle.NIGHT) lastExposureNs else seconds * 1_000_000_000L
+        if (exposureNs > 0) exif[ExifInterface.TAG_EXPOSURE_TIME] = String.format(Locale.US, "%.6f", exposureNs / 1e9)
+        if (lastIso > 0) exif[ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY] = lastIso.toString()
+        return exif
     }
 
     @SuppressLint("MissingPermission")

@@ -1,5 +1,5 @@
 {
-  "version": "1.6.2",
+  "version": "1.7.0",
   "sv": [
     {
       "title": "Kameran",
@@ -25,6 +25,15 @@
         "Filterknappen i övre raden öppnar filtren och reglagen för rött, grönt och blått (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger.",
         "En etikett i sökaren visar att ett filter är på. Tryck på den för att ändra. Den lilla knappen Återställ i menyns hörn tar bort filtret, och ett tryck på procentsiffran sätter just den färgen till 100 %.",
         "Filtret gäller Foto, Pro, Natt och Porträtt. Video spelas in utan filter."
+      ]
+    },
+    {
+      "title": "Natt, ljusspår och silkesvatten",
+      "items": [
+        "Natt tar flera bilder efter varandra och lägger ihop dem till en ljusare bild med mindre brus: 8 bilder i handen och 16 när telefonen står stilla, till exempel på ett stativ eller ett bord. Etiketten överst visar hur många bilder som tas och hur långt det har kommit – håll stilla tills den är klar.",
+        "Bilderna flyttas på plats innan de läggs ihop, så små skakningar gör inget. Det som rör sig, som människor och bilar, tas bara från en av bilderna, så inga spökbilder uppstår.",
+        "Ljusspår och Silkesvatten exponerar i 1, 2, 4 eller 8 sekunder. Silkesvatten gör rinnande vatten och moln mjuka. Ljusspår ritar ut ljus som rör sig, till exempel bilar i mörker. Ställ telefonen stadigt – allt annat som rör sig blir utsmetat.",
+        "Allt räknas fram i telefonen, utan internet. Bildformat, live-filter och filformat gäller som vanligt (RAW sparas som JPEG). Har telefonen tillverkarens eget nattläge används det i stället."
       ]
     },
     {
@@ -100,6 +109,15 @@
         "The filter button in the top row opens the filters and the sliders for red, green and blue (0–200 %). The effect shows in the viewfinder right away and the photo is saved with the same colours.",
         "A label in the viewfinder shows that a filter is on. Tap it to change it. The small Reset button in the corner of the menu removes the filter, and tapping a percentage sets just that colour back to 100 %.",
         "The filter works in Photo, Pro, Night and Portrait. Video is recorded without a filter."
+      ]
+    },
+    {
+      "title": "Night, light trails and silky water",
+      "items": [
+        "Night takes several photos in a row and combines them into one brighter photo with less noise: 8 photos handheld and 16 when the phone is still, for example on a tripod or a table. The label at the top shows how many photos are taken and how far it has come – hold still until it is done.",
+        "The photos are moved into place before they are combined, so a little shake does not matter. Anything that moves, like people and cars, is taken from only one of the photos, so there are no ghost images.",
+        "Light trails and Silky water expose for 1, 2, 4 or 8 seconds. Silky water makes running water and clouds smooth. Light trails draws moving lights, for example cars in the dark. Put the phone down steady – anything else that moves is smeared.",
+        "Everything is computed on the phone, without internet. Aspect ratio, live filter and file format work as usual (RAW is saved as JPEG). If the phone has the manufacturer's own night mode, that is used instead."
       ]
     },
     {

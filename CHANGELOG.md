@@ -2,6 +2,14 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.7.0 – 2026-11-17
+
+- Nytt nattläge: flera bilder tas efter varandra och läggs ihop till en ljusare bild med mindre brus – 8 bilder i handen (högst 1/15 s var, så att de blir skarpa) och 16 när telefonen står stilla på stativ eller bord (längre exponering). Gyrot avgör vilket, och etiketten överst visar det.
+- Bilderna flyttas på plats innan de läggs ihop, även lite vridning följer med. Det som rör sig tas bara från en bild, så inga spökbilder uppstår. Den skarpaste av de första bilderna väljs som grund.
+- Ljusspår och Silkesvatten i nattläget: 1, 2, 4 eller 8 sekunders exponering. Silkesvatten gör rinnande vatten mjukt, Ljusspår ritar ut lampor som rör sig.
+- Bildformat, live-filter och filformat gäller även nattbilderna. Bilden får datum, kamera, exponering och antal bilder i EXIF.
+- Manualen har ett nytt avsnitt om natt, ljusspår och silkesvatten.
+
 ## Version 1.6.2 – 2026-11-17
 
 - Remsan i 16:9 är borta även i sökaren och i video. Den kom från telefonens kamera 5 (vidvinkel + ultravid + tele), som skär bort kanten två gånger så fort den ska leverera 16:9.

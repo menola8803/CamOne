@@ -25,6 +25,8 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
 - Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus
+- **Natt**: 8 bilder i handen eller 16 på stativ läggs ihop till en ljusare bild med mindre brus
+  (bilderna flyttas på plats, inga spökbilder). **Ljusspår** och **Silkesvatten**: 1–8 s lång exponering
 - **Live-filter**: filterknappen i övre fältet öppnar redigerarens filter och reglage för rött, grönt och blått
   (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger (foto, pro, natt, porträtt – inte video)
 - Volymknapparna kan ta bild eller zooma
@@ -128,7 +130,8 @@ Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWO
 ## Bra att veta om LineageOS
 - OnePlus egen bildbehandling (Hasselblad-färger, OnePlus nattläge/porträtt) är stängd programvara
   som inte följer med LineageOS. Appen använder därför:
-  - **Natt**: tillverkarens CameraX-tillägg om det finns, annars längre exponering + högkvalitativ brusreducering.
+  - **Natt**: tillverkarens CameraX-tillägg om det finns, annars appens eget nattläge där 8–16 bilder i full
+    upplösning läggs ihop (`camera/NightStack.kt`), plus ljusspår och silkesvatten.
   - **Porträtt**: tillverkarens bokeh-tillägg om det finns, annars mjukvaruporträtt där personen
     hittas och bakgrunden görs oskarp efter bilden tagits.
   - **HDR**-knappen visas bara om kameran erbjuder HDR-tillägg.

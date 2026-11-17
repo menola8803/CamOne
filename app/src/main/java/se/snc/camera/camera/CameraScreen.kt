@@ -444,21 +444,14 @@ private fun CameraContent(
                 )
             }
 
-            // Läges-badge (t.ex. nattläge)
-            if (state.mode == CameraMode.NIGHT && !state.isCapturing) {
-                Row(
-                    Modifier
+            // Nattläget: antal bilder (handen/stativ), förlopp och "Lägger ihop bilderna…"
+            if (state.mode == CameraMode.NIGHT) {
+                NightStatus(
+                    state = state,
+                    modifier = Modifier
                         .align(Alignment.TopCenter)
                         .padding(top = 12.dp)
-                        .clip(RoundedCornerShape(50))
-                        .background(Usb.Bg.copy(alpha = 0.72f))
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Rounded.NightsStay, contentDescription = null, tint = CameraYellow, modifier = Modifier.size(16.dp))
-                    Spacer(Modifier.size(6.dp))
-                    Text(stringResource(R.string.night_hold_steady), color = Usb.Text, fontSize = 12.sp)
-                }
+                )
             }
 
             AnimatedVisibility(
@@ -562,6 +555,18 @@ private fun CameraContent(
                 )
             }
 
+            // Nattläget: Natt, Ljusspår eller Silkesvatten (och exponeringstid)
+            if (state.mode == CameraMode.NIGHT && state.stackAvailable && !state.filterPanelOpen) {
+                NightStylePicker(
+                    style = state.nightStyle,
+                    seconds = state.exposureSeconds,
+                    enabled = !state.isCapturing && state.countdown == 0,
+                    onStyle = viewModel::setNightStyle,
+                    onSeconds = viewModel::setExposureSeconds,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             // Visar en stund vilken lins som tog över när man zoomar (t.ex. "Tele · 47 mm")
             var showLens by remember { mutableStateOf(false) }
             LaunchedEffect(state.lensChangeTick) {
@@ -619,7 +624,7 @@ private fun CameraContent(
                             rotation = iconRotation,
                             onClick = { onOpenGallery(state.lastUri) }
                         )
-                        if (state.isCapturing && state.mode == CameraMode.PORTRAIT) {
+                        if (state.isCapturing && (state.mode == CameraMode.PORTRAIT || state.stackMerging)) {
                             CircularProgressIndicator(
                                 color = Usb.Gold,
                                 strokeWidth = 2.dp,

@@ -87,6 +87,20 @@ data class CameraUiState(
     val isPaused: Boolean = false,
     val recordingMs: Long = 0L,
 
+    /** Nattläget lägger ihop flera bilder (ingen tillverkarextension): Natt, Ljusspår eller Silkesvatten. */
+    val stackAvailable: Boolean = false,
+    val nightStyle: StackStyle = StackStyle.NIGHT,
+    /** Exponeringstid för ljusspår och silkesvatten. */
+    val exposureSeconds: Int = 2,
+    /** Telefonen står stilla (stativ eller bord) enligt gyrot. */
+    val steady: Boolean = false,
+    /** Antal bilder i den pågående nattbilden. */
+    val stackFrames: Int = 0,
+    /** 0–1 medan bilderna tas, annars null. */
+    val stackProgress: Float? = null,
+    /** Bilderna läggs ihop och sparas. */
+    val stackMerging: Boolean = false,
+
     val countdown: Int = 0,
     val isCapturing: Boolean = false,
     /** Vit skärm som blixt för frontkameran. */
