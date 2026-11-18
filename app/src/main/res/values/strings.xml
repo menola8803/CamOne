@@ -47,6 +47,7 @@
     <string name="night_capturing">Hold still · %1$d/%2$d</string>
     <string name="night_exposing">Exposing · %1$s/%2$d s</string>
     <string name="night_merging">Combining frames…</string>
+    <string name="hdr_capturing">HDR · %1$d/%2$d</string>
     <string name="msg_portrait_software">Portrait: background blur is applied after the shot</string>
     <string name="msg_processing_portrait">Creating portrait effect…</string>
     <string name="night_hold_steady">Hold steady</string>
@@ -161,6 +162,8 @@
     <string name="setting_aspect">Aspect ratio</string>
     <string name="setting_max_quality">Maximum quality</string>
     <string name="setting_max_quality_desc">Off gives a faster shutter</string>
+    <string name="setting_ultra_hdr">Ultra HDR</string>
+    <string name="setting_ultra_hdr_desc">HDR photos get brighter highlights on HDR screens (JPEG)</string>
     <string name="setting_jpeg_quality">JPEG quality</string>
     <string name="setting_mirror_front">Mirror front camera</string>
     <string name="setting_mirror_front_desc">Save selfies the way they look in the viewfinder</string>

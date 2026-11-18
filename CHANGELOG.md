@@ -2,6 +2,13 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.8.0 – 2026-11-18
+
+- HDR i appen: HDR-knappen i Foto tar 3 exponeringar (vald, −2 och +2 EV) i handen och 5 på stativ (0, ±1,5, ±3 EV) och lägger ihop dem, så att både ljusa fönster och mörka hörn syns. Ljusskillnaden mäts i bilderna själva.
+- Bilderna flyttas på plats (samma flytt som nattläget, efter att ljuset jämnats ut) och det som rör sig tas från den första bilden – inga spökbilder. Mjuka vikter efter hur väl exponerat varje område är, utfrätta pixlar räknas inte.
+- Ultra HDR: HDR-bilden sparas med en gain map, så att HDR-skärmar visar ljusa partier upp till 4× ljusare. Kan stängas av under Inställningar › Foto.
+- Etiketten överst visar förloppet ("HDR · 2/3", sedan "Lägger ihop bilderna…"). Blixten används inte med HDR.
+
 ## Version 1.7.1 – 2026-11-18
 
 - Helskärm med glas: bilden syns ända ned till kanten. Avtryckaren, miniatyren och byt kamera ligger i en genomskinlig glaspanel, knapparna överst har en mörk glasbotten under guldtonen så att de syns mot både ljusa och mörka motiv, och lägesmenyn är mer genomskinlig. Övriga bildformat ser ut som förut.

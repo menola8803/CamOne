@@ -94,12 +94,19 @@ import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import android.graphics.Bitmap
+import android.graphics.Gainmap
+import androidx.annotation.RequiresApi
+import kotlin.math.pow
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     private companion object {
         const val TAG = "SncCamera"
+        /** HDR: exponeringar i EV (den första är referensen) i handen och på stativ. */
+        val HDR_EVS_HAND = listOf(0f, -2f, 2f)
+        val HDR_EVS_STEADY = listOf(0f, -1.5f, 1.5f, -3f, 3f)
     }
 
     private val context get() = getApplication<Application>()
@@ -132,7 +139,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private val stackParts = Runtime.getRuntime().availableProcessors().coerceIn(2, 4)
     private val stackPool: ExecutorService = Executors.newFixedThreadPool(stackParts)
     private val planeBuffers = PlaneBuffers()
-    @Volatile private var stackSession: StackSession? = null
+    @Volatile private var stackSession: FrameSink? = null
     @Volatile private var lastExposureNs: Long = 0L
     @Volatile private var lastIso: Int = 0
     private val motion by lazy { MotionMeter(context) { steady -> onSteadyChanged(steady) } }
@@ -400,7 +407,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             var ic: ImageCapture? = null
             var vc: VideoCapture<Recorder>? = null
             var na: ImageAnalysis? = null
-            val stacking = st.mode == CameraMode.NIGHT && !(useExtension && wantedExtension != null)
+            // Natt (utan tillverkarens nattläge) och HDR i Foto (utan tillverkarens HDR) läggs ihop i appen
+            val stacking = (st.mode == CameraMode.NIGHT || (st.mode == CameraMode.PHOTO && s.hdr)) &&
+                !(useExtension && wantedExtension != null)
             if (stacking) {
                 // Natt, ljusspår och silkesvatten: bildrutor i full upplösning (4:3) som läggs ihop i appen.
                 // Analysen tar emot bildrutor hela tiden i nattläget; de används bara medan en bild tas.
@@ -790,7 +799,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun setMode(mode: CameraMode) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0 || mode == st.mode) return
-        if (st.isCapturing && st.mode == CameraMode.NIGHT) return // nattbilden tas fortfarande
+        if (st.isCapturing && stackSession != null) return // natt- eller HDR-bilden tas fortfarande
         _state.update { it.copy(mode = mode, activeProControl = null, filterPanelOpen = it.filterPanelOpen && !mode.isVideo) }
         if (mode.isVideo && st.filter.isActive) showMessage(R.string.msg_filter_not_video)
         viewModelScope.launch { settingsRepo.update { it.copy(lastMode = mode.name) } }
@@ -800,7 +809,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun switchLens() {
         val st = _state.value
         if (st.isRecording || st.countdown > 0) return
-        if (st.isCapturing && st.mode == CameraMode.NIGHT) return
+        if (st.isCapturing && stackSession != null) return
         if (!st.hasFrontCamera || !st.hasBackCamera) return
         val front = !st.lensFront
         _state.update { it.copy(lensFront = front, zoomRatio = 1f) }
@@ -933,6 +942,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         if (st.isCapturing) return
         if (st.mode == CameraMode.NIGHT && nightAnalysis != null) {
             runWithTimer { takeStackShot() }
+        } else if (st.mode == CameraMode.PHOTO && nightAnalysis != null) {
+            runWithTimer { takeHdrShot() }
         } else {
             runWithTimer { takePhoto() }
         }
@@ -1087,17 +1098,42 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    /** Bildformatet som förhållandet lång/kort sida (null = hela 4:3-bilden). */
+    private fun cropRatioFor(aspect: AspectOption): Float? = when (aspect) {
+        AspectOption.RATIO_4_3 -> null
+        AspectOption.RATIO_1_1 -> 1f
+        AspectOption.RATIO_3_2 -> 1.5f
+        AspectOption.RATIO_16_9 -> 16f / 9f
+        AspectOption.FULL -> viewfinderLongShort
+    }
+
     /** Gör bild av de ihoplagda bildrutorna: beskärning, rotation, live-filter, EXIF och filformat. */
     private suspend fun saveStack(r: StackSession.Result, style: StackStyle, st: CameraUiState, s: AppSettings): Uri? {
-        val ratio: Float? = when (s.aspect) {
-            AspectOption.RATIO_4_3 -> null
-            AspectOption.RATIO_1_1 -> 1f
-            AspectOption.RATIO_3_2 -> 1.5f
-            AspectOption.RATIO_16_9 -> 16f / 9f
-            AspectOption.FULL -> viewfinderLongShort
+        val description = when (style) {
+            StackStyle.NIGHT -> "SNC Camera Night: ${r.frames} frames"
+            StackStyle.TRAILS -> "SNC Camera Light trails: ${st.exposureSeconds} s, ${r.frames} frames"
+            StackStyle.SILK -> "SNC Camera Silky water: ${st.exposureSeconds} s, ${r.frames} frames"
         }
-        val exif = stackExif(style, r.frames, st.exposureSeconds)
-        var bmp = StackRender.toBitmap(r.frame, ratio, r.rotationDegrees, st.lensFront && s.mirrorFront, stackPool, stackParts)
+        val exposureNs = if (style == StackStyle.NIGHT) lastExposureNs else st.exposureSeconds * 1_000_000_000L
+        return saveProcessed(r.frame, r.rotationDegrees, null, baseExif(description, exposureNs, lastIso), st, s)
+    }
+
+    /**
+     * Sparar en bild som appen har räknat fram (natt, ljusspår, silkesvatten, HDR). [gain] = gain map för
+     * Ultra HDR (ett värde per 2 × 2-block), läggs bara till i JPEG.
+     */
+    private suspend fun saveProcessed(
+        frame: YuvFrame,
+        rotation: Int,
+        gain: ByteArray?,
+        exif: Map<String, String>,
+        st: CameraUiState,
+        s: AppSettings
+    ): Uri? {
+        val ratio = cropRatioFor(s.aspect)
+        val mirror = st.lensFront && s.mirrorFront
+        var bmp = StackRender.toBitmap(frame, ratio, rotation, mirror, stackPool, stackParts)
+        var gainBmp: Bitmap? = null
         try {
             if (st.filter.isActive) {
                 val filtered = bmp.withColorMatrix(st.filter.matrix())
@@ -1105,24 +1141,29 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 bmp = filtered
             }
             val format = if (s.photoFormat.isRaw) PhotoFormat.JPEG else s.photoFormat
+            if (gain != null && format == PhotoFormat.JPEG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                runCatching {
+                    val crop = centerCropRect(frame.width, frame.height, ratio)
+                    val g = StackRender.gainBitmap(gain, frame.width, crop, rotation, mirror)
+                    gainBmp = g
+                    UltraHdr.attach(bmp, g, HdrMerge.MAX_BOOST)
+                }.onFailure { Log.w(TAG, "Ultra HDR kunde inte läggas till", it) }
+            }
             return media.saveNewPhoto(bmp, format, s.jpegQuality, exif)
         } finally {
             bmp.recycle()
+            gainBmp?.recycle()
         }
     }
 
-    private fun stackExif(style: StackStyle, frames: Int, seconds: Int): Map<String, String> {
+    /** EXIF för bilder som appen har räknat fram: datum, tidszon, kamera, beskrivning, exponering och ISO. */
+    private fun baseExif(description: String, exposureNs: Long, iso: Int): Map<String, String> {
         val now = Date()
         val date = SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).format(now)
         // Tidszon som "+01:00" (Androids SimpleDateFormat saknar mönstret "xxx")
         val offsetMin = java.util.TimeZone.getDefault().getOffset(now.time) / 60_000
         val absMin = kotlin.math.abs(offsetMin)
         val offset = String.format(Locale.US, "%s%02d:%02d", if (offsetMin < 0) "-" else "+", absMin / 60, absMin % 60)
-        val description = when (style) {
-            StackStyle.NIGHT -> "SNC Camera Night: $frames frames"
-            StackStyle.TRAILS -> "SNC Camera Light trails: $seconds s, $frames frames"
-            StackStyle.SILK -> "SNC Camera Silky water: $seconds s, $frames frames"
-        }
         val exif = mutableMapOf(
             ExifInterface.TAG_DATETIME to date,
             ExifInterface.TAG_DATETIME_ORIGINAL to date,
@@ -1135,10 +1176,93 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             ExifInterface.TAG_IMAGE_DESCRIPTION to description
         )
         // ExposureTime skrivs som decimaltal (androidx ExifInterface räknar om det)
-        val exposureNs = if (style == StackStyle.NIGHT) lastExposureNs else seconds * 1_000_000_000L
         if (exposureNs > 0) exif[ExifInterface.TAG_EXPOSURE_TIME] = String.format(Locale.US, "%.6f", exposureNs / 1e9)
-        if (lastIso > 0) exif[ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY] = lastIso.toString()
+        if (iso > 0) exif[ExifInterface.TAG_PHOTOGRAPHIC_SENSITIVITY] = iso.toString()
         return exif
+    }
+
+    /**
+     * HDR: 3 exponeringar i handen (0, −2, +2 EV) eller 5 på stativ (0, ±1,5, ±3 EV). Kameran ställer in
+     * en exponering i taget och en bildruta sparas för varje; sedan läggs de ihop (HdrStack.kt) och
+     * sparas, med gain map för Ultra HDR om det är påslaget och bilden sparas som JPEG.
+     */
+    private fun takeHdrShot() {
+        if (nightAnalysis == null) return
+        val cam = camera ?: return
+        val st = _state.value
+        val s = settings.value
+        if (st.isCapturing) return
+        val evs = if (st.steady) HDR_EVS_STEADY else HDR_EVS_HAND
+        val step = st.exposureStep.takeIf { it > 0f } ?: (1f / 3f)
+        val base = st.exposureIndex
+        val indices = if (st.exposureSupported) {
+            evs.map { (base + Math.round(it / step)).coerceIn(st.exposureMin, st.exposureMax) }.distinct()
+        } else {
+            listOf(base, base, base)
+        }
+        viewModelScope.launch {
+            _state.update { it.copy(isCapturing = true, stackProgress = 0f, stackMerging = false, stackFrames = indices.size) }
+            if (s.shutterSound) sound.play(MediaActionSound.SHUTTER_CLICK)
+            val session = BracketSession(indices.size)
+            var saved: Uri? = null
+            try {
+                stackSession = session
+                var refExposureNs = 0L
+                var refIso = 0
+                for ((k, idx) in indices.withIndex()) {
+                    if (st.exposureSupported && idx != (if (k == 0) base else indices[k - 1])) {
+                        withTimeoutOrNull(1_500L) { runCatching { cam.cameraControl.setExposureCompensationIndex(idx).await() } }
+                    }
+                    // Efter en ny exposering kastas två bildrutor så att den sparade säkert har den nya
+                    val got = withTimeoutOrNull(3_000L) { session.arm(k, if (k == 0) 0 else 2).await() }
+                    if (got == null) break
+                    if (k == 0) {
+                        refExposureNs = lastExposureNs
+                        refIso = lastIso
+                    }
+                    _state.update { it.copy(stackProgress = (k + 1f) / indices.size) }
+                }
+                session.done()
+                if (stackSession === session) stackSession = null
+                if (st.exposureSupported) runCatching { cam.cameraControl.setExposureCompensationIndex(base) }
+                val taken = indices.indices.filter { session.frames[it] != null }
+                Log.i(TAG, "HDR: ${taken.size} av ${indices.size} bilder (index $indices, ${session.seen} bildrutor kom)")
+                if (taken.firstOrNull() == 0 && taken.size >= 2) {
+                    _state.update { it.copy(stackProgress = null, stackMerging = true) }
+                    val frames = taken.map { session.frames[it]!! }
+                    val nominal = FloatArray(taken.size) { i -> 2f.pow((indices[taken[i]] - base) * step) }
+                    val evText = taken.joinToString(", ") { i ->
+                        val ev = (indices[i] - base) * step
+                        if (ev == 0f) "0" else String.format(Locale.US, "%+.1f", ev).removeSuffix(".0")
+                    }
+                    val wantGain = s.ultraHdr && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE &&
+                        (s.photoFormat == PhotoFormat.JPEG || s.photoFormat.isRaw)
+                    saved = withContext(Dispatchers.Default) {
+                        val res = HdrMerge.merge(stackPool, stackParts, frames, nominal, wantGain)
+                        Log.i(TAG, "HDR: ljusskillnader ${res.ratios.joinToString { String.format(Locale.US, "%.3f", it) }}")
+                        val description = "SNC Camera HDR: ${frames.size} exposures ($evText EV)" +
+                            if (res.gain != null) ", Ultra HDR" else ""
+                        saveProcessed(res.frame, session.rotationDegrees, res.gain, baseExif(description, refExposureNs, refIso), st, s)
+                    }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Log.e(TAG, "HDR: bilden kunde inte tas (${session.seen} bildrutor kom): $t", t)
+            } finally {
+                session.done()
+                if (stackSession === session) stackSession = null
+                if (st.exposureSupported && camera === cam) runCatching { cam.cameraControl.setExposureCompensationIndex(base) }
+                _state.update { it.copy(isCapturing = false, stackProgress = null, stackMerging = false) }
+            }
+            val uri = saved
+            if (uri != null) {
+                _state.update { it.copy(shutterBlink = System.currentTimeMillis()) }
+                onMediaSaved(uri, isVideo = false)
+            } else {
+                showMessage(R.string.msg_stack_failed)
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -1237,3 +1361,19 @@ private data class BindTry(
     val highFps: Boolean,
     val selector: CameraSelector
 )
+
+/** Ultra HDR (Android 14+): gain map som gör att HDR-skärmar visar ljusa partier upp till [maxBoost] × ljusare. */
+@RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+private object UltraHdr {
+    fun attach(sdr: Bitmap, gain: Bitmap, maxBoost: Float) {
+        val gm = Gainmap(gain)
+        gm.setRatioMin(1f, 1f, 1f)
+        gm.setRatioMax(maxBoost, maxBoost, maxBoost)
+        gm.setGamma(1f, 1f, 1f)
+        gm.setEpsilonSdr(0f, 0f, 0f)
+        gm.setEpsilonHdr(0f, 0f, 0f)
+        gm.setMinDisplayRatioForHdrTransition(1f)
+        gm.setDisplayRatioForFullHdr(maxBoost)
+        sdr.gainmap = gm
+    }
+}

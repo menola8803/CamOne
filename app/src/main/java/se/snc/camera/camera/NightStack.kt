@@ -150,8 +150,11 @@ class Lum(val w: Int, val h: Int, val px: ByteArray) {
     }
 
     companion object {
-        /** Halv upplösning direkt från kamerans Y-plan (medel av 2 × 2). */
-        fun halfOf(f: FrameView, pool: ExecutorService, parts: Int): Lum {
+        /**
+         * Halv upplösning direkt från kamerans Y-plan (medel av 2 × 2). [lut] räknar om ljusheten först
+         * (HDR: en ljusare eller mörkare bild görs jämförbar med referensen).
+         */
+        fun halfOf(f: FrameView, pool: ExecutorService, parts: Int, lut: IntArray? = null): Lum {
             val hw = f.width / 2
             val hh = f.height / 2
             val out = ByteArray(hw * hh)
@@ -164,8 +167,13 @@ class Lum(val w: Int, val h: Int, val px: ByteArray) {
                     val o = yy * hw
                     for (xx in 0 until hw) {
                         val x0 = 2 * xx
-                        val s = (y[r0 + x0].toInt() and 0xFF) + (y[r0 + x0 + 1].toInt() and 0xFF) +
-                            (y[r1 + x0].toInt() and 0xFF) + (y[r1 + x0 + 1].toInt() and 0xFF)
+                        val s = if (lut == null) {
+                            (y[r0 + x0].toInt() and 0xFF) + (y[r0 + x0 + 1].toInt() and 0xFF) +
+                                (y[r1 + x0].toInt() and 0xFF) + (y[r1 + x0 + 1].toInt() and 0xFF)
+                        } else {
+                            lut[y[r0 + x0].toInt() and 0xFF] + lut[y[r0 + x0 + 1].toInt() and 0xFF] +
+                                lut[y[r1 + x0].toInt() and 0xFF] + lut[y[r1 + x0 + 1].toInt() and 0xFF]
+                        }
                         out[o + xx] = ((s + 2) shr 2).toByte()
                     }
                 }
@@ -183,8 +191,8 @@ class Pyramid(val levels: List<Lum>) {
     val l4: Lum get() = levels[3]
 
     companion object {
-        fun of(f: FrameView, pool: ExecutorService, parts: Int): Pyramid {
-            val l1 = Lum.halfOf(f, pool, parts)
+        fun of(f: FrameView, pool: ExecutorService, parts: Int, lut: IntArray? = null): Pyramid {
+            val l1 = Lum.halfOf(f, pool, parts, lut)
             val l2 = l1.half()
             val l3 = l2.half()
             val l4 = l3.half()
@@ -233,8 +241,22 @@ object Align {
         return sum.toFloat() / n
     }
 
-    /** Samma som [mad] men i full upplösning: referensen är tätt packad, [cur] har radlängd. */
-    fun madFull(ref: YuvFrame, cur: FrameView, x0: Int, y0: Int, x1: Int, y1: Int, dx: Int, dy: Int, step: Int): Float {
+    /**
+     * Samma som [mad] men i full upplösning: referensen är tätt packad, [cur] har radlängd.
+     * [lut] räknar om ljusheten i [cur] först (HDR).
+     */
+    fun madFull(
+        ref: YuvFrame,
+        cur: FrameView,
+        x0: Int,
+        y0: Int,
+        x1: Int,
+        y1: Int,
+        dx: Int,
+        dy: Int,
+        step: Int,
+        lut: IntArray? = null
+    ): Float {
         val xs = max(max(x0, 0), -dx)
         val xe = min(min(x1, ref.width), cur.width - dx)
         val ys = max(max(y0, 0), -dy)
@@ -252,7 +274,8 @@ object Align {
             val rb = (yy + dy) * bw + dx
             var xx = xs
             while (xx < xe) {
-                sum += abs((ap[ra + xx].toInt() and 0xFF) - (bp[rb + xx].toInt() and 0xFF))
+                val c = bp[rb + xx].toInt() and 0xFF
+                sum += abs((ap[ra + xx].toInt() and 0xFF) - (if (lut == null) c else lut[c]))
                 n++
                 xx += step
             }
@@ -277,6 +300,164 @@ object Align {
     }
 }
 
+/** Flytt per ruta om 32 × 32 pixlar (16 × 16 block) från referensen till en bild. */
+class Offsets(val cellsX: Int, val cellsY: Int, val dx: IntArray, val dy: IntArray, val global: Shift) {
+    /** Rutan för 2 × 2-blocket (bx, by). */
+    fun cellOf(bx: Int, by: Int): Int = (by / FrameAligner.CELL_BLOCKS) * cellsX + bx / FrameAligner.CELL_BLOCKS
+
+    companion object {
+        fun zero(cellsX: Int, cellsY: Int) =
+            Offsets(cellsX, cellsY, IntArray(cellsX * cellsY), IntArray(cellsX * cellsY), Shift(0, 0, 0f))
+    }
+}
+
+/**
+ * Flyttar bilder på plats mot en referens: först hela bilden (grovt i 1/16, sedan nivå för nivå ned
+ * till full upplösning), sedan 8 × 6 rutor var för sig så att även lite vridning följer med. Rutor
+ * utan struktur (himmel, mörker) följer hela bilden.
+ */
+class FrameAligner(
+    private val pool: ExecutorService,
+    private val parts: Int,
+    private val ref: YuvFrame,
+    private val refPyr: Pyramid
+) {
+    companion object {
+        const val CELL_BLOCKS = 16 // en flyttruta är 16 × 16 block = 32 × 32 pixlar
+        private const val TILES_LONG = 8
+        private const val GLOBAL_RADIUS = 8 // ±8 i 1/16 = ±128 pixlar
+        private const val TILE_LIMIT = 24 // rutor får avvika högst så här mycket från helbildsflytten
+    }
+
+    val width = ref.width
+    val height = ref.height
+    private val cw = width / 2
+    private val chh = height / 2
+    private val longSide = max(width, height)
+    private val tilesX = if (width >= height) TILES_LONG else max(2, (TILES_LONG * width + longSide / 2) / longSide)
+    private val tilesY = if (height > width) TILES_LONG else max(2, (TILES_LONG * height + longSide / 2) / longSide)
+    private val tileW = width / tilesX
+    private val tileH = height / tilesY
+    private val tileTexture = FloatArray(tilesX * tilesY) { i ->
+        val tx = i % tilesX
+        val ty = i / tilesX
+        refPyr.l2.texture(tx * tileW / 4, ty * tileH / 4, (tx + 1) * tileW / 4, (ty + 1) * tileH / 4)
+    }
+    val cellsX = (cw + CELL_BLOCKS - 1) / CELL_BLOCKS
+    val cellsY = (chh + CELL_BLOCKS - 1) / CELL_BLOCKS
+
+    fun zero(): Offsets = Offsets.zero(cellsX, cellsY)
+
+    /** Flytten för [cur] (med pyramiden [curPyr]). [lut] räknar om ljusheten i [cur] (HDR). */
+    fun align(cur: FrameView, curPyr: Pyramid, lut: IntArray? = null): Offsets {
+        val r = ref
+        val rp = refPyr
+        // 1. Hela bilden
+        val l4a = rp.l4
+        val l4b = curPyr.l4
+        val mx4 = l4a.w / 10
+        val my4 = l4a.h / 10
+        var g = Align.search(0, 0, GLOBAL_RADIUS) { dx, dy -> Align.mad(l4a, l4b, mx4, my4, l4a.w - mx4, l4a.h - my4, dx, dy, 1) }
+        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
+            Align.mad(rp.l3, curPyr.l3, rp.l3.w / 10, rp.l3.h / 10, rp.l3.w * 9 / 10, rp.l3.h * 9 / 10, dx, dy, 1)
+        }
+        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
+            Align.mad(rp.l2, curPyr.l2, rp.l2.w / 10, rp.l2.h / 10, rp.l2.w * 9 / 10, rp.l2.h * 9 / 10, dx, dy, 2)
+        }
+        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
+            Align.mad(rp.l1, curPyr.l1, rp.l1.w / 10, rp.l1.h / 10, rp.l1.w * 9 / 10, rp.l1.h * 9 / 10, dx, dy, 4)
+        }
+        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
+            Align.madFull(r, cur, width / 10, height / 10, width * 9 / 10, height * 9 / 10, dx, dy, 8, lut)
+        }
+
+        // 2. Varje ruta för sig
+        val tdx = IntArray(tilesX * tilesY)
+        val tdy = IntArray(tilesX * tilesY)
+        val global = g
+        pool.parallelRanges(tilesX * tilesY, parts) { from, to ->
+            for (i in from until to) {
+                val tx = i % tilesX
+                val ty = i / tilesX
+                val x0 = tx * tileW
+                val y0 = ty * tileH
+                val x1 = x0 + tileW
+                val y1 = y0 + tileH
+                if (tileTexture[i] < 1.5f) {
+                    tdx[i] = global.dx
+                    tdy[i] = global.dy
+                    continue
+                }
+                var t = Align.search(Math.round(global.dx / 4f), Math.round(global.dy / 4f), 3) { dx, dy ->
+                    Align.mad(rp.l2, curPyr.l2, x0 / 4, y0 / 4, x1 / 4, y1 / 4, dx, dy, 2)
+                }
+                t = Align.search(2 * t.dx, 2 * t.dy, 1) { dx, dy ->
+                    Align.mad(rp.l1, curPyr.l1, x0 / 2, y0 / 2, x1 / 2, y1 / 2, dx, dy, 2)
+                }
+                t = Align.search(2 * t.dx, 2 * t.dy, 1) { dx, dy ->
+                    Align.madFull(r, cur, x0, y0, x1, y1, dx, dy, 4, lut)
+                }
+                val atGlobal = Align.madFull(r, cur, x0, y0, x1, y1, global.dx, global.dy, 4, lut)
+                val better = t.cost < atGlobal * 0.98f
+                val close = abs(t.dx - global.dx) <= TILE_LIMIT && abs(t.dy - global.dy) <= TILE_LIMIT
+                if (better && close) {
+                    tdx[i] = t.dx
+                    tdy[i] = t.dy
+                } else {
+                    tdx[i] = global.dx
+                    tdy[i] = global.dy
+                }
+            }
+        }
+        val mdx = median3x3(tdx)
+        val mdy = median3x3(tdy)
+
+        // 3. Flytt per ruta om 32 × 32 pixlar, mjukt mellan rutornas mittpunkter
+        val cellDx = IntArray(cellsX * cellsY)
+        val cellDy = IntArray(cellsX * cellsY)
+        for (cy in 0 until cellsY) {
+            val py = (cy * CELL_BLOCKS * 2 + CELL_BLOCKS).toFloat()
+            val fy = py / tileH - 0.5f
+            val j0 = floor(fy).toInt().coerceIn(0, tilesY - 1)
+            val j1 = min(j0 + 1, tilesY - 1)
+            val ay = (fy - j0).coerceIn(0f, 1f)
+            for (cx in 0 until cellsX) {
+                val px = (cx * CELL_BLOCKS * 2 + CELL_BLOCKS).toFloat()
+                val fx = px / tileW - 0.5f
+                val i0 = floor(fx).toInt().coerceIn(0, tilesX - 1)
+                val i1 = min(i0 + 1, tilesX - 1)
+                val ax = (fx - i0).coerceIn(0f, 1f)
+                fun lerp2(a: IntArray): Float {
+                    val top = a[j0 * tilesX + i0] * (1 - ax) + a[j0 * tilesX + i1] * ax
+                    val bottom = a[j1 * tilesX + i0] * (1 - ax) + a[j1 * tilesX + i1] * ax
+                    return top * (1 - ay) + bottom * ay
+                }
+                cellDx[cy * cellsX + cx] = lerp2(mdx).roundToInt()
+                cellDy[cy * cellsX + cx] = lerp2(mdy).roundToInt()
+            }
+        }
+        return Offsets(cellsX, cellsY, cellDx, cellDy, global)
+    }
+
+    private fun median3x3(a: IntArray): IntArray {
+        val out = IntArray(a.size)
+        val tmp = IntArray(9)
+        for (ty in 0 until tilesY) {
+            for (tx in 0 until tilesX) {
+                var n = 0
+                for (j in max(0, ty - 1)..min(tilesY - 1, ty + 1)) {
+                    for (i in max(0, tx - 1)..min(tilesX - 1, tx + 1)) {
+                        tmp[n++] = a[j * tilesX + i]
+                    }
+                }
+                tmp.sort(0, n)
+                out[ty * tilesX + tx] = tmp[n / 2]
+            }
+        }
+        return out
+    }
+}
+
 /**
  * Lägger ihop 8–16 bilder till ett nattfoto. Anropa [add] för varje bild från kameran tills den
  * returnerar true, sedan [finish]. Inte trådsäker – anropas från en tråd i taget.
@@ -294,10 +475,6 @@ class NightMerger(
         /** Vikt för en bild som passar helt (0–7). Summan ryms i Short för upp till 18 bilder. */
         const val FULL = 7
         const val MAX_FRAMES = 18
-        private const val CELL_BLOCKS = 16 // en flyttruta är 16 × 16 block = 32 × 32 pixlar
-        private const val TILES_LONG = 8
-        private const val GLOBAL_RADIUS = 8 // ±8 i 1/16 = ±128 pixlar
-        private const val TILE_LIMIT = 24 // rutor får avvika högst så här mycket från helbildsflytten
     }
 
     var accepted = 0
@@ -306,7 +483,7 @@ class NightMerger(
     private val pending = ArrayList<YuvFrame>()
     private val pendingPyr = ArrayList<Pyramid>()
     private var ref: YuvFrame? = null
-    private var refPyr: Pyramid? = null
+    private var aligner: FrameAligner? = null
 
     private val cw = width / 2
     private val chh = height / 2
@@ -314,16 +491,6 @@ class NightMerger(
     private val uSum = ShortArray(cw * chh)
     private val vSum = ShortArray(cw * chh)
     private val wSum = ByteArray(cw * chh)
-
-    private val longSide = max(width, height)
-    private val tilesX = if (width >= height) TILES_LONG else max(2, (TILES_LONG * width + longSide / 2) / longSide)
-    private val tilesY = if (height > width) TILES_LONG else max(2, (TILES_LONG * height + longSide / 2) / longSide)
-    private val tileW = width / tilesX
-    private val tileH = height / tilesY
-    private var tileTexture: FloatArray? = null
-
-    private val cellsX = (cw + CELL_BLOCKS - 1) / CELL_BLOCKS
-    private val cellsY = (chh + CELL_BLOCKS - 1) / CELL_BLOCKS
 
     /** Senaste flyttar (för provkörning och logg). */
     var lastGlobal: Shift = Shift(0, 0, 0f)
@@ -350,7 +517,7 @@ class NightMerger(
         val best = pendingPyr.indices.maxBy { pendingPyr[it].l2.sharpness() }
         val r = pending[best]
         ref = r
-        refPyr = pendingPyr[best]
+        aligner = FrameAligner(pool, parts, r, pendingPyr[best])
         // Referensen med full vikt
         pool.parallelRanges(chh, parts) { from, to ->
             for (by in from until to) {
@@ -366,12 +533,6 @@ class NightMerger(
                     for (x in 0 until width) ySum[o + x] = ((r.y[o + x].toInt() and 0xFF) * FULL).toShort()
                 }
             }
-        }
-        val l2 = refPyr!!.l2
-        tileTexture = FloatArray(tilesX * tilesY) { i ->
-            val tx = i % tilesX
-            val ty = i / tilesX
-            l2.texture(tx * tileW / 4, ty * tileH / 4, (tx + 1) * tileW / 4, (ty + 1) * tileH / 4)
         }
         accepted = 1
         val others = pending.indices.filter { it != best }
@@ -413,94 +574,15 @@ class NightMerger(
 
     private fun merge(cur: FrameView, curPyr: Pyramid) {
         val r = ref ?: return
-        val rp = refPyr ?: return
+        val al = aligner ?: return
         if (accepted >= target) return
 
-        // 1. Hela bilden: grovt i 1/16, sedan finare nivå för nivå ned till full upplösning
-        val l4a = rp.l4
-        val l4b = curPyr.l4
-        val mx4 = l4a.w / 10
-        val my4 = l4a.h / 10
-        var g = Align.search(0, 0, GLOBAL_RADIUS) { dx, dy -> Align.mad(l4a, l4b, mx4, my4, l4a.w - mx4, l4a.h - my4, dx, dy, 1) }
-        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
-            Align.mad(rp.l3, curPyr.l3, rp.l3.w / 10, rp.l3.h / 10, rp.l3.w * 9 / 10, rp.l3.h * 9 / 10, dx, dy, 1)
-        }
-        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
-            Align.mad(rp.l2, curPyr.l2, rp.l2.w / 10, rp.l2.h / 10, rp.l2.w * 9 / 10, rp.l2.h * 9 / 10, dx, dy, 2)
-        }
-        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
-            Align.mad(rp.l1, curPyr.l1, rp.l1.w / 10, rp.l1.h / 10, rp.l1.w * 9 / 10, rp.l1.h * 9 / 10, dx, dy, 4)
-        }
-        g = Align.search(2 * g.dx, 2 * g.dy, 1) { dx, dy ->
-            Align.madFull(r, cur, width / 10, height / 10, width * 9 / 10, height * 9 / 10, dx, dy, 8)
-        }
-        lastGlobal = g
-
-        // 2. Varje ruta för sig (följer lite vridning). Rutor utan struktur följer hela bilden.
-        val tdx = IntArray(tilesX * tilesY)
-        val tdy = IntArray(tilesX * tilesY)
-        val texture = tileTexture
-        pool.parallelRanges(tilesX * tilesY, parts) { from, to ->
-            for (i in from until to) {
-                val tx = i % tilesX
-                val ty = i / tilesX
-                val x0 = tx * tileW
-                val y0 = ty * tileH
-                val x1 = x0 + tileW
-                val y1 = y0 + tileH
-                if (texture != null && texture[i] < 1.5f) {
-                    tdx[i] = g.dx
-                    tdy[i] = g.dy
-                    continue
-                }
-                var t = Align.search(Math.round(g.dx / 4f), Math.round(g.dy / 4f), 3) { dx, dy ->
-                    Align.mad(rp.l2, curPyr.l2, x0 / 4, y0 / 4, x1 / 4, y1 / 4, dx, dy, 2)
-                }
-                t = Align.search(2 * t.dx, 2 * t.dy, 1) { dx, dy ->
-                    Align.mad(rp.l1, curPyr.l1, x0 / 2, y0 / 2, x1 / 2, y1 / 2, dx, dy, 2)
-                }
-                t = Align.search(2 * t.dx, 2 * t.dy, 1) { dx, dy ->
-                    Align.madFull(r, cur, x0, y0, x1, y1, dx, dy, 4)
-                }
-                val atGlobal = Align.madFull(r, cur, x0, y0, x1, y1, g.dx, g.dy, 4)
-                val better = t.cost < atGlobal * 0.98f
-                val close = abs(t.dx - g.dx) <= TILE_LIMIT && abs(t.dy - g.dy) <= TILE_LIMIT
-                if (better && close) {
-                    tdx[i] = t.dx
-                    tdy[i] = t.dy
-                } else {
-                    tdx[i] = g.dx
-                    tdy[i] = g.dy
-                }
-            }
-        }
-        val mdx = median3x3(tdx)
-        val mdy = median3x3(tdy)
-
-        // 3. Flytt per ruta om 32 × 32 pixlar, mjukt mellan rutornas mittpunkter
-        val cellDx = IntArray(cellsX * cellsY)
-        val cellDy = IntArray(cellsX * cellsY)
-        for (cy in 0 until cellsY) {
-            val py = (cy * CELL_BLOCKS * 2 + CELL_BLOCKS).toFloat()
-            val fy = py / tileH - 0.5f
-            val j0 = floor(fy).toInt().coerceIn(0, tilesY - 1)
-            val j1 = min(j0 + 1, tilesY - 1)
-            val ay = (fy - j0).coerceIn(0f, 1f)
-            for (cx in 0 until cellsX) {
-                val px = (cx * CELL_BLOCKS * 2 + CELL_BLOCKS).toFloat()
-                val fx = px / tileW - 0.5f
-                val i0 = floor(fx).toInt().coerceIn(0, tilesX - 1)
-                val i1 = min(i0 + 1, tilesX - 1)
-                val ax = (fx - i0).coerceIn(0f, 1f)
-                fun lerp2(a: IntArray): Float {
-                    val top = a[j0 * tilesX + i0] * (1 - ax) + a[j0 * tilesX + i1] * ax
-                    val bottom = a[j1 * tilesX + i0] * (1 - ax) + a[j1 * tilesX + i1] * ax
-                    return top * (1 - ay) + bottom * ay
-                }
-                cellDx[cy * cellsX + cx] = lerp2(mdx).roundToInt()
-                cellDy[cy * cellsX + cx] = lerp2(mdy).roundToInt()
-            }
-        }
+        // 1–3. Flytt per helbild och per ruta
+        val off = al.align(cur, curPyr)
+        lastGlobal = off.global
+        val cellDx = off.dx
+        val cellDy = off.dy
+        val cellsX = off.cellsX
 
         // 4. Brusnivå: medianen av skillnaden i 2 × 2-block (efter flytten) avgör vad som räknas som rörelse
         val hist = IntArray(256)
@@ -508,7 +590,7 @@ class NightMerger(
         while (by < chh - 4) {
             var bx = 4
             while (bx < cw - 4) {
-                val c = (by / CELL_BLOCKS) * cellsX + bx / CELL_BLOCKS
+                val c = off.cellOf(bx, by)
                 val d = blockDiff(r, cur, bx, by, cellDx[c], cellDy[c])
                 if (d >= 0) hist[min(255, d / 4)]++
                 bx += 8
@@ -543,11 +625,12 @@ class NightMerger(
         val us = uSum
         val vs = vSum
         val wsum = wSum
+        val cellBlocks = FrameAligner.CELL_BLOCKS
         pool.parallelRanges(chh, parts) { from, to ->
             for (bY in from until to) {
-                val cellRow = (bY / CELL_BLOCKS) * cellsX
+                val cellRow = (bY / cellBlocks) * cellsX
                 for (bX in 0 until cw) {
-                    val c = cellRow + bX / CELL_BLOCKS
+                    val c = cellRow + bX / cellBlocks
                     val dx = cellDx[c]
                     val dy = cellDy[c]
                     val x = 2 * bX
@@ -601,24 +684,6 @@ class NightMerger(
         val fs = (cur.y[fi].toInt() and 0xFF) + (cur.y[fi + 1].toInt() and 0xFF) +
             (cur.y[fi + cur.yRow].toInt() and 0xFF) + (cur.y[fi + cur.yRow + 1].toInt() and 0xFF)
         return abs(fs - rs)
-    }
-
-    private fun median3x3(a: IntArray): IntArray {
-        val out = IntArray(a.size)
-        val tmp = IntArray(9)
-        for (ty in 0 until tilesY) {
-            for (tx in 0 until tilesX) {
-                var n = 0
-                for (j in max(0, ty - 1)..min(tilesY - 1, ty + 1)) {
-                    for (i in max(0, tx - 1)..min(tilesX - 1, tx + 1)) {
-                        tmp[n++] = a[j * tilesX + i]
-                    }
-                }
-                tmp.sort(0, n)
-                out[ty * tilesX + tx] = tmp[n / 2]
-            }
-        }
-        return out
     }
 }
 

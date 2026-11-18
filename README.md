@@ -25,6 +25,8 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
 - Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus
+- **HDR**: 3 exponeringar i handen eller 5 på stativ läggs ihop (flyttas på plats, inga spökbilder),
+  sparas som **Ultra HDR** med gain map så att HDR-skärmar visar ljusa partier ljusare
 - **Natt**: 8 bilder i handen eller 16 på stativ läggs ihop till en ljusare bild med mindre brus
   (bilderna flyttas på plats, inga spökbilder). **Ljusspår** och **Silkesvatten**: 1–8 s lång exponering
 - **Live-filter**: filterknappen i övre fältet öppnar redigerarens filter och reglage för rött, grönt och blått

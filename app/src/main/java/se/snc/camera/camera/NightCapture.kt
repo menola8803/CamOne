@@ -61,6 +61,83 @@ fun ImageProxy.toFrameView(buf: PlaneBuffers): FrameView {
     )
 }
 
+/** Tar emot bildrutor från analysen medan en bild tas (nattläget eller HDR). */
+interface FrameSink {
+    val finished: Boolean
+    val seen: Int
+    fun onFrame(f: FrameView, rotationDegrees: Int, timestampNs: Long)
+    fun cancel()
+}
+
+/**
+ * HDR: kameran ställer in en exponering i taget, och för varje exponering sparas en bildruta
+ * ([arm] → nästa bildruta efter [skip] st. kastade, som säkert har den nya exponeringen).
+ */
+class BracketSession(count: Int) : FrameSink {
+    private val lock = Any()
+    val frames = arrayOfNulls<YuvFrame>(count)
+    var rotationDegrees = 0
+        private set
+    private var armed = -1
+    private var skip = 0
+    private var waiter: CompletableDeferred<Unit>? = null
+
+    @Volatile
+    override var finished = false
+        private set
+
+    @Volatile
+    override var seen = 0
+        private set
+
+    /** Nästa bildruta (efter [skipFrames] kastade) blir bild nummer [index]. */
+    fun arm(index: Int, skipFrames: Int): CompletableDeferred<Unit> {
+        synchronized(lock) {
+            val d = CompletableDeferred<Unit>()
+            armed = index
+            skip = skipFrames
+            waiter = d
+            return d
+        }
+    }
+
+    override fun onFrame(f: FrameView, rotationDegrees: Int, timestampNs: Long) {
+        synchronized(lock) {
+            seen++
+            if (finished || armed < 0) return
+            if (skip > 0) {
+                skip--
+                return
+            }
+            val d = waiter
+            try {
+                frames[armed] = f.copy()
+                this.rotationDegrees = rotationDegrees
+                armed = -1
+                waiter = null
+                d?.complete(Unit)
+            } catch (t: Throwable) {
+                armed = -1
+                waiter = null
+                d?.completeExceptionally(t)
+            }
+        }
+    }
+
+    fun done() {
+        finished = true
+    }
+
+    override fun cancel() {
+        synchronized(lock) {
+            finished = true
+            armed = -1
+            waiter?.cancel()
+            waiter = null
+        }
+    }
+}
+
 /**
  * En tagning i nattläget: tar emot bildrutor tills det räcker ([targetFrames] för nattfoto,
  * [durationNs] för ljusspår och silkesvatten) och lämnar resultatet i [result].
@@ -73,7 +150,7 @@ class StackSession(
     private val pool: ExecutorService,
     private val parts: Int,
     private val onProgress: (Float) -> Unit
-) {
+) : FrameSink {
     class Result(val frame: YuvFrame, val frames: Int, val rotationDegrees: Int)
 
     val result = CompletableDeferred<Result>()
@@ -85,15 +162,15 @@ class StackSession(
     private var rotation = 0
 
     @Volatile
-    var finished = false
+    override var finished = false
         private set
 
     /** Antal bildrutor som har kommit (för loggen). */
     @Volatile
-    var seen = 0
+    override var seen = 0
         private set
 
-    fun onFrame(f: FrameView, rotationDegrees: Int, timestampNs: Long) {
+    override fun onFrame(f: FrameView, rotationDegrees: Int, timestampNs: Long) {
         synchronized(lock) {
             seen++
             if (finished) return
@@ -135,7 +212,7 @@ class StackSession(
         }
     }
 
-    fun cancel() {
+    override fun cancel() {
         synchronized(lock) {
             finished = true
             night = null
@@ -168,6 +245,37 @@ class StackSession(
 object StackRender {
     private const val BAND = 64
 
+    /** Matris för rotation (och spegling för frontkameran), samma för bilden och dess gain map. */
+    private fun matrixFor(rotationDegrees: Int, mirror: Boolean): Matrix? {
+        val degrees = ((rotationDegrees % 360) + 360) % 360
+        if (degrees == 0 && !mirror) return null
+        val m = Matrix()
+        m.postRotate(degrees.toFloat())
+        if (mirror) m.postScale(-1f, 1f)
+        return m
+    }
+
+    /**
+     * Gain map (ett värde per 2 × 2-block) som en ALPHA_8-bild, beskuren och roterad som huvudbilden.
+     * [crop] är huvudbildens beskärning i full upplösning (x0, y0, bredd, höjd – jämna tal).
+     */
+    fun gainBitmap(gain: ByteArray, frameWidth: Int, crop: IntArray, rotationDegrees: Int, mirror: Boolean): Bitmap {
+        val cw = frameWidth / 2
+        val gx = crop[0] / 2
+        val gy = crop[1] / 2
+        val gw = crop[2] / 2
+        val gh = crop[3] / 2
+        val bmp = Bitmap.createBitmap(gw, gh, Bitmap.Config.ALPHA_8)
+        val stride = bmp.rowBytes
+        val bytes = ByteArray(stride * gh)
+        for (r in 0 until gh) System.arraycopy(gain, (gy + r) * cw + gx, bytes, r * stride, gw)
+        bmp.copyPixelsFromBuffer(ByteBuffer.wrap(bytes))
+        val m = matrixFor(rotationDegrees, mirror) ?: return bmp
+        val out = Bitmap.createBitmap(bmp, 0, 0, gw, gh, m, true)
+        if (out !== bmp) bmp.recycle()
+        return out
+    }
+
     /**
      * Gör en Bitmap av [f]: beskuren till [longOverShort] (lång/kort sida, null = hela 4:3-bilden),
      * roterad med [rotationDegrees] och spegelvänd om [mirror] (frontkameran).
@@ -197,11 +305,7 @@ object StackRender {
             bmp.setPixels(buf, 0, w, 0, start, w, rows)
             row += rows
         }
-        val degrees = ((rotationDegrees % 360) + 360) % 360
-        if (degrees == 0 && !mirror) return bmp
-        val m = Matrix()
-        m.postRotate(degrees.toFloat())
-        if (mirror) m.postScale(-1f, 1f)
+        val m = matrixFor(rotationDegrees, mirror) ?: return bmp
         val out = Bitmap.createBitmap(bmp, 0, 0, w, h, m, true)
         if (out !== bmp) bmp.recycle()
         return out

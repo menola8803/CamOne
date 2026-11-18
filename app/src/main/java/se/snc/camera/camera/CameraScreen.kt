@@ -447,6 +447,16 @@ private fun CameraContent(
                 )
             }
 
+            // HDR i Foto: förloppet medan exponeringarna tas och läggs ihop
+            if (state.mode == CameraMode.PHOTO && state.stackAvailable && state.isCapturing) {
+                HdrStatus(
+                    state = state,
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .padding(top = 12.dp)
+                )
+            }
+
             // Nattläget: antal bilder (handen/stativ), förlopp och "Lägger ihop bilderna…"
             if (state.mode == CameraMode.NIGHT) {
                 NightStatus(
@@ -740,7 +750,9 @@ private fun TopBar(
             val mode = state.mode
             val flashUsable = state.lensFront || state.hasFlashUnit
             // Blixt / ficklampa
-            if (mode != CameraMode.NIGHT && flashUsable) {
+            // Ingen blixt i nattläget eller när HDR läggs ihop i appen (flera bilder)
+            val stackedHdr = mode == CameraMode.PHOTO && hdr && state.stackAvailable
+            if (mode != CameraMode.NIGHT && flashUsable && !stackedHdr) {
                 if (mode.isVideo) {
                     GlassIconButton(
                         icon = if (state.torchOn) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
@@ -767,7 +779,8 @@ private fun TopBar(
                 Spacer(Modifier.size(44.dp))
             }
 
-            if (mode == CameraMode.PHOTO && state.hdrAvailable) {
+            // HDR: tillverkarens om den finns, annars appens egen (3–5 exponeringar läggs ihop)
+            if (mode == CameraMode.PHOTO) {
                 GlassIconButton(
                     icon = if (hdr) Icons.Rounded.HdrOn else Icons.Rounded.HdrOff,
                     contentDescription = stringResource(R.string.cd_hdr),

@@ -424,6 +424,22 @@ fi
 check "Appen lever efter filformaten" alive
 set_format "JPEG"
 
+step "HDR (3–5 exponeringar läggs ihop) och Ultra HDR"
+check "HDR-knappen finns i Foto" $UI exists --desc "HDR" --timeout 8
+tap --desc "HDR"; sleep 5
+shot 36-hdr
+FH=$(snap jpg hdr.jpg 45)
+DH=$(desc "$OUT/hdr.jpg")
+log "  HDR: ${FH:-?} – ${DH:-?}"
+check "HDR-bild sparas (${FH:-ingen fil})" [ -n "$FH" ]
+check "HDR-bilden är ihoplagd av flera exponeringar (${DH:-?})" bash -c "echo '$DH' | grep -qE 'HDR: [2-5] exposures'"
+check "HDR-bilden är Ultra HDR (gain map i filen)" python3 -c "import sys; d=open('$OUT/hdr.jpg','rb').read(); sys.exit(0 if b'hdrgm' in d and d.count(b'\\xff\\xd8\\xff') >= 2 else 1)"
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR" | tail -4 | while IFS= read -r l; do
+  echo "::notice title=HDR-logg::$(echo "$l" | cut -c1-300)"
+done
+tap --desc "HDR"; sleep 4
+check "Appen lever efter HDR" alive
+
 step "Text i bild (delas till appen)"
 if python3 -c "import PIL" 2> /dev/null || pip install --quiet pillow > /dev/null 2>&1; then
   $UI text-image "$OUT/ocr-testbild.png"

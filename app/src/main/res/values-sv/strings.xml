@@ -46,6 +46,7 @@
     <string name="night_capturing">Håll stilla · %1$d/%2$d</string>
     <string name="night_exposing">Exponerar · %1$s/%2$d s</string>
     <string name="night_merging">Lägger ihop bilderna…</string>
+    <string name="hdr_capturing">HDR · %1$d/%2$d</string>
     <string name="msg_portrait_software">Porträtt: bakgrunden görs oskarp efter bilden tagits</string>
     <string name="msg_processing_portrait">Skapar porträtteffekt…</string>
     <string name="night_hold_steady">Håll stilla</string>
@@ -160,6 +161,8 @@
     <string name="setting_aspect">Bildformat</string>
     <string name="setting_max_quality">Högsta kvalitet</string>
     <string name="setting_max_quality_desc">Av ger snabbare avtryckare</string>
+    <string name="setting_ultra_hdr">Ultra HDR</string>
+    <string name="setting_ultra_hdr_desc">HDR-bilder får ljusare högdagrar på HDR-skärmar (JPEG)</string>
     <string name="setting_jpeg_quality">JPEG-kvalitet</string>
     <string name="setting_mirror_front">Spegla frontkameran</string>
     <string name="setting_mirror_front_desc">Spara selfies som de ser ut i sökaren</string>

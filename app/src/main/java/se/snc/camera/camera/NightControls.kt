@@ -16,6 +16,8 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.NightsStay
+import androidx.compose.material.icons.rounded.HdrOn
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -149,6 +151,25 @@ fun NightStatus(state: CameraUiState, modifier: Modifier = Modifier) {
         state.steady -> stringResource(R.string.night_effect_ready)
         else -> stringResource(R.string.night_effect_steady)
     }
+    StackPill(Icons.Rounded.NightsStay, text, if (state.stackMerging) null else progress, modifier)
+}
+
+/** Etiketten överst i sökaren medan en HDR-bild tas: "HDR · 2/3", sedan "Lägger ihop bilderna…". */
+@Composable
+fun HdrStatus(state: CameraUiState, modifier: Modifier = Modifier) {
+    val progress = state.stackProgress
+    val total = state.stackFrames.coerceAtLeast(1)
+    val text = if (state.stackMerging || progress == null) {
+        stringResource(R.string.night_merging)
+    } else {
+        stringResource(R.string.hdr_capturing, (progress * total).roundToInt().coerceIn(0, total), total)
+    }
+    StackPill(Icons.Rounded.HdrOn, text, if (state.stackMerging) null else progress, modifier)
+}
+
+/** Mörk etikett med ikon, text och (om [progress] inte är null) en tunn guldstapel. */
+@Composable
+private fun StackPill(icon: ImageVector, text: String, progress: Float?, modifier: Modifier) {
     Column(
         modifier
             .clip(RoundedCornerShape(18.dp))
@@ -157,11 +178,11 @@ fun NightStatus(state: CameraUiState, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Rounded.NightsStay, contentDescription = null, tint = CameraYellow, modifier = Modifier.size(16.dp))
+            Icon(icon, contentDescription = null, tint = CameraYellow, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(6.dp))
             Text(text, color = Usb.Text, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
         }
-        if (progress != null && !state.stackMerging) {
+        if (progress != null) {
             Spacer(Modifier.height(5.dp))
             Box(
                 Modifier

@@ -206,6 +206,12 @@ fun SettingsScreen(
                 checked = settings.maxQuality,
                 onChange = { v -> update { it.copy(maxQuality = v) } }
             )
+            ToggleRow(
+                title = stringResource(R.string.setting_ultra_hdr),
+                subtitle = stringResource(R.string.setting_ultra_hdr_desc),
+                checked = settings.ultraHdr,
+                onChange = { v -> update { it.copy(ultraHdr = v) } }
+            )
             var jpeg by remember(settings.jpegQuality) { mutableFloatStateOf(settings.jpegQuality.toFloat()) }
             GoldSlider(
                 title = stringResource(R.string.setting_jpeg_quality),

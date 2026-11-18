@@ -1,5 +1,5 @@
 {
-  "version": "1.7.1",
+  "version": "1.8.0",
   "sv": [
     {
       "title": "Kameran",
@@ -37,6 +37,14 @@
       ]
     },
     {
+      "title": "HDR",
+      "items": [
+        "HDR-knappen överst i Foto tar 3 bilder med olika exponering – den valda, en mörkare och en ljusare – och 5 när telefonen står stilla. Bilderna läggs ihop så att både ljusa fönster och mörka hörn syns. Etiketten överst visar förloppet; håll stilla en sekund.",
+        "Bilderna flyttas på plats innan de läggs ihop, och det som rör sig tas från den första bilden, så inga spökbilder uppstår. Blixten används inte med HDR, och RAW sparas som JPEG.",
+        "Ultra HDR (på från början, Inställningar › Foto): HDR-bilden sparas med en gain map, så att HDR-skärmar – som OnePlus 13R:s – visar ljusa partier upp till fyra gånger ljusare. Andra skärmar och appar visar den vanliga bilden. Gäller JPEG."
+      ]
+    },
+    {
       "title": "Bildformat och filformat",
       "items": [
         "Bildformat: 4:3 (hela sensorn), 3:2, 16:9, 1:1 och Full. Full fyller hela skärmen och bilden får skärmens form; knapparna ligger då i genomskinligt glas ovanpå bilden. 3:2, 16:9 och Full beskärs från sensorns hela 4:3-bild: sökaren visar mitten av 4:3-bilden och fotot beskärs direkt efteråt, precis som sökaren visar.",
@@ -63,7 +71,7 @@
       "title": "Inställningar",
       "items": [
         "Språk (Svenska eller English) och tema (Mörk eller Beige). Kameran, bildvisaren och redigeraren är alltid mörka.",
-        "Foto, Video, Sökare och Allmänt: bildformat, filformat, kvalitet, stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration och volymknappar.",
+        "Foto, Video, Sökare och Allmänt: bildformat, filformat, kvalitet, Ultra HDR, stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration och volymknappar.",
         "Kameror visar vad telefonen ger appen tillgång till: varje lins, bildfrekvens, slow motion, RAW, 1440p-video, Ultra HDR, HDR-video och dolda högupplösta inställningar. Rapporten kan kopieras eller delas."
       ]
     },
@@ -121,6 +129,14 @@
       ]
     },
     {
+      "title": "HDR",
+      "items": [
+        "The HDR button at the top in Photo takes 3 photos with different exposure – the chosen one, a darker and a brighter one – and 5 when the phone is still. They are combined so that both bright windows and dark corners show. The label at the top shows the progress; hold still for a second.",
+        "The photos are moved into place before they are combined, and anything that moves is taken from the first photo, so there are no ghost images. The flash is not used with HDR, and RAW is saved as JPEG.",
+        "Ultra HDR (on from the start, Settings › Photo): the HDR photo is saved with a gain map, so HDR screens – like the OnePlus 13R's – show bright parts up to four times brighter. Other screens and apps show the normal photo. Applies to JPEG."
+      ]
+    },
+    {
       "title": "Aspect ratio and file format",
       "items": [
         "Aspect ratio: 4:3 (the whole sensor), 3:2, 16:9, 1:1 and Full. Full fills the whole screen and the photo gets the screen's shape; the buttons then sit in see-through glass on top of the picture. 3:2, 16:9 and Full are cropped from the sensor's whole 4:3 picture: the viewfinder shows the middle of the 4:3 picture and the photo is cropped right after it is taken, exactly as the viewfinder shows.",
@@ -147,7 +163,7 @@
       "title": "Settings",
       "items": [
         "Language (Svenska or English) and theme (Dark or Beige). The camera, viewer and editor are always dark.",
-        "Photo, Video, Viewfinder and General: aspect ratio, file format, quality, stabilisation, sound, grid, level, shutter sound, vibration and volume keys.",
+        "Photo, Video, Viewfinder and General: aspect ratio, file format, quality, Ultra HDR, stabilisation, sound, grid, level, shutter sound, vibration and volume keys.",
         "Cameras shows what the phone gives the app access to: each lens, frame rate, slow motion, RAW, 1440p video, Ultra HDR, HDR video and hidden high-resolution settings. The report can be copied or shared."
       ]
     },

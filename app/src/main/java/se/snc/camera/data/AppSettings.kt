@@ -68,6 +68,8 @@ data class AppSettings(
     val haptics: Boolean = true,
     val mirrorFront: Boolean = true,
     val maxQuality: Boolean = true,
+    /** HDR-bilder sparas som Ultra HDR (gain map) så att HDR-skärmar visar ljusa partier ljusare. */
+    val ultraHdr: Boolean = true,
     val jpegQuality: Int = 95,
     val volumeKeyAction: VolumeKeyAction = VolumeKeyAction.SHUTTER,
     val recordAudio: Boolean = true,
@@ -102,6 +104,7 @@ class SettingsRepository(private val context: Context) {
         val haptics = booleanPreferencesKey("haptics")
         val mirrorFront = booleanPreferencesKey("mirror_front")
         val maxQuality = booleanPreferencesKey("max_quality")
+        val ultraHdr = booleanPreferencesKey("ultra_hdr")
         val jpegQuality = intPreferencesKey("jpeg_quality")
         val volumeKey = stringPreferencesKey("volume_key")
         val recordAudio = booleanPreferencesKey("record_audio")
@@ -145,6 +148,7 @@ class SettingsRepository(private val context: Context) {
             haptics = p[K.haptics] ?: d.haptics,
             mirrorFront = p[K.mirrorFront] ?: d.mirrorFront,
             maxQuality = p[K.maxQuality] ?: d.maxQuality,
+            ultraHdr = p[K.ultraHdr] ?: d.ultraHdr,
             jpegQuality = (p[K.jpegQuality] ?: d.jpegQuality).coerceIn(50, 100),
             volumeKeyAction = p.enumOr(K.volumeKey, d.volumeKeyAction),
             recordAudio = p[K.recordAudio] ?: d.recordAudio,
@@ -173,6 +177,7 @@ class SettingsRepository(private val context: Context) {
         p[K.haptics] = s.haptics
         p[K.mirrorFront] = s.mirrorFront
         p[K.maxQuality] = s.maxQuality
+        p[K.ultraHdr] = s.ultraHdr
         p[K.jpegQuality] = s.jpegQuality
         p[K.volumeKey] = s.volumeKeyAction.name
         p[K.recordAudio] = s.recordAudio
