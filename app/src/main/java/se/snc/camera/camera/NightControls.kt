@@ -83,7 +83,7 @@ fun NightStylePicker(
 }
 
 @Composable
-private fun GlassChipRow(content: @Composable () -> Unit) {
+internal fun GlassChipRow(content: @Composable () -> Unit) {
     val shape = RoundedCornerShape(24.dp)
     Row(
         Modifier
@@ -99,7 +99,7 @@ private fun GlassChipRow(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun GlassChip(text: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
+internal fun GlassChip(text: String, selected: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(20.dp)
     Text(
         text,

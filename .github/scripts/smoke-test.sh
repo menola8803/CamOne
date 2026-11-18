@@ -406,7 +406,7 @@ if [ -n "$VID" ] && command -v ffmpeg > /dev/null; then
 else
   log "  (ffmpeg saknas – bilden ur videon kontrolleras inte)"
 fi
-adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Videofilter" | tail -3 | while IFS= read -r l; do
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Videofilter: f" | tail -1 | while IFS= read -r l; do
   echo "::notice title=Videofilter-logg::$(echo "$l" | cut -c1-300)"
 done
 check "Appen lever efter video med filter" alive
@@ -416,6 +416,71 @@ tap --text "Reset"
 sleep 1
 tap --desc "Filter"
 sleep 1
+tap --text "PHOTO"
+sleep 4
+
+step "Tidsförlopp och slow motion"
+tap --text "VIDEO"
+sleep 5
+check "Videoläget visar valen Video, Slow motion och Tidsförlopp" $UI exists --text "Time-lapse" --timeout 8
+tap --text "Time-lapse"
+sleep 5
+tap --text "0.5 s"
+sleep 1
+shot 19h-tidsforlopp
+check "Tidsförlopp visar hur mycket snabbare filmen blir" $UI exists --text "Plays 15× faster"
+TB=$(count '_TIMELAPSE')
+key KEYCODE_VOLUME_UP
+sleep 8
+shot 19i-tidsforlopp-spelar-in
+key KEYCODE_VOLUME_UP
+for w in $(seq 1 15); do sleep 1; [ "$(count '_TIMELAPSE')" -gt "$TB" ] && break; done
+sleep 2
+TA=$(count '_TIMELAPSE')
+check "Tidsförlopp sparas ($TB → $TA)" [ "$TA" -gt "$TB" ]
+TL=$(adb shell "ls -t '$DIR' | grep '_TIMELAPSE.mp4' | head -1" | tr -d '\r')
+if [ -n "$TL" ] && command -v ffprobe > /dev/null; then
+  adb pull "$DIR/$TL" "$OUT/tidsforlopp.mp4" >> "$OUT/ui.log" 2>&1
+  TDUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/tidsforlopp.mp4" 2>> "$OUT/ui.log" | head -1)
+  TFR=$(ffprobe -v error -count_frames -select_streams v:0 -show_entries stream=nb_read_frames -of csv=p=0 "$OUT/tidsforlopp.mp4" 2>> "$OUT/ui.log" | head -1)
+  log "  Tidsförlopp: $TL – ${TDUR:-?} s, ${TFR:-?} bildrutor (8 s inspelning, 0,5 s mellan bilderna)"
+  check "Tidsförloppet går fortare än verklig tid (${TDUR:-?} s under 3 s, ${TFR:-?} bildrutor, minst 5)" python3 -c "import sys; d=float('${TDUR:-99}' or 99); f=int('${TFR:-0}' or 0); sys.exit(0 if d < 3 and f >= 5 else 1)"
+fi
+check "Appen lever efter tidsförloppet" alive
+tap --text "Slow motion"
+sleep 8
+shot 19j-slow-motion
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Slowmo:" | tail -2 | while IFS= read -r l; do
+  echo "::notice title=Slowmo-logg::$(echo "$l" | cut -c1-300)"
+done
+if $UI exists --text "Slow motion isn't supported by this camera" --timeout 3 >> "$OUT/ui.log" 2>&1; then
+  log "  Slow motion stöds inte av emulatorns kamera – appen säger det"
+  ok "Slow motion: tydligt besked när kameran inte klarar det"
+else
+  SB=$(count '_SLOMO')
+  key KEYCODE_VOLUME_UP
+  sleep 4
+  shot 19k-slow-motion-spelar-in
+  key KEYCODE_VOLUME_UP
+  for w in $(seq 1 20); do sleep 1; [ "$(count '_SLOMO')" -gt "$SB" ] && break; done
+  sleep 2
+  SA=$(count '_SLOMO')
+  check "Slow motion sparas ($SB → $SA)" [ "$SA" -gt "$SB" ]
+  SL=$(adb shell "ls -t '$DIR' | grep '_SLOMO' | head -1" | tr -d '\r')
+  if [ -n "$SL" ] && command -v ffprobe > /dev/null; then
+    adb pull "$DIR/$SL" "$OUT/slowmotion.mp4" >> "$OUT/ui.log" 2>&1
+    SDUR=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/slowmotion.mp4" 2>> "$OUT/ui.log" | head -1)
+    log "  Slow motion: $SL – ${SDUR:-?} s (4 s inspelning)"
+    check "Slow motion är långsammare än verklig tid (${SDUR:-?} s, minst 7 s)" python3 -c "import sys; sys.exit(0 if float('${SDUR:-0}' or 0) >= 7 else 1)"
+  fi
+  adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Slowmo: (inspelning|fel)" | tail -1 | while IFS= read -r l; do
+    echo "::notice title=Slowmo-inspelning::$(echo "$l" | cut -c1-300)"
+  done
+fi
+check "Appen lever efter slow motion" alive
+tap --text "Video"
+sleep 4
+check "Tillbaka till vanlig video" $UI exists --text "Video" --selected --timeout 4
 tap --text "PHOTO"
 sleep 4
 
@@ -517,7 +582,7 @@ check "HDR-bild sparas (${FH:-ingen fil})" [ -n "$FH" ]
 check "HDR-bilden är ihoplagd av flera exponeringar (${DH:-?})" bash -c "echo '$DH' | grep -qE 'HDR: [2-5] exposures'"
 check "HDR-bilden är Ultra HDR (gain map i filen)" python3 -c "import sys; d=open('$OUT/hdr.jpg','rb').read(); sys.exit(0 if b'hdrgm' in d and d.count(b'\\xff\\xd8\\xff') >= 2 else 1)"
 check "Appen lever efter HDR-bilden" alive
-adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR" | tail -3 | while IFS= read -r l; do
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR: gain|HDR/Natt: sparad" | tail -1 | while IFS= read -r l; do
   echo "::notice title=HDR-logg::$(echo "$l" | cut -c1-300)"
 done
 # Krasch (Java eller inbyggd kod) i resultatet

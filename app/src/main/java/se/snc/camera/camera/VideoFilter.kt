@@ -32,14 +32,23 @@ import java.util.concurrent.Executor
 
 private const val TAG = "SncCamera"
 
-/** CameraX-effekt för sökaren och videon med appens live-filter. */
-class VideoFilterEffect private constructor(private val processor: FilterGlProcessor) : CameraEffect(
-    CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE,
+/**
+ * CameraX-effekt med appens live-filter. Som standard för sökaren och videon; för tidsförlopp bara för
+ * videon ([targets] = VIDEO_CAPTURE) med en [TimelapseGate] som väljer vilka bildrutor som spelas in.
+ */
+class VideoFilterEffect private constructor(
+    private val processor: FilterGlProcessor,
+    targets: Int
+) : CameraEffect(
+    targets,
     processor.executor,
     processor,
     Consumer<Throwable> { t -> Log.w(TAG, "Videofiltret: $t", t) }
 ) {
-    constructor() : this(FilterGlProcessor())
+    constructor(
+        targets: Int = CameraEffect.PREVIEW or CameraEffect.VIDEO_CAPTURE,
+        gate: TimelapseGate? = null
+    ) : this(FilterGlProcessor().also { it.gate = gate }, targets)
 
     /** Filtret som ska gälla (null = inget filter). Kan ändras medan filmen spelas in. */
     fun setMatrix(matrix: ColorMatrix?) = processor.setMatrix(matrix)
@@ -47,8 +56,14 @@ class VideoFilterEffect private constructor(private val processor: FilterGlProce
     fun release() = processor.release()
 }
 
-/** Ritar kamerans bildrutor med en färgmatris (OpenGL ES 2) till alla utgångar (sökare och video). */
+/**
+ * Ritar kamerans bildrutor med en färgmatris (OpenGL ES 2) till alla utgångar (sökare och video).
+ * Med [gate] (tidsförlopp) går bara de bildrutor som grinden släpper igenom till videon, med grindens
+ * tidsstämplar.
+ */
 class FilterGlProcessor : SurfaceProcessor {
+    @Volatile var gate: TimelapseGate? = null
+
     private val thread = HandlerThread("SncVideoFilter").apply { start() }
     private val handler = Handler(thread.looper)
     val executor = Executor { r -> handler.post(r) }
@@ -145,7 +160,12 @@ class FilterGlProcessor : SurfaceProcessor {
         val ts = st.timestamp
         val m = colorMat
         val o = colorOff
+        // Tidsförlopp: grinden avgör en gång per bildruta om den ska till videon (och med vilken tid)
+        val g = gate
+        val gateTs = g?.decide(ts)
         for ((out, egl) in outputs) {
+            val toVideo = out.targets and CameraEffect.VIDEO_CAPTURE != 0
+            val outTs = if (g != null && toVideo) (gateTs ?: continue) else ts
             if (!makeCurrent(egl)) continue
             out.updateTransformMatrix(outMatrix, texMatrix)
             GLES20.glViewport(0, 0, out.size.width, out.size.height)
@@ -161,7 +181,7 @@ class FilterGlProcessor : SurfaceProcessor {
             GLES20.glEnableVertexAttribArray(aTex)
             GLES20.glVertexAttribPointer(aTex, 2, GLES20.GL_FLOAT, false, 0, quadTex)
             GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, 4)
-            EGLExt.eglPresentationTimeANDROID(display, egl, ts)
+            EGLExt.eglPresentationTimeANDROID(display, egl, outTs)
             EGL14.eglSwapBuffers(display, egl)
         }
         if (frames++ == 0L) Log.i(TAG, "Videofilter: första bildrutan ritad till ${outputs.size} utgångar")

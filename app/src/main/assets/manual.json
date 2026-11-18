@@ -1,5 +1,5 @@
 {
-  "version": "1.10.0",
+  "version": "1.11.0",
   "sv": [
     {
       "title": "Kameran",
@@ -46,6 +46,15 @@
         "HDR-knappen överst i Foto tar 3 bilder med olika exponering – den valda, en mörkare och en ljusare – och 5 när telefonen står stilla. Bilderna läggs ihop så att både ljusa fönster och mörka hörn syns. Etiketten överst visar förloppet; håll stilla en sekund.",
         "Bilderna flyttas på plats innan de läggs ihop, och det som rör sig tas från den första bilden, så inga spökbilder uppstår. Blixten används inte med HDR, och RAW sparas som JPEG.",
         "Ultra HDR (på från början, Inställningar › Foto): HDR-bilden sparas med en gain map, så att HDR-skärmar – som OnePlus 13R:s – visar ljusa partier upp till fyra gånger ljusare. Andra skärmar och appar visar den vanliga bilden. Gäller JPEG."
+      ]
+    },
+    {
+      "title": "Slow motion och tidsförlopp",
+      "items": [
+        "I Video väljer du Video, Slow motion eller Tidsförlopp i glasvalen ovanför zoomen.",
+        "Slow motion: välj bildfrekvens (t.ex. 120, 240 eller 480 fps – det kameran klarar visas). Filmen sparas i 30 bilder per sekund och spelas upp 4, 8 eller 16 gånger långsammare. Slow motion spelas in med huvudkameran, utan ljud och utan live-filter. Klockan visar inspelad tid och filmens längd.",
+        "Tidsförlopp: välj tid mellan bilderna (0,5, 1, 2 eller 5 s). En bild tas per intervall och filmen spelas upp 15–150 gånger snabbare. Live-filtret följer med. Ställ telefonen stadigt, till exempel på ett stativ.",
+        "Filmerna heter …_SLOMO240.mp4 och …_TIMELAPSE.mp4. Paus finns bara i vanlig video."
       ]
     },
     {
@@ -142,6 +151,15 @@
         "The HDR button at the top in Photo takes 3 photos with different exposure – the chosen one, a darker and a brighter one – and 5 when the phone is still. They are combined so that both bright windows and dark corners show. The label at the top shows the progress; hold still for a second.",
         "The photos are moved into place before they are combined, and anything that moves is taken from the first photo, so there are no ghost images. The flash is not used with HDR, and RAW is saved as JPEG.",
         "Ultra HDR (on from the start, Settings › Photo): the HDR photo is saved with a gain map, so HDR screens – like the OnePlus 13R's – show bright parts up to four times brighter. Other screens and apps show the normal photo. Applies to JPEG."
+      ]
+    },
+    {
+      "title": "Slow motion and time-lapse",
+      "items": [
+        "In Video, choose Video, Slow motion or Time-lapse in the glass options above the zoom.",
+        "Slow motion: choose the frame rate (for example 120, 240 or 480 fps – what the camera can do is shown). The video is saved at 30 frames per second and plays 4, 8 or 16 times slower. Slow motion is recorded with the main camera, without sound and without the live filter. The clock shows the recorded time and the length of the clip.",
+        "Time-lapse: choose the time between frames (0.5, 1, 2 or 5 s). One frame is taken per interval and the video plays 15–150 times faster. The live filter is included. Keep the phone steady, for example on a tripod.",
+        "The videos are named …_SLOMO240.mp4 and …_TIMELAPSE.mp4. Pause is only available in normal video."
       ]
     },
     {

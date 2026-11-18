@@ -693,9 +693,11 @@ fun formatZoom(value: Float, withX: Boolean): String {
 
 /** Röd pill med inspelningstid. */
 @Composable
-fun RecordingTimer(ms: Long, paused: Boolean, modifier: Modifier = Modifier) {
+fun RecordingTimer(ms: Long, paused: Boolean, modifier: Modifier = Modifier, extra: String? = null) {
     val totalSec = ms / 1000
-    val text = String.format(Locale.US, "%02d:%02d", totalSec / 60, totalSec % 60)
+    val base = String.format(Locale.US, "%02d:%02d", totalSec / 60, totalSec % 60)
+    // Slow motion och tidsförlopp: "00:12 → 1:36" (verklig tid → filmens längd)
+    val text = if (extra != null) "$base  $extra" else base
     Row(
         modifier = modifier
             .clip(RoundedCornerShape(50))

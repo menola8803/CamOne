@@ -2,6 +2,13 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.11.0 – 2026-11-19
+
+- Videoläget har tre val i glas ovanför zoomen: Video, Slow motion och Tidsförlopp.
+- Slow motion: 120, 240 eller 480 fps (det kameran klarar visas). Filmen sparas i 30 fps och spelas upp 4, 8 eller 16 gånger långsammare, utan ljud. Appen använder CameraX höghastighetsvideo när telefonen har profilerna för det, annars öppnar den kameran själv (Camera2) i en höghastighetssession med egen videokodare. Klarar kameran det inte står det tydligt.
+- Tidsförlopp: 0,5, 1, 2 eller 5 s mellan bilderna – filmen spelas upp 15–150 gånger snabbare. En OpenGL-effekt på videon släpper igenom en bild per intervall; sökaren är som vanligt och live-filtret följer med.
+- Klockan visar inspelad tid och filmens längd i slow motion och tidsförlopp. Paus finns bara i vanlig video; bildfrekvensknappen visas bara i vanlig video.
+
 ## Version 1.10.0 – 2026-11-18
 
 - Pro-hjälpmedel: tryck på Hjälp i Pro-panelen och slå på Histogram, Fokusmarkering och Zebra var för sig. Histogrammet visar ljusstyrkan uppe till höger, med röd kant när en del av bilden är helt svart eller utfrätt. Fokusmarkeringen gör skarpa kanter röda (bra med manuell fokus) och zebran visar sneda ränder där bilden är nästan utfrätt. Den sparade bilden påverkas inte.

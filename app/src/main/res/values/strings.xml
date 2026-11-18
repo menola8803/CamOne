@@ -336,6 +336,17 @@
     <string name="msg_assist_failed">The assist tools can\'t be used with this file format – the camera runs without them</string>
     <string name="msg_burst_raw">Burst doesn\'t work with RAW – choose JPEG, HEIF or PNG</string>
     <string name="msg_burst_saved">%1$s photos in the burst</string>
+    <string name="video_style_normal">Video</string>
+    <string name="video_style_slowmo">Slow motion</string>
+    <string name="video_style_timelapse">Time-lapse</string>
+    <string name="slowmo_fps">%1$d fps</string>
+    <string name="slowmo_info">%1$s · plays %2$d× slower</string>
+    <string name="slowmo_unsupported">Slow motion isn\'t supported by this camera</string>
+    <string name="timelapse_info">Plays %1$d× faster</string>
+    <string name="msg_slowmo_unsupported">Slow motion isn\'t supported by this camera</string>
+    <string name="msg_slowmo_failed">Slow motion could not be started – try another frame rate</string>
+    <string name="msg_slowmo_no_filter">The live filter isn\'t used in slow motion</string>
+    <string name="msg_timelapse_failed">Time-lapse could not be started on this camera</string>
     <string name="msg_filter_failed">Couldn\'t apply the filter – the photo was saved without it</string>
     <string name="cams_raw_used">Yes – choose RAW under Settings › Photo › File format</string>
     <string name="cams_raw_camera2_only">The camera has RAW, but CameraX does not offer it here</string>

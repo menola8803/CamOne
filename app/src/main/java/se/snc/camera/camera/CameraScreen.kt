@@ -241,8 +241,9 @@ private fun CameraContent(
         onDispose { viewModel.detach() }
     }
 
-    // Live-filter: samma färgmatris som läggs på den sparade bilden. Inte i video (spelas in utan filter).
-    val liveFilterOn = state.filter.isActive && !state.mode.isVideo
+    // Live-filter: samma färgmatris som läggs på den sparade bilden. I video ritar OpenGL-effekten filtret i
+    // sökaren och filmen – utom i tidsförlopp, där effekten bara gäller filmen och sökaren får RenderEffect.
+    val liveFilterOn = state.filter.isActive && (!state.mode.isVideo || state.videoStyle == VideoStyle.TIMELAPSE)
     LaunchedEffect(previewView, liveFilterOn, state.filter) {
         previewView.setRenderEffect(
             if (liveFilterOn) RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(state.filter.matrix())) else null
@@ -367,6 +368,16 @@ private fun CameraContent(
                 .clip(RoundedCornerShape(if (fullScreen) 0.dp else vfCorner))
         ) {
             AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+
+            // Slow motion med Camera2: egen sökare ovanpå (CameraX är frånkopplad)
+            if (state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2) {
+                SlowMotionPreview(
+                    bufferWidth = state.slowWidth,
+                    bufferHeight = state.slowHeight,
+                    onAvailable = viewModel::onSlowPreviewAvailable,
+                    onGone = viewModel::onSlowPreviewGone
+                )
+            }
 
             // Pro: fokusmarkering och zebra ovanpå sökaren (samma bildyta, beskärs likadant)
             val assistShown = state.mode == CameraMode.PRO && state.assistActive
@@ -634,6 +645,17 @@ private fun CameraContent(
                 )
             }
 
+            // Videoläget: Video, Slow motion eller Tidsförlopp
+            if (state.mode.isVideo && !state.isRecording && !state.filterPanelOpen) {
+                VideoStylePicker(
+                    state = state,
+                    onStyle = viewModel::setVideoStyle,
+                    onFps = viewModel::setSlowFps,
+                    onInterval = viewModel::setTimelapseInterval,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+            }
+
             // Visar en stund vilken lins som tog över när man zoomar (t.ex. "Tele · 47 mm")
             var showLens by remember { mutableStateOf(false) }
             LaunchedEffect(state.lensChangeTick) {
@@ -652,14 +674,17 @@ private fun CameraContent(
                 if (lens != null) LensPill(lens, iconRotation, Modifier.padding(bottom = 8.dp))
             }
 
-            ZoomChips(
-                zoom = state.zoomRatio,
-                minZoom = state.minZoom,
-                maxZoom = state.maxZoom,
-                rotation = iconRotation,
-                onZoom = viewModel::setZoom,
-                modifier = Modifier.padding(bottom = 10.dp)
-            )
+            // Ingen zoom i slow motion med Camera2 (egen session utan CameraX)
+            if (!(state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2)) {
+                ZoomChips(
+                    zoom = state.zoomRatio,
+                    minZoom = state.minZoom,
+                    maxZoom = state.maxZoom,
+                    rotation = iconRotation,
+                    onZoom = viewModel::setZoom,
+                    modifier = Modifier.padding(bottom = 10.dp)
+                )
+            }
 
             if (state.isRecording) {
                 Spacer(Modifier.height(44.dp))
@@ -696,7 +721,8 @@ private fun CameraContent(
             ) {
                 Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
                     if (state.isRecording) {
-                        PauseButton(state.isPaused, viewModel::togglePause)
+                        // Paus bara i vanlig video
+                        if (state.videoStyle == VideoStyle.NORMAL) PauseButton(state.isPaused, viewModel::togglePause)
                     } else {
                         GalleryThumbnail(
                             bitmap = state.lastThumbnail,
@@ -780,7 +806,12 @@ private fun TopBar(
         contentAlignment = Alignment.Center
     ) {
         if (state.isRecording) {
-            RecordingTimer(state.recordingMs, state.isPaused)
+            // Slow motion och tidsförlopp: verklig tid → filmens längd
+            RecordingTimer(
+                state.recordingMs,
+                state.isPaused,
+                extra = if (state.videoStyle != VideoStyle.NORMAL) "→ ${formatClip(state.recordingOutputMs)}" else null
+            )
             return@Box
         }
         Row(
@@ -847,18 +878,23 @@ private fun TopBar(
             )
 
             if (mode.isVideo) {
-                GlassTextButton(
-                    text = videoQualityLabel,
-                    contentDescription = stringResource(R.string.cd_video_quality),
-                    onClick = onVideoQuality,
-                    rotation = rotation
-                )
-                GlassTextButton(
-                    text = "$videoFps fps",
-                    contentDescription = stringResource(R.string.cd_fps),
-                    onClick = onFps,
-                    rotation = rotation
-                )
+                // Slow motion har sin egen upplösning och bildfrekvens; tidsförlopp tas i 30 fps
+                if (state.videoStyle != VideoStyle.SLOW_MOTION) {
+                    GlassTextButton(
+                        text = videoQualityLabel,
+                        contentDescription = stringResource(R.string.cd_video_quality),
+                        onClick = onVideoQuality,
+                        rotation = rotation
+                    )
+                }
+                if (state.videoStyle == VideoStyle.NORMAL) {
+                    GlassTextButton(
+                        text = "$videoFps fps",
+                        contentDescription = stringResource(R.string.cd_fps),
+                        onClick = onFps,
+                        rotation = rotation
+                    )
+                }
             } else if (mode == CameraMode.PHOTO || mode == CameraMode.PRO) {
                 GlassTextButton(
                     text = aspectLabel,

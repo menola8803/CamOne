@@ -24,6 +24,7 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Vattenpass, rutnät (tredjedelar, gyllene snittet, kvadrat)
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
+- **Slow motion** (120/240/480 fps, spelas upp 4–16× långsammare) och **tidsförlopp** (0,5–5 s mellan bilderna)
 - Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus,
   plus **histogram**, **fokusmarkering** och **zebra** i sökaren (Hjälp i Pro-panelen)
 - **Serietagning**: håll in avtryckaren i Foto och Pro (högst 50 bilder i följd)
@@ -157,6 +158,9 @@ Egen nyckel lokalt: sätt miljövariablerna `SNC_KEYSTORE`, `SNC_KEYSTORE_PASSWO
   kanten två gånger, och en sjättedel av bilden blir randig – till vänster med 1×, till höger med .6. 4:3 är
   felfritt, och kamera 0 (som LineageOS kameraapp använder) är felfri i 16:9. Därför tar fotolägena allt i 4:3
   och beskär efteråt, och video använder kamera 0 (2× och 5× blir digital zoom i video).
+- **Slow motion:** CameraX höghastighetsvideo kräver att telefonen har höghastighetsprofiler (CamcorderProfile).
+  Saknas de men kameran klarar höghastighetsvideo öppnar appen kameran själv med Camera2
+  (`camera/SlowMotion.kt`: höghastighetssession, MediaCodec och MediaMuxer, tidsstämplarna sträcks ut till 30 fps).
 - **Infrarött och värme:** telefonen har en IR-sändare (fjärrkontroll) men ingen IR- eller värmekamera.
   Kamerorna har IR-spärrfilter, så en fjärrkontrolls IR-diod syns bara svagt, om alls (oftast bäst i
   framkameran). Värme (8–14 µm) kan inte ses med mobilens kameror – det kräver en separat värmekamera.

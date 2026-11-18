@@ -17,6 +17,16 @@ enum class CameraMode(@StringRes val label: Int) {
     val isVideo get() = this == VIDEO
 }
 
+/** Videoläget: vanlig video, slow motion eller tidsförlopp. */
+enum class VideoStyle(@StringRes val label: Int) {
+    NORMAL(R.string.video_style_normal),
+    SLOW_MOTION(R.string.video_style_slowmo),
+    TIMELAPSE(R.string.video_style_timelapse)
+}
+
+/** Hur slow motion spelas in: CameraX (höghastighetssession), egen Camera2-session, eller inte alls. */
+enum class SlowEngine { NONE, CAMERAX, CAMERA2 }
+
 enum class WhiteBalance(@StringRes val label: Int, val awbMode: Int) {
     AUTO(R.string.wb_auto, CaptureRequest.CONTROL_AWB_MODE_AUTO),
     DAYLIGHT(R.string.wb_daylight, CaptureRequest.CONTROL_AWB_MODE_DAYLIGHT),
@@ -92,6 +102,27 @@ data class CameraUiState(
 
     /** Live-filtret är bundet i video (OpenGL) och syns i sökaren och filmen. */
     val videoFilterOn: Boolean = false,
+
+    /** Video, slow motion eller tidsförlopp. */
+    val videoStyle: VideoStyle = VideoStyle.NORMAL,
+    /** Slow motion: bildfrekvenserna kameran klarar (tom = inte undersökt än eller stöds inte). */
+    val slowFpsOptions: List<Int> = emptyList(),
+    val slowFps: Int = 0,
+    /** Slow motion har undersökts (då betyder tom [slowFpsOptions] att det inte stöds). */
+    val slowProbed: Boolean = false,
+    /** Slow motion är bunden just nu, och på vilket sätt. */
+    val slowEngine: SlowEngine = SlowEngine.NONE,
+    /** Upplösningen för vald bildfrekvens, t.ex. "1080p". */
+    val slowSizeLabel: String? = null,
+    /** Camera2-sökarens bildstorlek (för beskärningen i TextureView). */
+    val slowWidth: Int = 0,
+    val slowHeight: Int = 0,
+    /** Tidsförlopp: tid mellan bilderna. */
+    val timelapseIntervalMs: Int = 1000,
+    /** Tidsförloppets OpenGL-grind är bunden (annars går det inte att spela in tidsförlopp). */
+    val timelapseReady: Boolean = false,
+    /** Tidsförlopp och slow motion: filmens längd i millisekunder medan den spelas in. */
+    val recordingOutputMs: Long = 0L,
     /** Nattläget lägger ihop flera bilder (ingen tillverkarextension): Natt, Ljusspår eller Silkesvatten. */
     val stackAvailable: Boolean = false,
     val nightStyle: StackStyle = StackStyle.NIGHT,

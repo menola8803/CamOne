@@ -101,6 +101,16 @@ import androidx.annotation.RequiresApi
 import kotlin.math.pow
 import android.util.Size
 import kotlinx.coroutines.channels.Channel
+import android.graphics.SurfaceTexture
+import android.os.SystemClock
+import androidx.camera.core.CameraEffect
+import androidx.camera.core.CameraInfo
+import androidx.camera.core.DynamicRange
+import androidx.camera.core.ExperimentalSessionConfig
+import androidx.camera.video.ExperimentalHighSpeedVideo
+import androidx.camera.video.HighSpeedVideoSessionConfig
+import androidx.camera.video.VideoCapabilities
+import kotlinx.coroutines.isActive
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -183,6 +193,25 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         },
         onFrame = { f -> if (assistAnalysis != null) _assist.value = f }
     )
+
+    // Tidsförlopp (Timelapse.kt): en OpenGL-effekt på videon släpper igenom en bildruta per intervall
+    private val timelapseGate = TimelapseGate(1_000_000_000L)
+    private var timelapseEffect: VideoFilterEffect? = null
+    private var timelapseBound = false
+    private var timelapseAllowed = true
+
+    // Slow motion (SlowMotion.kt): CameraX höghastighetssession om telefonen har profilerna, annars Camera2
+    private var slowProbeDone = false
+    private var slowCameraXId: String? = null
+    private var slowCameraXFps: List<Int> = emptyList()
+    private var slowCameraXBroken = false
+    private var slowCamera2Options: List<SlowOption> = emptyList()
+    private var slowCam: SlowMotionCamera? = null
+    private var slowTexture: SurfaceTexture? = null
+    /** Stilen för den pågående inspelningen (vanlig video, slow motion eller tidsförlopp). */
+    private var recordingStyle = VideoStyle.NORMAL
+    private var recordingFps = 30
+    private var recordingTicker: Job? = null
 
     // Serietagning: håll in avtryckaren
     private var burstJob: Job? = null
@@ -300,6 +329,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         recording = null
         stopStacking()
         stopAssist()
+        slowCam?.closeAndWait()
+        timelapseGate.disarm()
+        stopTicker()
         motion.stop()
         bindJob?.cancel()
         zoomLiveData?.removeObserver(zoomObserver)
@@ -318,6 +350,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         analysisExecutor.shutdown()
         stackPool.shutdown()
         videoFilter?.release()
+        timelapseEffect?.release()
+        slowCam?.release()
         sound.release()
         portrait.close()
         super.onCleared()
@@ -407,6 +441,21 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         // En pågående nattbild avbryts (kameran binds om)
         stopStacking()
         stopAssist()
+        // Slow motion med Camera2 stängs (öppnas igen nedan om det fortfarande gäller)
+        slowCam?.closeAndWait()
+        videoFilterBound = false
+        timelapseBound = false
+
+        // Slow motion: undersök en gång vad kamerorna klarar och välj CameraX eller Camera2
+        val slowWanted = st.mode == CameraMode.VIDEO && st.videoStyle == VideoStyle.SLOW_MOTION && !front
+        var slowFps = 0
+        var slowEngine = SlowEngine.NONE
+        if (slowWanted) {
+            probeSlowMotion(cp)
+            slowFps = chooseSlowFps(st.slowFps)
+            slowEngine = slowEngineFor(slowFps)
+            if (slowEngine == SlowEngine.CAMERA2) return bindCamera2Slow(cp, slowFps, hasFront, hasBack)
+        }
 
         // Ta bort ev. manuella Camera2-värden från förra läget
         camera?.let { old -> runCatching { Camera2CameraControl.from(old.cameraControl).clearCaptureRequestOptions() } }
@@ -537,10 +586,17 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-            // Live-filter i video: effekten läggs på sökaren och filmen
-            val effect = if (st.mode.isVideo && st.filter.isActive && videoFilterAllowed) {
-                videoFilter ?: VideoFilterEffect().also { videoFilter = it }
-            } else null
+            // Live-filter i video: effekten läggs på sökaren och filmen. Tidsförlopp: en effekt bara på
+            // videon som släpper igenom en bildruta per intervall (sökaren får filtret med RenderEffect).
+            val timelapse = st.mode.isVideo && st.videoStyle == VideoStyle.TIMELAPSE
+            val effect = when {
+                timelapse && timelapseAllowed -> timelapseEffect
+                    ?: VideoFilterEffect(CameraEffect.VIDEO_CAPTURE, timelapseGate).also { timelapseEffect = it }
+                timelapse -> null
+                st.mode.isVideo && st.videoStyle == VideoStyle.NORMAL && st.filter.isActive && videoFilterAllowed ->
+                    videoFilter ?: VideoFilterEffect().also { videoFilter = it }
+                else -> null
+            }
 
             cp.unbindAll()
             return try {
@@ -552,8 +608,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 } else {
                     cp.bindToLifecycle(owner, selector, *useCases.toTypedArray())
                 }
-                videoFilterBound = effect != null
-                effect?.setMatrix(st.filter.matrix())
+                videoFilterBound = effect != null && effect === videoFilter
+                timelapseBound = effect != null && effect === timelapseEffect
+                effect?.setMatrix(if (st.filter.isActive) st.filter.matrix() else null)
                 imageCapture = ic
                 videoCapture = vc
                 nightAnalysis = na
@@ -565,9 +622,14 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             } catch (e: Exception) {
                 Log.w(TAG, "Bindning misslyckades (extension=$useExtension, stab=$stabilization, 60fps=$highFps, filter=${effect != null})", e)
                 if (effect != null) {
-                    // Gick det inte med filtret: samma försök utan filter, så att video alltid fungerar
-                    videoFilterAllowed = false
-                    showMessage(R.string.msg_video_filter_failed)
+                    // Gick det inte med effekten: samma försök utan, så att video alltid fungerar
+                    if (effect === timelapseEffect) {
+                        timelapseAllowed = false
+                        showMessage(R.string.msg_timelapse_failed)
+                    } else {
+                        videoFilterAllowed = false
+                        showMessage(R.string.msg_video_filter_failed)
+                    }
                     return attempt(useExtension, stabilization, highFps, cameraBase)
                 }
                 if (aa != null) {
@@ -584,7 +646,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
 
         // Försök i ordning: allt påslaget → utan tillägg/stabilisering → 30 fps → standardkameran
-        val wantHighFps = st.mode.isVideo && s.videoFps >= 60
+        val wantHighFps = st.mode.isVideo && s.videoFps >= 60 && st.videoStyle == VideoStyle.NORMAL
         val tries = buildList {
             add(BindTry(true, s.videoStabilization, wantHighFps, base))
             if (wantHighFps) add(BindTry(false, false, true, base))
@@ -594,11 +656,25 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         var bound: Camera? = null
         var used: BindTry? = null
         lastActiveLens = null
-        for (t in tries) {
-            bound = attempt(t.extension, t.stabilization, t.highFps, t.selector)
+        var slowBound = false
+        if (slowEngine == SlowEngine.CAMERAX) {
+            bound = bindHighSpeed(cp, owner, view, slowFps)
             if (bound != null) {
-                used = t
-                break
+                slowBound = true
+            } else {
+                // CameraX klarade det inte: Camera2 om kameran har bildfrekvensen, annars vanlig video
+                slowCameraXBroken = true
+                if (slowEngineFor(slowFps) == SlowEngine.CAMERA2) return bindCamera2Slow(cp, slowFps, hasFront, hasBack)
+                showMessage(R.string.msg_slowmo_failed)
+            }
+        }
+        if (bound == null) {
+            for (t in tries) {
+                bound = attempt(t.extension, t.stabilization, t.highFps, t.selector)
+                if (bound != null) {
+                    used = t
+                    break
+                }
             }
         }
         // Gick det inte med RAW: försök igen utan RAW, så att kameran alltid startar
@@ -651,7 +727,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 videoFilterOn = videoFilterBound,
                 assistActive = assistAnalysis != null,
                 burstAvailable = (st.mode == CameraMode.PHOTO || st.mode == CameraMode.PRO) &&
-                    imageCapture != null && !extensionActive
+                    imageCapture != null && !extensionActive,
+                timelapseReady = timelapseBound,
+                slowEngine = if (slowBound) SlowEngine.CAMERAX else SlowEngine.NONE,
+                slowProbed = slowProbeDone,
+                slowFpsOptions = slowFpsOptions(),
+                slowFps = if (slowWanted) slowFps else it.slowFps,
+                slowSizeLabel = if (slowBound) videoCapture?.resolutionInfo?.resolution?.let { r -> "${minOf(r.width, r.height)}p" } else null
             )
         }
         if (nightAnalysis != null) motion.start() else motion.stop()
@@ -822,6 +904,258 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Slow motion och tidsförlopp
+    // ---------------------------------------------------------------------------------------------
+
+    private fun idOf(info: CameraInfo): String? = runCatching { Camera2CameraInfo.from(info).cameraId }.getOrNull()
+
+    /** Upplösning för slow motion i CameraX: 1080p om det finns, annars 720p, annars det som finns. */
+    private fun slowQualitySelector(caps: VideoCapabilities): QualitySelector {
+        val supported = runCatching { caps.getSupportedQualities(DynamicRange.SDR) }.getOrDefault(emptyList())
+        val pick = listOf(Quality.FHD, Quality.HD, Quality.SD).firstOrNull { it in supported } ?: supported.firstOrNull() ?: Quality.HD
+        return QualitySelector.from(pick, FallbackStrategy.lowerQualityOrHigherThan(Quality.SD))
+    }
+
+    /**
+     * Undersöker en gång vilka bildfrekvenser (minst 120) som går: CameraX höghastighetssession (kräver
+     * telefonens höghastighetsprofiler) och Camera2 (kräver bara att kameran klarar höghastighetsvideo).
+     */
+    @kotlin.OptIn(ExperimentalSessionConfig::class, ExperimentalHighSpeedVideo::class)
+    private fun probeSlowMotion(cp: ProcessCameraProvider) {
+        if (slowProbeDone) return
+        slowProbeDone = true
+        runCatching {
+            val backs = cp.availableCameraInfos
+                .filter { it.lensFacing == CameraSelector.LENS_FACING_BACK }
+                .sortedBy { idOf(it)?.toIntOrNull() ?: 99 }
+            for (info in backs) {
+                val caps = Recorder.getHighSpeedVideoCapabilities(info) ?: continue
+                val vc = VideoCapture.withOutput(Recorder.Builder().setQualitySelector(slowQualitySelector(caps)).build())
+                val cfg = HighSpeedVideoSessionConfig.Builder(vc)
+                    .setPreview(Preview.Builder().build())
+                    .setSlowMotionEnabled(true)
+                    .build()
+                val fps = info.getSupportedFrameRateRanges(cfg)
+                    .filter { it.lower == it.upper && it.upper >= 120 }
+                    .map { it.upper }
+                    .distinct()
+                    .sorted()
+                if (fps.isNotEmpty()) {
+                    slowCameraXId = idOf(info)
+                    slowCameraXFps = fps
+                    break
+                }
+            }
+        }.onFailure { Log.w(TAG, "Slowmo: CameraX kunde inte undersökas", it) }
+        slowCamera2Options = runCatching { SlowMotionProbe.camera2Options(context) }.getOrDefault(emptyList())
+        Log.i(
+            TAG,
+            "Slowmo: CameraX ${if (slowCameraXFps.isEmpty()) "nej" else "kamera $slowCameraXId $slowCameraXFps"}, " +
+                "Camera2 ${slowCamera2Options.joinToString { "${it.cameraId}:${it.width}x${it.height}@${it.fps}" }.ifEmpty { "nej" }}"
+        )
+    }
+
+    private fun cameraXSlowFps(): List<Int> = if (slowCameraXBroken) emptyList() else slowCameraXFps
+
+    /** Alla bildfrekvenser för slow motion, från CameraX och Camera2. */
+    private fun slowFpsOptions(): List<Int> = (cameraXSlowFps() + slowCamera2Options.map { it.fps }).distinct().sorted()
+
+    /** Vald bildfrekvens om den finns, annars 240, annars den närmaste. */
+    private fun chooseSlowFps(wanted: Int): Int {
+        val all = slowFpsOptions()
+        if (all.isEmpty()) return 0
+        if (wanted in all) return wanted
+        return all.firstOrNull { it == 240 } ?: all.minBy { kotlin.math.abs(it - 240) }
+    }
+
+    private fun slowEngineFor(fps: Int): SlowEngine = when {
+        fps <= 0 -> SlowEngine.NONE
+        fps in cameraXSlowFps() -> SlowEngine.CAMERAX
+        slowCamera2Options.any { it.fps == fps } -> SlowEngine.CAMERA2
+        else -> SlowEngine.NONE
+    }
+
+    /** Slow motion med CameraX: höghastighetssession med sökare och video, filmen sparas i 30 fps. */
+    @kotlin.OptIn(ExperimentalSessionConfig::class, ExperimentalHighSpeedVideo::class)
+    private fun bindHighSpeed(cp: ProcessCameraProvider, owner: LifecycleOwner, view: PreviewView, fps: Int): Camera? {
+        val id = slowCameraXId ?: return null
+        return try {
+            val info = cp.availableCameraInfos.firstOrNull { idOf(it) == id } ?: return null
+            val caps = Recorder.getHighSpeedVideoCapabilities(info) ?: return null
+            val recorder = Recorder.Builder().setQualitySelector(slowQualitySelector(caps)).build()
+            val vc = VideoCapture.Builder(recorder).setTargetRotation(targetRotation).build()
+            val preview = Preview.Builder().build().also { it.setSurfaceProvider(view.surfaceProvider) }
+            val probe = HighSpeedVideoSessionConfig.Builder(vc).setPreview(preview).setSlowMotionEnabled(true).build()
+            val range = info.getSupportedFrameRateRanges(probe).firstOrNull { it.lower == fps && it.upper == fps } ?: return null
+            val cfg = HighSpeedVideoSessionConfig.Builder(vc)
+                .setPreview(preview)
+                .setSlowMotionEnabled(true)
+                .setFrameRateRange(range)
+                .build()
+            val selector = CameraSelector.Builder()
+                .requireLensFacing(CameraSelector.LENS_FACING_BACK)
+                .addCameraFilter { infos -> infos.filter { idOf(it) == id } }
+                .build()
+            cp.unbindAll()
+            val cam = cp.bindToLifecycle(owner, selector, cfg)
+            videoCapture = vc
+            imageCapture = null
+            nightAnalysis = null
+            assistAnalysis = null
+            rawFormat = null
+            Log.i(TAG, "Slowmo: CameraX $fps fps bunden på kamera $id (${vc.resolutionInfo?.resolution})")
+            cam
+        } catch (e: Exception) {
+            Log.w(TAG, "Slowmo: CameraX-bindningen misslyckades ($fps fps)", e)
+            runCatching { cp.unbindAll() }
+            null
+        }
+    }
+
+    /**
+     * Slow motion med Camera2: CameraX släpper kameran och appen öppnar den själv (SlowMotionCamera) när
+     * sökarens TextureView finns. Avtryckaren blir aktiv när sessionen är klar.
+     */
+    private fun bindCamera2Slow(cp: ProcessCameraProvider, fps: Int, hasFront: Boolean, hasBack: Boolean): Boolean {
+        val opt = slowCamera2Options.firstOrNull { it.fps == fps } ?: return false
+        camera?.let { old -> runCatching { Camera2CameraControl.from(old.cameraControl).clearCaptureRequestOptions() } }
+        zoomLiveData?.removeObserver(zoomObserver)
+        zoomLiveData = null
+        cp.unbindAll()
+        camera = null
+        imageCapture = null
+        videoCapture = null
+        nightAnalysis = null
+        rawFormat = null
+        lensBadges = emptyMap()
+        motion.stop()
+        _state.update {
+            it.copy(
+                isReady = false,
+                lensFront = false,
+                hasFrontCamera = hasFront,
+                hasBackCamera = hasBack,
+                hasFlashUnit = false,
+                torchOn = false,
+                activeLens = null,
+                extensionActive = false,
+                exposureSupported = false,
+                stackAvailable = false,
+                videoFilterOn = false,
+                assistActive = false,
+                burstAvailable = false,
+                timelapseReady = false,
+                slowEngine = SlowEngine.CAMERA2,
+                slowProbed = true,
+                slowFpsOptions = slowFpsOptions(),
+                slowFps = fps,
+                slowSizeLabel = opt.label,
+                slowWidth = opt.width,
+                slowHeight = opt.height,
+                zoomRatio = 1f,
+                minZoom = 1f,
+                maxZoom = 1f
+            )
+        }
+        Log.i(TAG, "Slowmo: Camera2 ${opt.width}x${opt.height} @ $fps på kamera ${opt.cameraId}")
+        slowTexture?.let { slowController().open(opt, it) }
+        return true
+    }
+
+    /** Svaren från SlowMotionCamera kommer på dess egen tråd och hanteras på huvudtråden. */
+    private fun slowController(): SlowMotionCamera = slowCam ?: SlowMotionCamera(context, object : SlowMotionCamera.Listener {
+        override fun onReady() {
+            viewModelScope.launch {
+                if (_state.value.slowEngine == SlowEngine.CAMERA2) _state.update { it.copy(isReady = true) }
+            }
+        }
+
+        override fun onRecordingStarted() {
+            viewModelScope.launch {
+                recordingStyle = VideoStyle.SLOW_MOTION
+                recordingFps = _state.value.slowFps
+                _state.update { it.copy(isRecording = true, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
+                startTicker()
+            }
+        }
+
+        override fun onRecordingStopped(uri: Uri?) {
+            viewModelScope.launch {
+                stopTicker()
+                _state.update { it.copy(isRecording = false, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
+                if (uri != null) onMediaSaved(uri, isVideo = true) else showMessage(R.string.msg_record_failed)
+                if (rebindAfterRecording) {
+                    rebindAfterRecording = false
+                    rebind()
+                }
+            }
+        }
+
+        override fun onError(stage: String, error: Throwable?) {
+            Log.w(TAG, "Slowmo: fel ($stage): $error", error)
+            showMessage(R.string.msg_slowmo_failed)
+        }
+    }).also { slowCam = it }
+
+    /** Sökarens TextureView för slow motion med Camera2 finns (eller har bytts ut). */
+    fun onSlowPreviewAvailable(texture: SurfaceTexture) {
+        slowTexture = texture
+        val st = _state.value
+        if (st.slowEngine != SlowEngine.CAMERA2 || !st.mode.isVideo) return
+        val opt = slowCamera2Options.firstOrNull { it.fps == st.slowFps } ?: return
+        slowController().open(opt, texture)
+    }
+
+    fun onSlowPreviewGone() {
+        slowTexture = null
+        slowCam?.closeAndWait()
+    }
+
+    /** Video, slow motion eller tidsförlopp. */
+    fun setVideoStyle(style: VideoStyle) {
+        val st = _state.value
+        if (st.isRecording || st.countdown > 0 || style == st.videoStyle) return
+        _state.update { it.copy(videoStyle = style, filterPanelOpen = false) }
+        if (st.mode.isVideo) rebind()
+    }
+
+    fun setSlowFps(fps: Int) {
+        val st = _state.value
+        if (st.isRecording || st.countdown > 0 || fps == st.slowFps) return
+        _state.update { it.copy(slowFps = fps) }
+        if (st.mode.isVideo && st.videoStyle == VideoStyle.SLOW_MOTION) rebind()
+    }
+
+    fun setTimelapseInterval(ms: Int) {
+        val st = _state.value
+        if (st.isRecording || st.countdown > 0) return
+        _state.update { it.copy(timelapseIntervalMs = ms) }
+    }
+
+    /** Klockan i sökaren under slow motion och tidsförlopp: verklig tid och filmens längd. */
+    private fun startTicker() {
+        recordingTicker?.cancel()
+        val start = SystemClock.elapsedRealtime()
+        recordingTicker = viewModelScope.launch {
+            while (isActive) {
+                val real = SystemClock.elapsedRealtime() - start
+                val out = when (recordingStyle) {
+                    VideoStyle.SLOW_MOTION -> real * recordingFps / 30
+                    VideoStyle.TIMELAPSE -> timelapseGate.outputMs
+                    VideoStyle.NORMAL -> real
+                }
+                _state.update { it.copy(recordingMs = real, recordingOutputMs = out) }
+                delay(250)
+            }
+        }
+    }
+
+    private fun stopTicker() {
+        recordingTicker?.cancel()
+        recordingTicker = null
+    }
+
     fun updatePro(transform: (ProState) -> ProState) {
         _state.update { it.copy(pro = transform(it.pro)) }
         applyProOptions()
@@ -838,6 +1172,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------------------------------------------------------------------------------------
 
     fun toggleFilterPanel() {
+        val st = _state.value
+        if (!st.filterPanelOpen && st.mode.isVideo && st.videoStyle == VideoStyle.SLOW_MOTION) {
+            showMessage(R.string.msg_slowmo_no_filter)
+        }
         _state.update { it.copy(filterPanelOpen = !it.filterPanelOpen, activeProControl = null) }
     }
 
@@ -867,6 +1205,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private fun onFilterChanged() {
         val st = _state.value
         if (!st.mode.isVideo) return
+        // Tidsförlopp: effekten på videon är alltid bunden – bara färgerna ändras (sökaren via RenderEffect)
+        if (st.videoStyle == VideoStyle.TIMELAPSE) {
+            if (timelapseBound) timelapseEffect?.setMatrix(if (st.filter.isActive) st.filter.matrix() else null)
+            return
+        }
+        // Slow motion spelas in utan live-filter
+        if (st.videoStyle == VideoStyle.SLOW_MOTION) return
         if (videoFilterBound) {
             videoFilter?.setMatrix(if (st.filter.isActive) st.filter.matrix() else null)
         } else if (st.filter.isActive && videoFilterAllowed) {
@@ -1512,10 +1857,44 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     @SuppressLint("MissingPermission")
     private fun startRecording() {
-        val vc = videoCapture ?: return
+        val st = _state.value
         val s = settings.value
+        val style = st.videoStyle
+        if (style == VideoStyle.SLOW_MOTION) {
+            when (st.slowEngine) {
+                SlowEngine.CAMERA2 -> {
+                    // Camera2: SlowMotionCamera spelar in själv (utan ljud)
+                    val opt = slowCamera2Options.firstOrNull { it.fps == st.slowFps } ?: return
+                    if (s.shutterSound) sound.play(MediaActionSound.START_VIDEO_RECORDING)
+                    val sensor = SlowMotionProbe.sensorOrientation(context, opt.cameraId)
+                    val device = when (targetRotation) {
+                        Surface.ROTATION_90 -> 90
+                        Surface.ROTATION_180 -> 180
+                        Surface.ROTATION_270 -> 270
+                        else -> 0
+                    }
+                    slowController().startRecording((sensor - device + 360) % 360)
+                    return
+                }
+                SlowEngine.NONE -> {
+                    showMessage(R.string.msg_slowmo_unsupported)
+                    return
+                }
+                SlowEngine.CAMERAX -> Unit
+            }
+        }
+        if (style == VideoStyle.TIMELAPSE && !st.timelapseReady) {
+            showMessage(R.string.msg_timelapse_failed)
+            return
+        }
+        val vc = videoCapture ?: return
+        val suffix = when (style) {
+            VideoStyle.NORMAL -> ""
+            VideoStyle.SLOW_MOTION -> "_SLOMO${st.slowFps}"
+            VideoStyle.TIMELAPSE -> "_TIMELAPSE"
+        }
         val values = ContentValues().apply {
-            put(MediaStore.MediaColumns.DISPLAY_NAME, MediaRepository.newFileName("VID", "mp4"))
+            put(MediaStore.MediaColumns.DISPLAY_NAME, MediaRepository.newFileName("VID", "mp4").replace(".mp4", "$suffix.mp4"))
             put(MediaStore.MediaColumns.MIME_TYPE, "video/mp4")
             put(MediaStore.MediaColumns.RELATIVE_PATH, MediaRepository.RELATIVE_PATH)
         }
@@ -1525,23 +1904,38 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         ).setContentValues(values).build()
 
         var pending = vc.output.prepareRecording(context, output)
-        val audioAllowed = s.recordAudio && ContextCompat.checkSelfPermission(
+        // Ljud bara i vanlig video (slow motion och tidsförlopp spelas upp i en annan takt)
+        val audioAllowed = style == VideoStyle.NORMAL && s.recordAudio && ContextCompat.checkSelfPermission(
             context, Manifest.permission.RECORD_AUDIO
         ) == PackageManager.PERMISSION_GRANTED
         if (audioAllowed) pending = pending.withAudioEnabled()
 
         if (s.shutterSound) sound.play(MediaActionSound.START_VIDEO_RECORDING)
+        recordingStyle = style
+        recordingFps = st.slowFps
+        if (style == VideoStyle.TIMELAPSE) {
+            timelapseGate.intervalNs = st.timelapseIntervalMs * 1_000_000L
+            timelapseGate.arm()
+        }
         recording = pending.start(ContextCompat.getMainExecutor(context)) { event ->
             when (event) {
-                is VideoRecordEvent.Start ->
-                    _state.update { it.copy(isRecording = true, isPaused = false, recordingMs = 0L) }
+                is VideoRecordEvent.Start -> {
+                    _state.update { it.copy(isRecording = true, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
+                    if (recordingStyle != VideoStyle.NORMAL) startTicker()
+                }
                 is VideoRecordEvent.Pause -> _state.update { it.copy(isPaused = true) }
                 is VideoRecordEvent.Resume -> _state.update { it.copy(isPaused = false) }
-                is VideoRecordEvent.Status ->
+                is VideoRecordEvent.Status -> if (recordingStyle == VideoStyle.NORMAL) {
                     _state.update { it.copy(recordingMs = event.recordingStats.recordedDurationNanos / 1_000_000L) }
+                }
                 is VideoRecordEvent.Finalize -> {
                     recording = null
-                    _state.update { it.copy(isRecording = false, isPaused = false, recordingMs = 0L) }
+                    timelapseGate.disarm()
+                    stopTicker()
+                    if (recordingStyle == VideoStyle.TIMELAPSE) {
+                        Log.i(TAG, "Tidsförlopp: ${timelapseGate.kept} bilder (${timelapseGate.outputMs} ms film), fel ${event.error}")
+                    }
+                    _state.update { it.copy(isRecording = false, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
                     val uri = event.outputResults.outputUri
                     if (uri != Uri.EMPTY) {
                         onMediaSaved(uri, isVideo = true)
@@ -1560,12 +1954,21 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun stopRecording() {
+        val st = _state.value
+        if (st.slowEngine == SlowEngine.CAMERA2 && st.isRecording) {
+            if (settings.value.shutterSound) sound.play(MediaActionSound.STOP_VIDEO_RECORDING)
+            slowCam?.stopRecording()
+            return
+        }
         val r = recording ?: return
         if (settings.value.shutterSound) sound.play(MediaActionSound.STOP_VIDEO_RECORDING)
+        // Tidsförlopp: inga fler bildrutor till filmen från och med nu
+        timelapseGate.disarm()
         r.stop()
     }
 
     fun togglePause() {
+        if (recordingStyle != VideoStyle.NORMAL) return // paus bara i vanlig video
         val r = recording ?: return
         if (_state.value.isPaused) r.resume() else r.pause()
     }

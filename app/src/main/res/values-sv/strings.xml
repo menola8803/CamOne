@@ -333,6 +333,17 @@
     <string name="msg_assist_failed">Hjälpmedlen går inte med det här filformatet – kameran körs utan dem</string>
     <string name="msg_burst_raw">Serietagning fungerar inte med RAW – välj JPEG, HEIF eller PNG</string>
     <string name="msg_burst_saved">%1$s bilder i serien</string>
+    <string name="video_style_normal">Video</string>
+    <string name="video_style_slowmo">Slow motion</string>
+    <string name="video_style_timelapse">Tidsförlopp</string>
+    <string name="slowmo_fps">%1$d fps</string>
+    <string name="slowmo_info">%1$s · spelas upp %2$d× långsammare</string>
+    <string name="slowmo_unsupported">Slow motion stöds inte av den här kameran</string>
+    <string name="timelapse_info">Spelas upp %1$d× snabbare</string>
+    <string name="msg_slowmo_unsupported">Slow motion stöds inte av den här kameran</string>
+    <string name="msg_slowmo_failed">Slow motion kunde inte startas – prova en annan bildfrekvens</string>
+    <string name="msg_slowmo_no_filter">Live-filtret används inte i slow motion</string>
+    <string name="msg_timelapse_failed">Tidsförlopp kunde inte startas med den här kameran</string>
     <string name="msg_filter_failed">Filtret kunde inte läggas på – bilden sparades utan filter</string>
     <string name="cams_raw_used">Ja – välj RAW under Inställningar › Foto › Filformat</string>
     <string name="cams_raw_camera2_only">Kameran har RAW, men CameraX erbjuder det inte här</string>
