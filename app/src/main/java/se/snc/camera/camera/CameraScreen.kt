@@ -9,6 +9,10 @@ import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -328,6 +332,16 @@ private fun CameraContent(
 
     // Helskärm: sökaren fyller hela skärmen, knapparna ligger ovanpå
     val fullScreen = !state.mode.isVideo && settings.aspect == AspectOption.FULL
+    // 16:9 (foto och video): sökaren går ut till kanterna och upp till skärmens överkant
+    val edge169 = !fullScreen && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
+    // Knapparna ligger ovanpå bilden (glas) i helskärm och 16:9
+    val overPhoto = fullScreen || edge169
+    val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val vfTop by animateDpAsState(if (edge169) 0.dp else statusTop + 58.dp, tween(280), label = "vfTop")
+    val vfSide by animateDpAsState(if (edge169) 0.dp else 8.dp, tween(280), label = "vfSide")
+    val vfCorner by animateDpAsState(if (edge169) 0.dp else 24.dp, tween(280), label = "vfCorner")
+    // Etiketter överst i sökaren hamnar under knapparna när bilden går upp till överkanten
+    val overlayTop = if (overPhoto) statusTop + 64.dp else 0.dp
     val previewRatio = if (state.mode.isVideo) 9f / 16f else settings.aspect.portraitRatio.takeIf { it > 0f } ?: (3f / 4f)
     val animatedRatio by animateFloatAsState(previewRatio, tween(280), label = "previewRatio")
     val modes = CameraMode.entries
@@ -344,14 +358,13 @@ private fun CameraContent(
         Box(
             (if (fullScreen) Modifier.fillMaxSize() else Modifier
                 .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 58.dp)
-                .padding(horizontal = 8.dp)
+                .padding(top = vfTop)
+                .padding(horizontal = vfSide)
                 .fillMaxWidth()
                 .aspectRatio(animatedRatio))
                 .onSizeChanged { viewModel.setViewfinderSize(it.width, it.height) }
-                // Rundade hörn som i Alif-förslaget
-                .clip(RoundedCornerShape(if (fullScreen) 0.dp else 24.dp))
+                // Rundade hörn som i Alif-förslaget (inte i helskärm och 16:9)
+                .clip(RoundedCornerShape(if (fullScreen) 0.dp else vfCorner))
         ) {
             AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
@@ -443,6 +456,7 @@ private fun CameraContent(
                     onClick = viewModel::toggleFilterPanel,
                     modifier = Modifier
                         .align(Alignment.TopStart)
+                        .padding(top = overlayTop)
                         .padding(12.dp)
                 )
             }
@@ -453,7 +467,7 @@ private fun CameraContent(
                     state = state,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 12.dp)
+                        .padding(top = overlayTop + 12.dp)
                 )
             }
 
@@ -463,7 +477,7 @@ private fun CameraContent(
                     state = state,
                     modifier = Modifier
                         .align(Alignment.TopCenter)
-                        .padding(top = 12.dp)
+                        .padding(top = overlayTop + 12.dp)
                 )
             }
 
@@ -473,7 +487,7 @@ private fun CameraContent(
                 exit = fadeOut() + slideOutVertically { -it },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 52.dp)
+                    .padding(top = overlayTop + 52.dp)
             ) {
                 val msg = state.message
                 if (msg != null) InfoPill(stringResource(msg))
@@ -492,7 +506,7 @@ private fun CameraContent(
                 exit = fadeOut() + slideOutVertically { -it },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
-                    .padding(top = 12.dp, start = 16.dp, end = 16.dp)
+                    .padding(top = overlayTop + 12.dp, start = 16.dp, end = 16.dp)
             ) {
                 UpdatedBanner(version = updatedTo ?: "", onClick = onDismissUpdated)
             }
@@ -506,8 +520,8 @@ private fun CameraContent(
             )
         }
 
-        // Helskärm: knapparna ligger i glas ovanpå bilden, med en lätt skugga i över- och nederkant
-        if (fullScreen) {
+        // Helskärm och 16:9: knapparna ligger i glas ovanpå bilden, med en lätt skugga i över- och nederkant
+        if (overPhoto) {
             Box(
                 Modifier
                     .align(Alignment.TopCenter)
@@ -517,7 +531,7 @@ private fun CameraContent(
             )
         }
 
-        CompositionLocalProvider(LocalOverPhoto provides fullScreen) {
+        CompositionLocalProvider(LocalOverPhoto provides overPhoto) {
         // --------------------------- Övre fältet ---------------------------
         TopBar(
             state = state,
@@ -551,8 +565,8 @@ private fun CameraContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(
-                    if (fullScreen) {
-                        // Helskärm: bilden syns ända ned, bara en lätt skugga
+                    if (overPhoto) {
+                        // Helskärm och 16:9: bilden syns ända ned, bara en lätt skugga
                         Brush.verticalGradient(0f to Color.Transparent, 1f to Usb.Bg.copy(alpha = 0.35f))
                     } else {
                         Brush.verticalGradient(
@@ -642,8 +656,8 @@ private fun CameraContent(
                 Modifier
                     .fillMaxWidth()
                     .then(
-                        if (fullScreen) {
-                            // Helskärm: avtryckarraden i en glaspanel ovanpå bilden
+                        if (overPhoto) {
+                            // Helskärm och 16:9: avtryckarraden i en glaspanel ovanpå bilden
                             Modifier
                                 .padding(horizontal = 16.dp)
                                 .clip(shutterRowShape)
