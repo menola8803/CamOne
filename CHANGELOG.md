@@ -2,6 +2,12 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.10.0 – 2026-11-18
+
+- Pro-hjälpmedel: tryck på Hjälp i Pro-panelen och slå på Histogram, Fokusmarkering och Zebra var för sig. Histogrammet visar ljusstyrkan uppe till höger, med röd kant när en del av bilden är helt svart eller utfrätt. Fokusmarkeringen gör skarpa kanter röda (bra med manuell fokus) och zebran visar sneda ränder där bilden är nästan utfrätt. Den sparade bilden påverkas inte.
+- Hjälpmedlen räknas på en liten extra bild från kameran (640 × 480) och kopplas bara in när något av dem är på. Får den inte plats med filformatet (t.ex. RAW + JPEG) körs kameran utan dem, med ett meddelande.
+- Serietagning: håll in avtryckaren i Foto och Pro så tas bilder i följd tills du släpper (högst 50). Antalet syns i knappen och bilderna heter …_BURST001 osv. Serien tas utan blixt; beskärning, filter och filformat görs i bakgrunden. Fungerar inte med RAW eller när appen lägger ihop HDR.
+
 ## Version 1.9.0 – 2026-11-18
 
 - Live-filtret i video: filtren och reglagen för rött, grönt och blått syns i sökaren och spelas in i filmen (OpenGL). Färgerna kan ändras medan filmen spelas in. Går det inte på telefonen spelas videon in utan filter, med ett meddelande.

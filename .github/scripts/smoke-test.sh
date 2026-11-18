@@ -237,6 +237,26 @@ if $UI exists --text "ISO" --timeout 2 >> "$OUT/ui.log" 2>&1; then
   sleep 2
   shot 17-pro-iso
 fi
+# Pro-hjälpmedel: histogram, fokusmarkering och zebra (en liten analysbild kopplas till sökaren)
+tap --text "ASSIST"
+sleep 2
+check "Pro-panelen visar hjälpmedlen" $UI exists --text "Focus peaking"
+tap --text "Histogram"; sleep 5
+tap --text "Focus peaking"; sleep 1
+tap --text "Zebra"; sleep 4
+shot 17b-pro-hjalpmedel
+check "Histogrammet visas i sökaren" $UI exists --desc "Live histogram" --timeout 10
+check "Hjälpmedlen räknas på sökarens bild" bash -c "adb logcat -d -s SncCamera:V | grep -qE 'Hj.lpmedel: bildruta'"
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Hj.lpmedel" | tail -2 | while IFS= read -r l; do
+  echo "::notice title=Hjälpmedel-logg::$(echo "$l" | cut -c1-300)"
+done
+FPA=$(snap jpg pro-hjalpmedel.jpg)
+check "Foto i Pro med hjälpmedlen på sparas (${FPA:-ingen fil})" [ -n "$FPA" ]
+check "Appen lever med Pro-hjälpmedlen" alive
+tap --text "Histogram"; sleep 1
+tap --text "Focus peaking"; sleep 1
+tap --text "Zebra"; sleep 5
+check "Histogrammet försvinner när hjälpmedlen stängs av" bash -c "! $UI exists --desc 'Live histogram' --timeout 2"
 tap --text "NIGHT"; sleep 2
 tap --text "VIDEO"; sleep 2
 tap --text "PHOTO"; sleep 2
@@ -277,6 +297,29 @@ $UI swipe --y 0.4 --dx=0.3 >> "$OUT/ui.log" 2>&1
 sleep 4
 check "Svep i sökaren byter tillbaka till Foto" $UI exists --text "PHOTO" --selected
 check "Appen lever efter svepen" alive
+
+step "Avtryckaren: tryck och serietagning (håll in)"
+check "Avtryckaren finns" $UI exists --desc "Shutter"
+before=$(count '\.jpg')
+tap --desc "Shutter"
+after=$before
+for w in $(seq 1 15); do sleep 1; after=$(count '\.jpg'); [ "$after" -gt "$before" ] && break; done
+check "Ett tryck på avtryckaren tar en bild ($before → $after)" [ "$after" -gt "$before" ]
+sleep 2
+BB=$(count '_BURST')
+( $UI hold --desc "Shutter" --ms 4500 >> "$OUT/ui.log" 2>&1 ) &
+HOLD=$!
+sleep 5
+shot 19d-serietagning
+wait $HOLD
+sleep 6
+BA=$(count '_BURST')
+log "  Serietagning: $((BA - BB)) bilder ($BB → $BA)"
+check "Håll in avtryckaren tar en serie (minst 3 bilder: $((BA - BB)))" [ $((BA - BB)) -ge 3 ]
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Serie:" | tail -2 | while IFS= read -r l; do
+  echo "::notice title=Serie-logg::$(echo "$l" | cut -c1-300)"
+done
+check "Appen lever efter serietagningen" alive
 
 step "Live-filter (RGB)"
 VF="0.1,0.18,0.9,0.40"   # ett område mitt i sökaren

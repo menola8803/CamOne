@@ -73,7 +73,9 @@ fun ProPanel(
     onSelect: (ProControl?) -> Unit,
     onPro: ((ProState) -> ProState) -> Unit,
     onExposure: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    assist: AssistOptions = AssistOptions(histogram = false, peaking = false, zebra = false, mirror = false),
+    onAssist: (AssistTool) -> Unit = {}
 ) {
     val pro = state.pro
     val active = state.activeProControl
@@ -153,6 +155,17 @@ fun ProPanel(
                             )
                         }
                     }
+                    // Hjälpmedel i sökaren: histogram, fokusmarkering och zebra (var för sig)
+                    ProControl.ASSIST -> Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Chip(stringResource(R.string.assist_histogram), assist.histogram, { onAssist(AssistTool.HISTOGRAM) })
+                        Chip(stringResource(R.string.assist_peaking), assist.peaking, { onAssist(AssistTool.PEAKING) })
+                        Chip(stringResource(R.string.assist_zebra), assist.zebra, { onAssist(AssistTool.ZEBRA) })
+                    }
                     null -> Unit
                 }
             }
@@ -187,6 +200,19 @@ fun ProPanel(
                         onSelect(ProControl.FOCUS)
                     }
                 }
+            }
+            // Hjälpmedlen fungerar även utan manuell ISO och slutartid
+            val shortH = stringResource(R.string.assist_short_histogram)
+            val shortP = stringResource(R.string.assist_short_peaking)
+            val shortZ = stringResource(R.string.assist_short_zebra)
+            val assistOff = stringResource(R.string.assist_off)
+            val assistShort = listOfNotNull(
+                shortH.takeIf { assist.histogram },
+                shortP.takeIf { assist.peaking },
+                shortZ.takeIf { assist.zebra }
+            ).joinToString("·").ifEmpty { assistOff }
+            ProItem(stringResource(R.string.pro_assist), assistShort, active == ProControl.ASSIST, rotation, Modifier.weight(1f)) {
+                onSelect(ProControl.ASSIST)
             }
         }
         if (pro.supported && !pro.shutterAuto && pro.shutterNs > 1_000_000_000L) {

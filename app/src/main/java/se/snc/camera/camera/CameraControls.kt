@@ -16,8 +16,6 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -80,6 +78,14 @@ import java.util.Locale
 import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.animation.core.Animatable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
@@ -238,7 +244,11 @@ fun GlassTextButton(
     }
 }
 
-/** Avtryckare i USB-stil: guldknapp med sken (som USB-appens huvudknapp), korallröd för video. */
+/**
+ * Avtryckare i USB-stil: guldknapp med sken (som USB-appens huvudknapp), korallröd för video.
+ * Med [onBurstStart] blir ett långt tryck serietagning: serien pågår tills fingret släpper ([onBurstEnd])
+ * och antalet bilder visas i knappen.
+ */
 @Composable
 fun ShutterButton(
     isVideo: Boolean,
@@ -246,21 +256,27 @@ fun ShutterButton(
     isBusy: Boolean,
     countdown: Int,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    burstCount: Int = 0,
+    onBurstStart: (() -> Unit)? = null,
+    onBurstEnd: () -> Unit = {}
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val pressed by interaction.collectIsPressedAsState()
+    var pressed by remember { mutableStateOf(false) }
+    val click by rememberUpdatedState(onClick)
+    val burstStart by rememberUpdatedState(onBurstStart)
+    val burstEnd by rememberUpdatedState(onBurstEnd)
     val scale by animateFloatAsState(if (pressed) 0.9f else 1f, spring(stiffness = 600f), label = "shutterScale")
     val innerColor by animateColorAsState(
         when {
             isVideo -> RecordRed
-            isBusy -> Usb.Gold.copy(alpha = 0.55f)
+            isBusy && burstCount == 0 -> Usb.Gold.copy(alpha = 0.55f)
             else -> Usb.Gold
         },
         label = "shutterColor"
     )
     val innerSize by animateDpAsState(if (isRecording) 30.dp else 64.dp, spring(stiffness = 500f), label = "innerSize")
     val corner by animateDpAsState(if (isRecording) 8.dp else 32.dp, spring(stiffness = 500f), label = "innerCorner")
+    val description = stringResource(if (isVideo) R.string.cd_record else R.string.cd_shutter)
 
     Box(
         modifier = modifier
@@ -278,7 +294,42 @@ fun ShutterButton(
             }
             .border(3.dp, if (isVideo) RecordRed.copy(alpha = 0.6f) else Usb.Gold.copy(alpha = 0.6f), CircleShape)
             .clip(CircleShape)
-            .clickable(interactionSource = interaction, indication = null, role = Role.Button, onClick = onClick),
+            .semantics {
+                role = Role.Button
+                contentDescription = description
+                this.onClick(label = null, action = { click(); true })
+            }
+            .pointerInput(Unit) {
+                awaitEachGesture {
+                    awaitFirstDown()
+                    pressed = true
+                    try {
+                        val start = burstStart
+                        if (start == null) {
+                            if (waitForUpOrCancellation() != null) click()
+                        } else {
+                            var released = false
+                            val ended = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                                released = waitForUpOrCancellation() != null
+                                true
+                            }
+                            if (ended == null) {
+                                // Fingret är kvar: serietagning tills det släpper
+                                start()
+                                try {
+                                    waitForUpOrCancellation()
+                                } finally {
+                                    burstEnd()
+                                }
+                            } else if (released) {
+                                click()
+                            }
+                        }
+                    } finally {
+                        pressed = false
+                    }
+                }
+            },
         contentAlignment = Alignment.Center
     ) {
         Box(
@@ -293,6 +344,13 @@ fun ShutterButton(
                 color = Usb.Bg,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
+            )
+        } else if (burstCount > 0) {
+            Text(
+                "$burstCount",
+                color = Usb.Bg,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.ExtraBold
             )
         }
     }

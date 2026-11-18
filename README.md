@@ -24,7 +24,9 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Vattenpass, rutnät (tredjedelar, gyllene snittet, kvadrat)
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
-- Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus
+- Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus,
+  plus **histogram**, **fokusmarkering** och **zebra** i sökaren (Hjälp i Pro-panelen)
+- **Serietagning**: håll in avtryckaren i Foto och Pro (högst 50 bilder i följd)
 - **HDR**: 3 exponeringar i handen eller 5 på stativ läggs ihop (flyttas på plats, inga spökbilder),
   sparas som **Ultra HDR** med gain map så att HDR-skärmar visar ljusa partier ljusare
 - **Natt**: 8 bilder i handen eller 16 på stativ läggs ihop till en ljusare bild med mindre brus

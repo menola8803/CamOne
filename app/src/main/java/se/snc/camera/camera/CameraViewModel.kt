@@ -99,6 +99,8 @@ import android.graphics.Bitmap
 import android.graphics.Gainmap
 import androidx.annotation.RequiresApi
 import kotlin.math.pow
+import android.util.Size
+import kotlinx.coroutines.channels.Channel
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -108,6 +110,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         /** HDR: exponeringar i EV (den första är referensen) i handen och på stativ. */
         val HDR_EVS_HAND = listOf(0f, -2f, 2f)
         val HDR_EVS_STEADY = listOf(0f, -1.5f, 1.5f, -3f, 3f)
+        /** Serietagning: högst så många bilder per serie och så många på väg samtidigt. */
+        const val BURST_MAX = 50
+        const val BURST_IN_FLIGHT = 2
+        /** Pro-hjälpmedlens analysbild (4:3). */
+        val ASSIST_SIZE = Size(640, 480)
     }
 
     private val context get() = getApplication<Application>()
@@ -164,6 +171,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             image.close()
         }
     }
+    // Pro-hjälpmedel (ProAssist.kt): liten analysbild för histogram, fokusmarkering och zebra
+    @Volatile private var assistAnalysis: ImageAnalysis? = null
+    private val _assist = MutableStateFlow<AssistFrame?>(null)
+    val assist: StateFlow<AssistFrame?> = _assist.asStateFlow()
+    private var assistFailShown = false
+    private val assistAnalyzer = AssistAnalyzer(
+        options = {
+            val s = settings.value
+            AssistOptions(s.histogram, s.focusPeaking, s.zebra, mirror = _state.value.lensFront)
+        },
+        onFrame = { f -> if (assistAnalysis != null) _assist.value = f }
+    )
+
+    // Serietagning: håll in avtryckaren
+    private var burstJob: Job? = null
+    @Volatile private var burstHeld = false
+
     private var zoomLiveData: LiveData<ZoomState>? = null
     private val zoomObserver = Observer<ZoomState> { z ->
         _state.update { it.copy(zoomRatio = z.zoomRatio, minZoom = z.minZoomRatio, maxZoom = z.maxZoomRatio) }
@@ -270,9 +294,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun detach() {
         countdownJob?.cancel()
+        burstHeld = false
+        burstJob?.cancel()
         recording?.stop()
         recording = null
         stopStacking()
+        stopAssist()
         motion.stop()
         bindJob?.cancel()
         zoomLiveData?.removeObserver(zoomObserver)
@@ -379,6 +406,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
         // En pågående nattbild avbryts (kameran binds om)
         stopStacking()
+        stopAssist()
 
         // Ta bort ev. manuella Camera2-värden från förra läget
         camera?.let { old -> runCatching { Camera2CameraControl.from(old.cameraControl).clearCaptureRequestOptions() } }
@@ -388,6 +416,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         var pendingRaw: PhotoFormat? = null
         var rawUnsupported = false
         var allowRaw = true
+        // Pro-hjälpmedlen: en liten analysbild till. Går bindningen inte med den (t.ex. RAW + JPEG) binds
+        // samma försök utan, med ett meddelande.
+        var allowAssist = true
         fun attempt(useExtension: Boolean, stabilization: Boolean, highFps: Boolean, cameraBase: CameraSelector): Camera? {
             val selector = if (useExtension && wantedExtension != null && ext != null) {
                 ext.getExtensionEnabledCameraSelector(cameraBase, wantedExtension)
@@ -414,6 +445,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             var ic: ImageCapture? = null
             var vc: VideoCapture<Recorder>? = null
             var na: ImageAnalysis? = null
+            var aa: ImageAnalysis? = null
             // Natt (utan tillverkarens nattläge) och HDR i Foto (utan tillverkarens HDR) läggs ihop i appen
             val stacking = (st.mode == CameraMode.NIGHT || (st.mode == CameraMode.PHOTO && s.hdr)) &&
                 !(useExtension && wantedExtension != null)
@@ -486,6 +518,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     else -> null
                 }
                 useCases += ic
+                if (st.mode == CameraMode.PRO && s.anyAssist && allowAssist) {
+                    aa = ImageAnalysis.Builder()
+                        .setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setAspectRatioStrategy(photoAspect)
+                                .setResolutionStrategy(
+                                    ResolutionStrategy(ASSIST_SIZE, ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)
+                                )
+                                .build()
+                        )
+                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                        // Skärmen är alltid stående: lagret vrids som sökaren, inte som telefonen
+                        .setTargetRotation(Surface.ROTATION_0)
+                        .build()
+                    useCases += aa
+                }
             }
 
             // Live-filter i video: effekten läggs på sökaren och filmen
@@ -509,6 +558,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 videoCapture = vc
                 nightAnalysis = na
                 na?.setAnalyzer(analysisExecutor, stackAnalyzer)
+                assistAnalysis = aa
+                aa?.setAnalyzer(analysisExecutor, assistAnalyzer)
                 rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
@@ -517,6 +568,15 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     // Gick det inte med filtret: samma försök utan filter, så att video alltid fungerar
                     videoFilterAllowed = false
                     showMessage(R.string.msg_video_filter_failed)
+                    return attempt(useExtension, stabilization, highFps, cameraBase)
+                }
+                if (aa != null) {
+                    // Pro-hjälpmedlen får inte plats med det här filformatet: kameran startar utan dem
+                    allowAssist = false
+                    if (!assistFailShown) {
+                        assistFailShown = true
+                        showMessage(R.string.msg_assist_failed)
+                    }
                     return attempt(useExtension, stabilization, highFps, cameraBase)
                 }
                 null
@@ -588,11 +648,15 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 exposureStep = exposure.exposureCompensationStep.toFloat(),
                 pro = pro,
                 stackAvailable = nightAnalysis != null,
-                videoFilterOn = videoFilterBound
+                videoFilterOn = videoFilterBound,
+                assistActive = assistAnalysis != null,
+                burstAvailable = (st.mode == CameraMode.PHOTO || st.mode == CameraMode.PRO) &&
+                    imageCapture != null && !extensionActive
             )
         }
         if (nightAnalysis != null) motion.start() else motion.stop()
         nightAnalysis?.let { Log.i(TAG, "Natt: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
+        assistAnalysis?.let { Log.i(TAG, "Hjälpmedel: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
 
         when (st.mode) {
             CameraMode.PRO -> applyProOptions()
@@ -729,6 +793,35 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         nightAnalysis = null
     }
 
+    /** Kopplar bort Pro-hjälpmedlens analys (innan kameran binds om). */
+    private fun stopAssist() {
+        runCatching { assistAnalysis?.clearAnalyzer() }
+        assistAnalysis = null
+        _assist.value = null
+    }
+
+    /**
+     * Slår på eller av ett Pro-hjälpmedel. Kameran binds om bara när det första slås på eller det sista
+     * stängs av (analysbilden kopplas till eller från); däremellan räknar analysen bara något annat.
+     */
+    fun toggleAssist(tool: AssistTool) {
+        viewModelScope.launch {
+            val before = settingsRepo.settings.first().anyAssist
+            settingsRepo.update {
+                when (tool) {
+                    AssistTool.HISTOGRAM -> it.copy(histogram = !it.histogram)
+                    AssistTool.PEAKING -> it.copy(focusPeaking = !it.focusPeaking)
+                    AssistTool.ZEBRA -> it.copy(zebra = !it.zebra)
+                }
+            }
+            val after = settingsRepo.settings.first().anyAssist
+            if (before != after && _state.value.mode == CameraMode.PRO) {
+                assistFailShown = false
+                rebind()
+            }
+        }
+    }
+
     fun updatePro(transform: (ProState) -> ProState) {
         _state.update { it.copy(pro = transform(it.pro)) }
         applyProOptions()
@@ -845,6 +938,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0 || mode == st.mode) return
         if (st.isCapturing && stackSession != null) return // natt- eller HDR-bilden tas fortfarande
+        if (burstJob?.isActive == true) return // serietagning pågår
         _state.update { it.copy(mode = mode, activeProControl = null) }
         viewModelScope.launch { settingsRepo.update { it.copy(lastMode = mode.name) } }
         rebind()
@@ -854,6 +948,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0) return
         if (st.isCapturing && stackSession != null) return
+        if (burstJob?.isActive == true) return
         if (!st.hasFrontCamera || !st.hasBackCamera) return
         val front = !st.lensFront
         _state.update { it.copy(lensFront = front, zoomRatio = 1f) }
@@ -1088,6 +1183,108 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 ic.takePicture(options, ContextCompat.getMainExecutor(context), callback)
             }
         }
+    }
+
+    /**
+     * Serietagning: så länge avtryckaren hålls in tas bilder i följd (högst [BURST_MAX]), två åt gången
+     * så att kameran aldrig väntar på att en fil skrivs. Blixten är av under serien. Beskärning, live-filter
+     * och filformat görs en bild i taget i bakgrunden, så att serien inte bromsas.
+     */
+    fun startBurst() {
+        val st = _state.value
+        if (!st.isReady || !st.burstAvailable || st.isCapturing || st.countdown > 0 || st.isRecording) return
+        val ic = imageCapture ?: return
+        if (rawFormat != null) {
+            showMessage(R.string.msg_burst_raw)
+            return
+        }
+        val s = settings.value
+        burstHeld = true
+        burstJob?.cancel()
+        burstJob = viewModelScope.launch {
+            _state.update { it.copy(isCapturing = true, burstCount = 0) }
+            runCatching { ic.flashMode = ImageCapture.FLASH_MODE_OFF }
+            val group = MediaRepository.newFileName("IMG", "x").substringBeforeLast('.')
+            val metadata = ImageCapture.Metadata().apply { isReversedHorizontal = st.lensFront && s.mirrorFront }
+            val finished = Channel<Uri?>(Channel.UNLIMITED)
+            val post = Channel<Uri>(Channel.UNLIMITED)
+            val needsPost = s.aspect.croppedAfter || st.filter.isActive ||
+                s.photoFormat == PhotoFormat.HEIF || s.photoFormat == PhotoFormat.PNG
+            viewModelScope.launch {
+                for (uri in post) {
+                    val final = if (needsPost) {
+                        runCatching { finishPhoto(uri, s.aspect, st.filter, s.photoFormat, s.jpegQuality) }.getOrDefault(uri)
+                    } else uri
+                    onMediaSaved(final, isVideo = false)
+                }
+            }
+            var issued = 0
+            var inFlight = 0
+            var saved = 0
+            var errors = 0
+            fun issue() {
+                issued++
+                inFlight++
+                val n = issued
+                val name = String.format(Locale.US, "%s_BURST%03d.jpg", group, n)
+                val options = ImageCapture.OutputFileOptions.Builder(
+                    context.contentResolver,
+                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY),
+                    ContentValues().apply {
+                        put(MediaStore.MediaColumns.DISPLAY_NAME, name)
+                        put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
+                        put(MediaStore.MediaColumns.RELATIVE_PATH, MediaRepository.RELATIVE_PATH)
+                    }
+                ).setMetadata(metadata).build()
+                if (s.shutterSound) sound.play(MediaActionSound.SHUTTER_CLICK)
+                ic.takePicture(options, ContextCompat.getMainExecutor(context), object : ImageCapture.OnImageSavedCallback {
+                    override fun onImageSaved(output: ImageCapture.OutputFileResults) {
+                        finished.trySend(output.savedUri)
+                    }
+
+                    override fun onError(exception: ImageCaptureException) {
+                        Log.w(TAG, "Serie: bild $n misslyckades", exception)
+                        finished.trySend(null)
+                    }
+                })
+            }
+            fun fill() {
+                while (burstHeld && issued < BURST_MAX && inFlight < BURST_IN_FLIGHT && errors < 3) issue()
+            }
+            try {
+                issue() // första bilden tas alltid, även om fingret redan har släppt
+                fill()
+                while (inFlight > 0) {
+                    val uri = finished.receive()
+                    inFlight--
+                    if (uri != null) {
+                        saved++
+                        _state.update { it.copy(burstCount = saved) }
+                        post.trySend(uri)
+                    } else {
+                        errors++
+                    }
+                    fill()
+                }
+            } finally {
+                post.close()
+                burstHeld = false
+                if (imageCapture === ic) applyFlashMode()
+                _state.update { it.copy(isCapturing = false, burstCount = 0) }
+            }
+            Log.i(TAG, "Serie: $saved bilder sparade ($issued tagna, $errors fel)")
+            if (saved > 0) {
+                _state.update { it.copy(shutterBlink = System.currentTimeMillis()) }
+                showMessage(R.string.msg_burst_saved, saved.toString())
+            } else {
+                showMessage(R.string.msg_capture_failed)
+            }
+        }
+    }
+
+    /** Avtryckaren släpptes: serien slutar när bilderna som är på väg har sparats. */
+    fun stopBurst() {
+        burstHeld = false
     }
 
     /**
@@ -1393,8 +1590,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun showMessage(@StringRes res: Int) {
-        _state.update { it.copy(message = res, messageId = System.nanoTime()) }
+    fun showMessage(@StringRes res: Int, arg: String? = null) {
+        _state.update { it.copy(message = res, messageArg = arg, messageId = System.nanoTime()) }
     }
 
     fun clearMessage() {

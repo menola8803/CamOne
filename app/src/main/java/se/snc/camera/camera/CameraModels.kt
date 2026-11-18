@@ -43,7 +43,7 @@ data class ProState(
     val focusMaxDiopters: Float = 10f
 )
 
-enum class ProControl { EV, ISO, SHUTTER, WB, FOCUS }
+enum class ProControl { EV, ISO, SHUTTER, WB, FOCUS, ASSIST }
 
 data class CameraUiState(
     val mode: CameraMode = CameraMode.PHOTO,
@@ -79,7 +79,10 @@ data class CameraUiState(
     val pro: ProState = ProState(),
     val activeProControl: ProControl? = null,
 
-    /** Live-filter i sökaren (gäller foton, inte video). */
+    /** Pro-hjälpmedlen (histogram, fokusmarkering, zebra) har en analysbild kopplad till sökaren. */
+    val assistActive: Boolean = false,
+
+    /** Live-filter i sökaren (foton och, med OpenGL, video). */
     val filter: LiveFilter = LiveFilter(),
     val filterPanelOpen: Boolean = false,
 
@@ -103,6 +106,11 @@ data class CameraUiState(
     /** Bilderna läggs ihop och sparas. */
     val stackMerging: Boolean = false,
 
+    /** Håll in avtryckaren för serietagning (Foto och Pro, inte med HDR-sammanslagning eller RAW). */
+    val burstAvailable: Boolean = false,
+    /** Antal bilder i den pågående serien (0 = ingen serie). */
+    val burstCount: Int = 0,
+
     val countdown: Int = 0,
     val isCapturing: Boolean = false,
     /** Vit skärm som blixt för frontkameran. */
@@ -116,5 +124,7 @@ data class CameraUiState(
 
     /** Kort meddelande (strängresurs) som visas som en "toast" i kameravyn. */
     @StringRes val message: Int? = null,
+    /** Värde som sätts in i meddelandet (t.ex. antal bilder), annars null. */
+    val messageArg: String? = null,
     val messageId: Long = 0L
 )

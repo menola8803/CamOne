@@ -70,6 +70,10 @@ data class AppSettings(
     val maxQuality: Boolean = true,
     /** HDR-bilder sparas som Ultra HDR (gain map) så att HDR-skärmar visar ljusa partier ljusare. */
     val ultraHdr: Boolean = true,
+    /** Pro-hjälpmedel i sökaren: histogram, fokusmarkering och zebra. */
+    val histogram: Boolean = false,
+    val focusPeaking: Boolean = false,
+    val zebra: Boolean = false,
     val jpegQuality: Int = 95,
     val volumeKeyAction: VolumeKeyAction = VolumeKeyAction.SHUTTER,
     val recordAudio: Boolean = true,
@@ -83,7 +87,10 @@ data class AppSettings(
     /** Senaste versionen som hittades på GitHub (för pricken på kugghjulet). */
     val latestKnownVersion: String = "",
     val theme: ThemeOption = ThemeOption.DARK
-)
+) {
+    /** Minst ett Pro-hjälpmedel är på (då kopplas en liten analysbild till sökaren i Pro). */
+    val anyAssist get() = histogram || focusPeaking || zebra
+}
 
 private val Context.dataStore by preferencesDataStore(name = "snc_camera_settings")
 
@@ -105,6 +112,9 @@ class SettingsRepository(private val context: Context) {
         val mirrorFront = booleanPreferencesKey("mirror_front")
         val maxQuality = booleanPreferencesKey("max_quality")
         val ultraHdr = booleanPreferencesKey("ultra_hdr")
+        val histogram = booleanPreferencesKey("assist_histogram")
+        val focusPeaking = booleanPreferencesKey("assist_peaking")
+        val zebra = booleanPreferencesKey("assist_zebra")
         val jpegQuality = intPreferencesKey("jpeg_quality")
         val volumeKey = stringPreferencesKey("volume_key")
         val recordAudio = booleanPreferencesKey("record_audio")
@@ -149,6 +159,9 @@ class SettingsRepository(private val context: Context) {
             mirrorFront = p[K.mirrorFront] ?: d.mirrorFront,
             maxQuality = p[K.maxQuality] ?: d.maxQuality,
             ultraHdr = p[K.ultraHdr] ?: d.ultraHdr,
+            histogram = p[K.histogram] ?: d.histogram,
+            focusPeaking = p[K.focusPeaking] ?: d.focusPeaking,
+            zebra = p[K.zebra] ?: d.zebra,
             jpegQuality = (p[K.jpegQuality] ?: d.jpegQuality).coerceIn(50, 100),
             volumeKeyAction = p.enumOr(K.volumeKey, d.volumeKeyAction),
             recordAudio = p[K.recordAudio] ?: d.recordAudio,
@@ -178,6 +191,9 @@ class SettingsRepository(private val context: Context) {
         p[K.mirrorFront] = s.mirrorFront
         p[K.maxQuality] = s.maxQuality
         p[K.ultraHdr] = s.ultraHdr
+        p[K.histogram] = s.histogram
+        p[K.focusPeaking] = s.focusPeaking
+        p[K.zebra] = s.zebra
         p[K.jpegQuality] = s.jpegQuality
         p[K.volumeKey] = s.volumeKeyAction.name
         p[K.recordAudio] = s.recordAudio

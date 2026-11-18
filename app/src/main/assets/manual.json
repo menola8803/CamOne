@@ -1,5 +1,5 @@
 {
-  "version": "1.9.0",
+  "version": "1.10.0",
   "sv": [
     {
       "title": "Kameran",
@@ -9,6 +9,7 @@
         "Tryck i sökaren för att fokusera och dra sedan uppåt eller nedåt för att ändra exponeringen.",
         "Övre raden: blixt, självutlösare, bildformat (4:3, 1:1, 16:9, 3:2 eller Full – i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser starkare guld.",
         "Volymknapparna tar bild. Under Inställningar › Allmänt kan de i stället zooma eller ändra volymen.",
+        "Tryck på avtryckaren för en bild. Håll in den i Foto och Pro för serietagning: bilderna tas i följd så länge du håller in (högst 50) och antalet syns i knappen. Serien tas utan blixt och fungerar inte med RAW eller när HDR läggs ihop av appen.",
         "Miniatyren till vänster om avtryckaren öppnar den senaste bilden. Knappen till höger byter till framkameran."
       ]
     },
@@ -16,6 +17,8 @@
       "title": "Pro-läget",
       "items": [
         "EV, ISO, slutartid (upp till 30 sekunder), vitbalans och fokus. Tryck på ett värde och dra i reglaget. Auto går tillbaka till automatiskt.",
+        "Hjälp i Pro-panelen slår på hjälpmedel i sökaren, var för sig: Histogram (ljusstyrkan uppe till höger, röd kant när en del av bilden är helt svart eller utfrätt), Fokusmarkering (skarpa kanter blir röda – bra med manuell fokus) och Zebra (sneda ränder där bilden är nästan utfrätt). De påverkar inte den sparade bilden.",
+        "Hjälpmedlen använder en liten extra bild från kameran. Med RAW + JPEG får den ibland inte plats – då körs kameran utan dem och ett meddelande visas.",
         "Vid lång exponering behöver telefonen stå stilla, till exempel på ett stativ."
       ]
     },
@@ -102,6 +105,7 @@
         "Tap the viewfinder to focus, then drag up or down to change the exposure.",
         "Top row: flash, self-timer, aspect ratio (4:3, 1:1, 16:9, 3:2 or Full – in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow brighter gold.",
         "The volume keys take a photo. Under Settings › General they can zoom or change the volume instead.",
+        "Tap the shutter for one photo. Hold it in Photo and Pro for burst: photos are taken one after another for as long as you hold (up to 50) and the count shows in the button. Burst is taken without flash and doesn't work with RAW or when the app merges HDR.",
         "The thumbnail left of the shutter opens the latest photo. The button on the right switches to the front camera."
       ]
     },
@@ -109,6 +113,8 @@
       "title": "Pro mode",
       "items": [
         "EV, ISO, shutter speed (up to 30 seconds), white balance and focus. Tap a value and drag the slider. Auto goes back to automatic.",
+        "Assist in the Pro panel turns on viewfinder aids, one by one: Histogram (brightness in the top right, a red edge when part of the picture is pure black or blown out), Focus peaking (sharp edges turn red – useful with manual focus) and Zebra (diagonal stripes where the picture is almost blown out). They don't affect the saved photo.",
+        "The aids use a small extra image from the camera. With RAW + JPEG it sometimes doesn't fit – the camera then runs without them and a message is shown.",
         "For long exposures the phone needs to stay still, for example on a tripod."
       ]
     },

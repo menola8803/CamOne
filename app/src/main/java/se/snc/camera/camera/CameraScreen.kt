@@ -368,6 +368,12 @@ private fun CameraContent(
         ) {
             AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
+            // Pro: fokusmarkering och zebra ovanpå sökaren (samma bildyta, beskärs likadant)
+            val assistShown = state.mode == CameraMode.PRO && state.assistActive
+            if (assistShown && (settings.focusPeaking || settings.zebra)) {
+                AssistOverlay(viewModel.assist)
+            }
+
             // Gester: tryck = fokus, nyp = zoom, svep = byt läge, dra upp/ned efter fokus = exponering
             Box(
                 Modifier
@@ -450,6 +456,17 @@ private fun CameraContent(
 
             CountdownOverlay(state.countdown, iconRotation)
 
+            // Pro: histogram uppe till höger
+            if (assistShown && settings.histogram) {
+                HistogramBox(
+                    viewModel.assist,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(top = overlayTop)
+                        .padding(12.dp)
+                )
+            }
+
             val filterShown = liveFilterOn || (state.mode.isVideo && state.filter.isActive && state.videoFilterOn)
             if (filterShown && !state.filterPanelOpen && !state.isRecording) {
                 FilterBadge(
@@ -491,7 +508,10 @@ private fun CameraContent(
                     .padding(top = overlayTop + 52.dp)
             ) {
                 val msg = state.message
-                if (msg != null) InfoPill(stringResource(msg))
+                if (msg != null) {
+                    val arg = state.messageArg
+                    InfoPill(if (arg != null) stringResource(msg, arg) else stringResource(msg))
+                }
             }
 
             // Efter en uppdatering (som i Alif): "SNC Camera är uppdaterad till …" – tryck för att stänga
@@ -596,7 +616,9 @@ private fun CameraContent(
                     onSelect = viewModel::selectProControl,
                     onPro = viewModel::updatePro,
                     onExposure = viewModel::setExposureIndex,
-                    modifier = Modifier.padding(bottom = 8.dp)
+                    modifier = Modifier.padding(bottom = 8.dp),
+                    assist = AssistOptions(settings.histogram, settings.focusPeaking, settings.zebra, mirror = false),
+                    onAssist = viewModel::toggleAssist
                 )
             }
 
@@ -697,7 +719,11 @@ private fun CameraContent(
                     isRecording = state.isRecording,
                     isBusy = state.isCapturing,
                     countdown = state.countdown,
-                    onClick = viewModel::onShutter
+                    onClick = viewModel::onShutter,
+                    burstCount = state.burstCount,
+                    // Håll in för serietagning (Foto och Pro)
+                    onBurstStart = if (state.burstAvailable) viewModel::startBurst else null,
+                    onBurstEnd = viewModel::stopBurst
                 )
 
                 Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {

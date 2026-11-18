@@ -8,6 +8,7 @@
   ui.py swipe --text "PHOTO" --dx=-160     svep i sidled från elementets mitt
   ui.py swipe --y 0.4 --dx=-0.35           svep i sidled mitt på skärmen (dx som andel av bredden)
   ui.py tap --desc "Red" --fx 0          tryck längst till vänster på ett element (t.ex. ett reglage)
+  ui.py hold --desc "Shutter" --ms 4000  håll in ett element (långt tryck) i --ms millisekunder
   ui.py rgb [bild.png] --region 0.1,0.2,0.9,0.4   medelfärg R G B i ett område (andel av bilden)
   ui.py dump                         skriv ut allt som syns på skärmen
   ui.py text-image fil.png           skapa en testbild med text (för textigenkänning)
@@ -116,7 +117,7 @@ def target(args):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("cmd", choices=["tap", "exists", "swipe", "rgb", "dump", "text-image"])
+    p.add_argument("cmd", choices=["tap", "exists", "swipe", "hold", "rgb", "dump", "text-image"])
     p.add_argument("path", nargs="?")
     p.add_argument("--text")
     p.add_argument("--desc")
@@ -185,6 +186,12 @@ def main():
         x = int(x1 + max(0.0, min(1.0, args.fx)) * (x2 - x1 - 1))
         adb("shell", "input", "tap", str(x), str((y1 + y2) // 2))
         print(f"[ui] tryckte på {target(args)!r} vid {node.get('bounds')}")
+    elif args.cmd == "hold":
+        x1, y1, x2, y2 = bounds(node)
+        x, y = (x1 + x2) // 2, (y1 + y2) // 2
+        # Svep till samma punkt = långt tryck
+        adb("shell", "input", "swipe", str(x), str(y), str(x), str(y), str(args.ms), timeout=60 + args.ms // 1000)
+        print(f"[ui] höll in {target(args)!r} i {args.ms} ms vid {node.get('bounds')}")
     elif args.cmd == "swipe":
         w, _ = screen_size()
         x1, y1, x2, y2 = bounds(node)
