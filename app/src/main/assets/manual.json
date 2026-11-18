@@ -1,5 +1,5 @@
 {
-  "version": "1.8.1",
+  "version": "1.9.0",
   "sv": [
     {
       "title": "Kameran",
@@ -24,7 +24,8 @@
       "items": [
         "Filterknappen i övre raden öppnar filtren och reglagen för rött, grönt och blått (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger.",
         "En etikett i sökaren visar att ett filter är på. Tryck på den för att ändra. Den lilla knappen Återställ i menyns hörn tar bort filtret, och ett tryck på procentsiffran sätter just den färgen till 100 %.",
-        "Filtret gäller Foto, Pro, Natt och Porträtt. Video spelas in utan filter."
+        "Filtret gäller alla lägen. I Video syns det i sökaren och spelas in i filmen, och färgerna kan ändras medan filmen spelas in.",
+        "IR svartvit och IR färg ger bilder som liknar infraröd fotografering: mörk himmel och ljus grönska i svartvitt, eller grönska som blir röd i falsk färg. Kamerorna har IR-spärrfilter, så det är en effekt – inte riktigt infrarött."
       ]
     },
     {
@@ -116,7 +117,8 @@
       "items": [
         "The filter button in the top row opens the filters and the sliders for red, green and blue (0–200 %). The effect shows in the viewfinder right away and the photo is saved with the same colours.",
         "A label in the viewfinder shows that a filter is on. Tap it to change it. The small Reset button in the corner of the menu removes the filter, and tapping a percentage sets just that colour back to 100 %.",
-        "The filter works in Photo, Pro, Night and Portrait. Video is recorded without a filter."
+        "The filter works in every mode. In Video it shows in the viewfinder and is recorded in the video, and the colours can be changed while recording.",
+        "IR mono and IR colour give pictures that look like infrared photography: dark sky and bright foliage in black and white, or foliage that turns red in false colour. The cameras have IR-cut filters, so it is an effect – not real infrared."
       ]
     },
     {

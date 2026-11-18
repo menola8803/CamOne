@@ -87,6 +87,8 @@ data class CameraUiState(
     val isPaused: Boolean = false,
     val recordingMs: Long = 0L,
 
+    /** Live-filtret är bundet i video (OpenGL) och syns i sökaren och filmen. */
+    val videoFilterOn: Boolean = false,
     /** Nattläget lägger ihop flera bilder (ingen tillverkarextension): Natt, Ljusspår eller Silkesvatten. */
     val stackAvailable: Boolean = false,
     val nightStyle: StackStyle = StackStyle.NIGHT,

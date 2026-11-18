@@ -30,7 +30,8 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - **Natt**: 8 bilder i handen eller 16 på stativ läggs ihop till en ljusare bild med mindre brus
   (bilderna flyttas på plats, inga spökbilder). **Ljusspår** och **Silkesvatten**: 1–8 s lång exponering
 - **Live-filter**: filterknappen i övre fältet öppnar redigerarens filter och reglage för rött, grönt och blått
-  (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger (foto, pro, natt, porträtt – inte video)
+  (0–200 %). Effekten syns direkt i sökaren och bilden sparas med samma färger – i alla lägen, även video
+  (OpenGL, filmen spelas in med filtret). IR svartvit och IR färg ger IR-liknande bilder
 - Volymknapparna kan ta bild eller zooma
 - Appen kan väljas som standardkamera (dubbeltryck på strömknappen)
 

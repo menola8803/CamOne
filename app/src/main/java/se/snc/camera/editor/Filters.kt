@@ -25,7 +25,11 @@ enum class PhotoFilter(@StringRes val label: Int) {
     DRAMATIC(R.string.filter_dramatic),
     MONO(R.string.filter_mono),
     NOIR(R.string.filter_noir),
-    SEPIA(R.string.filter_sepia);
+    SEPIA(R.string.filter_sepia),
+    /** IR-liknande svartvitt: mest rött (det som ligger närmast infrarött), mörk himmel, ljus hud och grönska. */
+    IR_MONO(R.string.filter_ir_mono),
+    /** IR-liknande falsk färg (som infraröd diafilm): grönska blir röd, rött blir grönt. */
+    IR_COLOR(R.string.filter_ir_color);
 
     fun matrix(): ColorMatrix = when (this) {
         ORIGINAL -> ColorMatrix()
@@ -40,6 +44,22 @@ enum class PhotoFilter(@StringRes val label: Int) {
         MONO -> saturation(0f)
         NOIR -> saturation(0f).then(contrast(1.45f)).then(offset(-12f, -12f, -12f))
         SEPIA -> sepia()
+        IR_MONO -> ColorMatrix(
+            floatArrayOf(
+                1.3f, 0.05f, -0.35f, 0f, 0f,
+                1.3f, 0.05f, -0.35f, 0f, 0f,
+                1.3f, 0.05f, -0.35f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        ).then(contrast(1.3f))
+        IR_COLOR -> ColorMatrix(
+            floatArrayOf(
+                0.15f, 1.05f, -0.1f, 0f, 0f,
+                0.95f, 0.1f, -0.05f, 0f, 0f,
+                -0.05f, 0.05f, 1.0f, 0f, 0f,
+                0f, 0f, 0f, 1f, 0f
+            )
+        ).then(saturation(1.2f))
     }
 }
 

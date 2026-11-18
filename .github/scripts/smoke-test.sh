@@ -328,11 +328,51 @@ log "  Sökaren efter Återställ: R=${r2:-?} G=${g2:-?} B=${b2:-?}"
 if [ "$bright" = 1 ]; then
   check "Återställ tar bort filtret" [ "${r2:-0}" -ge $(( r0 / 2 )) ]
 fi
+# Video: live-filtret läggs på sökaren och filmen (OpenGL). Rött 0 % igen, sedan Video.
+$UI swipe --desc "Red" --dx=-0.45 --ms=500 >> "$OUT/ui.log" 2>&1
+sleep 1
+check "Rött-reglaget står på 0 % igen" $UI exists --text "0 %"
 tap --desc "Filter"
 sleep 1
 tap --text "VIDEO"
-sleep 4
-check "Filterknappen göms i videoläget" bash -c "! $UI exists --desc Filter --timeout 1"
+sleep 7
+shot 19g-video-filter
+check "Filterknappen finns i videoläget" $UI exists --desc "Filter" --timeout 3
+read -r vr vg vb < <($UI rgb --region "$VF" 2>> "$OUT/ui.log")
+log "  Videons sökare med rött 0 %: R=${vr:-?} G=${vg:-?} B=${vb:-?}"
+if [ "$bright" = 1 ]; then
+  check "Videons sökare visar filtret (rött försvinner)" [ "${vr:-999}" -le $(( r0 / 3 )) ]
+fi
+VB=$(count '\.mp4')
+key KEYCODE_VOLUME_UP
+sleep 5
+key KEYCODE_VOLUME_UP
+for w in $(seq 1 15); do sleep 1; [ "$(count '\.mp4')" -gt "$VB" ] && break; done
+sleep 3
+VA=$(count '\.mp4')
+VID=$(adb shell "ls -t '$DIR' | grep '\.mp4$' | head -1" | tr -d '\r')
+check "Video med filter sparas ($VB → $VA)" [ "$VA" -gt "$VB" ]
+if [ -n "$VID" ] && command -v ffmpeg > /dev/null; then
+  adb pull "$DIR/$VID" "$OUT/filter-video.mp4" >> "$OUT/ui.log" 2>&1
+  ffmpeg -loglevel error -y -ss 1 -i "$OUT/filter-video.mp4" -frames:v 1 "$OUT/filter-video.png" >> "$OUT/ui.log" 2>&1
+  read -r fr fg fb < <($UI rgb "$OUT/filter-video.png" 2>> "$OUT/ui.log")
+  log "  Bild ur videon ($VID) med rött 0 %: R=${fr:-?} G=${fg:-?} B=${fb:-?}"
+  if [ "$bright" = 1 ]; then
+    check "Filmen har filtret (inget rött)" [ "${fr:-999}" -le 25 ]
+  fi
+else
+  log "  (ffmpeg saknas – bilden ur videon kontrolleras inte)"
+fi
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Videofilter" | tail -3 | while IFS= read -r l; do
+  echo "::notice title=Videofilter-logg::$(echo "$l" | cut -c1-300)"
+done
+check "Appen lever efter video med filter" alive
+tap --desc "Filter"
+sleep 1
+tap --text "Reset"
+sleep 1
+tap --desc "Filter"
+sleep 1
 tap --text "PHOTO"
 sleep 4
 

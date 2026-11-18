@@ -124,6 +124,8 @@
     <string name="filter_mono">Mono</string>
     <string name="filter_noir">Noir</string>
     <string name="filter_sepia">Sepia</string>
+    <string name="filter_ir_mono">IR mono</string>
+    <string name="filter_ir_color">IR colour</string>
 
     <string name="adjust_brightness">Brightness</string>
     <string name="adjust_contrast">Contrast</string>
@@ -319,7 +321,7 @@
     <string name="filter_red">Red</string>
     <string name="filter_green">Green</string>
     <string name="filter_blue">Blue</string>
-    <string name="msg_filter_not_video">The live filter applies to photos – video is recorded without it</string>
+    <string name="msg_video_filter_failed">The live filter could not be used in video – video is recorded without it</string>
     <string name="msg_filter_failed">Couldn\'t apply the filter – the photo was saved without it</string>
     <string name="cams_raw_used">Yes – choose RAW under Settings › Photo › File format</string>
     <string name="cams_raw_camera2_only">The camera has RAW, but CameraX does not offer it here</string>

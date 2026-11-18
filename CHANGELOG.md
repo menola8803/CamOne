@@ -2,6 +2,12 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.9.0 – 2026-11-18
+
+- Live-filtret i video: filtren och reglagen för rött, grönt och blått syns i sökaren och spelas in i filmen (OpenGL). Färgerna kan ändras medan filmen spelas in. Går det inte på telefonen spelas videon in utan filter, med ett meddelande.
+- IR-filter: IR svartvit (mörk himmel, ljus grönska) och IR färg (falsk färg som infraröd diafilm, grönska blir röd) – i live-filtret och i redigeraren.
+- Knapparna överst är lite mindre i Video, så att filterknappen får plats bredvid kvalitet och bildfrekvens.
+
 ## Version 1.8.1 – 2026-11-18
 
 - 16:9 och Video: sökaren går ut till skärmens kanter och upp till överkanten, utan rundade hörn. Knapparna överst och avtryckarraden ligger i glas ovanpå bilden, som i Helskärm. Det sparade fotot är oförändrat 16:9.

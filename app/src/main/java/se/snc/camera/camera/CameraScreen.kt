@@ -450,7 +450,8 @@ private fun CameraContent(
 
             CountdownOverlay(state.countdown, iconRotation)
 
-            if (liveFilterOn && !state.filterPanelOpen && !state.isRecording) {
+            val filterShown = liveFilterOn || (state.mode.isVideo && state.filter.isActive && state.videoFilterOn)
+            if (filterShown && !state.filterPanelOpen && !state.isRecording) {
                 FilterBadge(
                     filter = state.filter,
                     onClick = viewModel::toggleFilterPanel,
@@ -580,7 +581,7 @@ private fun CameraContent(
                 .padding(top = 12.dp, bottom = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.filterPanelOpen && !state.mode.isVideo && !state.isRecording) {
+            if (state.filterPanelOpen && !state.isRecording) {
                 FilterPanel(
                     filter = state.filter,
                     onPreset = viewModel::setFilterPreset,
@@ -762,6 +763,8 @@ private fun TopBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             val mode = state.mode
+            // Video har fler knappar (kvalitet, fps, filter) – lite mindre runda knappar så att allt får plats
+            val iconSize = if (mode.isVideo) 40.dp else 44.dp
             val flashUsable = state.lensFront || state.hasFlashUnit
             // Blixt / ficklampa
             // Ingen blixt i nattläget eller när HDR läggs ihop i appen (flera bilder)
@@ -769,6 +772,7 @@ private fun TopBar(
             if (mode != CameraMode.NIGHT && flashUsable && !stackedHdr) {
                 if (mode.isVideo) {
                     GlassIconButton(
+                        size = iconSize,
                         icon = if (state.torchOn) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
                         contentDescription = stringResource(R.string.cd_torch),
                         onClick = onFlash,
@@ -778,6 +782,7 @@ private fun TopBar(
                     )
                 } else {
                     GlassIconButton(
+                        size = iconSize,
                         icon = when (flash) {
                             FlashOption.OFF -> Icons.Rounded.FlashOff
                             FlashOption.AUTO -> Icons.Rounded.FlashAuto
@@ -790,12 +795,13 @@ private fun TopBar(
                     )
                 }
             } else {
-                Spacer(Modifier.size(44.dp))
+                Spacer(Modifier.size(iconSize))
             }
 
             // HDR: tillverkarens om den finns, annars appens egen (3–5 exponeringar läggs ihop)
             if (mode == CameraMode.PHOTO) {
                 GlassIconButton(
+                    size = iconSize,
                     icon = if (hdr) Icons.Rounded.HdrOn else Icons.Rounded.HdrOff,
                     contentDescription = stringResource(R.string.cd_hdr),
                     onClick = onHdr,
@@ -805,6 +811,7 @@ private fun TopBar(
             }
 
             GlassIconButton(
+                size = iconSize,
                 icon = if (timer == TimerOption.OFF) Icons.Rounded.TimerOff else Icons.Rounded.Timer,
                 contentDescription = stringResource(R.string.cd_timer),
                 onClick = onTimer,
@@ -835,19 +842,19 @@ private fun TopBar(
                 )
             }
 
-            // Live-filter (foto, natt, pro, porträtt – inte video)
-            if (!mode.isVideo) {
-                GlassIconButton(
-                    icon = Icons.Rounded.PhotoFilter,
-                    contentDescription = stringResource(R.string.cd_filter),
-                    onClick = onFilter,
-                    rotation = rotation,
-                    tint = if (filterActive || state.filterPanelOpen) CameraYellow else Usb.Text,
-                    dot = filterActive
-                )
-            }
+            // Live-filter (alla lägen – i video läggs det på filmen med OpenGL)
+            GlassIconButton(
+                size = iconSize,
+                icon = Icons.Rounded.PhotoFilter,
+                contentDescription = stringResource(R.string.cd_filter),
+                onClick = onFilter,
+                rotation = rotation,
+                tint = if (filterActive || state.filterPanelOpen) CameraYellow else Usb.Text,
+                dot = filterActive
+            )
 
             GlassIconButton(
+                size = iconSize,
                 icon = if (grid == GridOption.OFF) Icons.Rounded.GridOff else Icons.Rounded.GridOn,
                 contentDescription = stringResource(R.string.cd_grid),
                 onClick = onGrid,
@@ -856,6 +863,7 @@ private fun TopBar(
             )
 
             GlassIconButton(
+                size = iconSize,
                 icon = Icons.Rounded.Settings,
                 contentDescription = stringResource(R.string.cd_settings),
                 onClick = onSettings,

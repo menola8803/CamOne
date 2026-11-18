@@ -32,6 +32,7 @@ import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.core.UseCase
+import androidx.camera.core.UseCaseGroup
 import androidx.camera.core.ZoomState
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
@@ -175,6 +176,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var targetRotation = Surface.ROTATION_0
     private var initialized = false
     private var rebindAfterRecording = false
+
+    // Live-filter i video (OpenGL, VideoFilter.kt): bara bunden när ett filter är på i Video
+    private var videoFilter: VideoFilterEffect? = null
+    private var videoFilterBound = false
+    private var videoFilterAllowed = true
     private var lastFallbackMode: CameraMode? = null
     private var pendingMode: CameraMode? = null
 
@@ -284,6 +290,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         detach()
         analysisExecutor.shutdown()
         stackPool.shutdown()
+        videoFilter?.release()
         sound.release()
         portrait.close()
         super.onCleared()
@@ -481,9 +488,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 useCases += ic
             }
 
+            // Live-filter i video: effekten läggs på sökaren och filmen
+            val effect = if (st.mode.isVideo && st.filter.isActive && videoFilterAllowed) {
+                videoFilter ?: VideoFilterEffect().also { videoFilter = it }
+            } else null
+
             cp.unbindAll()
             return try {
-                val cam = cp.bindToLifecycle(owner, selector, *useCases.toTypedArray())
+                val cam = if (effect != null) {
+                    val group = UseCaseGroup.Builder().also { b -> useCases.forEach { b.addUseCase(it) } }
+                        .addEffect(effect)
+                        .build()
+                    cp.bindToLifecycle(owner, selector, group)
+                } else {
+                    cp.bindToLifecycle(owner, selector, *useCases.toTypedArray())
+                }
+                videoFilterBound = effect != null
+                effect?.setMatrix(st.filter.matrix())
                 imageCapture = ic
                 videoCapture = vc
                 nightAnalysis = na
@@ -491,7 +512,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
-                Log.w(TAG, "Bindning misslyckades (extension=$useExtension, stab=$stabilization, 60fps=$highFps)", e)
+                Log.w(TAG, "Bindning misslyckades (extension=$useExtension, stab=$stabilization, 60fps=$highFps, filter=${effect != null})", e)
+                if (effect != null) {
+                    // Gick det inte med filtret: samma försök utan filter, så att video alltid fungerar
+                    videoFilterAllowed = false
+                    showMessage(R.string.msg_video_filter_failed)
+                    return attempt(useExtension, stabilization, highFps, cameraBase)
+                }
                 null
             }
         }
@@ -560,7 +587,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 exposureMax = exposure.exposureCompensationRange.upper,
                 exposureStep = exposure.exposureCompensationStep.toFloat(),
                 pro = pro,
-                stackAvailable = nightAnalysis != null
+                stackAvailable = nightAnalysis != null,
+                videoFilterOn = videoFilterBound
             )
         }
         if (nightAnalysis != null) motion.start() else motion.stop()
@@ -726,14 +754,31 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setFilterPreset(preset: PhotoFilter) {
         _state.update { it.copy(filter = it.filter.copy(preset = preset)) }
+        onFilterChanged()
     }
 
     fun setFilterChannel(channel: ColorChannel, value: Float) {
         _state.update { it.copy(filter = it.filter.with(channel, value)) }
+        onFilterChanged()
     }
 
     fun resetFilter() {
         _state.update { it.copy(filter = LiveFilter()) }
+        onFilterChanged()
+    }
+
+    /**
+     * Video: är filtret redan bundet ändras färgerna direkt (även under inspelning). Slås ett filter på
+     * när det inte är bundet binds kameran om – under en inspelning först när den är klar.
+     */
+    private fun onFilterChanged() {
+        val st = _state.value
+        if (!st.mode.isVideo) return
+        if (videoFilterBound) {
+            videoFilter?.setMatrix(if (st.filter.isActive) st.filter.matrix() else null)
+        } else if (st.filter.isActive && videoFilterAllowed) {
+            if (st.isRecording) rebindAfterRecording = true else rebind()
+        }
     }
 
     /** Sökarens form från skärmen (lång sida / kort sida), för helskärmsbilder. */
@@ -800,8 +845,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0 || mode == st.mode) return
         if (st.isCapturing && stackSession != null) return // natt- eller HDR-bilden tas fortfarande
-        _state.update { it.copy(mode = mode, activeProControl = null, filterPanelOpen = it.filterPanelOpen && !mode.isVideo) }
-        if (mode.isVideo && st.filter.isActive) showMessage(R.string.msg_filter_not_video)
+        _state.update { it.copy(mode = mode, activeProControl = null) }
         viewModelScope.launch { settingsRepo.update { it.copy(lastMode = mode.name) } }
         rebind()
     }
