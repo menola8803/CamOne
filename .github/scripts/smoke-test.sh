@@ -222,13 +222,12 @@ log "  Ljusspår: ${FT:-?} – ${DT:-?}"
 check "Ljusspår 1 s sparas (${DT:-?})" bash -c "echo '$DT' | grep -q 'Light trails: 1 s'"
 tap --text "Night"; sleep 1
 check "Appen lever efter nattbilderna" alive
-# Nattloggen i resultatet (loggfilerna går inte att hämta härifrån)
-adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Natt" | tail -8 | while IFS= read -r l; do
-  echo "::notice title=Natt-logg::$(echo "$l" | cut -c1-300)"
-done
-adb logcat -d 2>/dev/null | grep -E "AndroidRuntime|Camera2CameraImpl|ImageAnalysis|CameraX" | grep -E " [EF] " | tail -4 | while IFS= read -r l; do
-  echo "::notice title=Kamerafel::$(echo "$l" | cut -c1-300)"
-done
+# Nattloggen i resultatet bara om något gick fel (högst 10 anteckningar per steg syns)
+if [ -z "$FN" ] || [ -z "$FS" ] || [ -z "$FT" ]; then
+  adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Natt" | tail -6 | while IFS= read -r l; do
+    echo "::notice title=Natt-logg::$(echo "$l" | cut -c1-300)"
+  done
+fi
 tap --text "PRO"
 sleep 5
 shot 16-pro
@@ -434,9 +433,15 @@ log "  HDR: ${FH:-?} – ${DH:-?}"
 check "HDR-bild sparas (${FH:-ingen fil})" [ -n "$FH" ]
 check "HDR-bilden är ihoplagd av flera exponeringar (${DH:-?})" bash -c "echo '$DH' | grep -qE 'HDR: [2-5] exposures'"
 check "HDR-bilden är Ultra HDR (gain map i filen)" python3 -c "import sys; d=open('$OUT/hdr.jpg','rb').read(); sys.exit(0 if b'hdrgm' in d and d.count(b'\\xff\\xd8\\xff') >= 2 else 1)"
-adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR" | tail -4 | while IFS= read -r l; do
+check "Appen lever efter HDR-bilden" alive
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR" | tail -5 | while IFS= read -r l; do
   echo "::notice title=HDR-logg::$(echo "$l" | cut -c1-300)"
 done
+# Krasch (Java eller inbyggd kod) i resultatet
+adb logcat -d 2>/dev/null | grep -E "FATAL EXCEPTION|Fatal signal|AndroidRuntime: |DEBUG   : (signal|Abort|backtrace| +#0[0-9])" | head -4 | while IFS= read -r l; do
+  echo "::notice title=Krasch::$(echo "$l" | cut -c1-300)"
+done
+alive || { adb shell am start -n "$PKG/.MainActivity" > /dev/null 2>&1; sleep 6; }
 tap --desc "HDR"; sleep 4
 check "Appen lever efter HDR" alive
 

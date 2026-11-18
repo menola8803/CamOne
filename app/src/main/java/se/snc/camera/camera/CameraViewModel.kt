@@ -1147,9 +1147,13 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     val g = StackRender.gainBitmap(gain, frame.width, crop, rotation, mirror)
                     gainBmp = g
                     UltraHdr.attach(bmp, g, HdrMerge.MAX_BOOST)
-                }.onFailure { Log.w(TAG, "Ultra HDR kunde inte läggas till", it) }
+                    Log.i(TAG, "HDR: gain map ${g.width}x${g.height} på bild ${bmp.width}x${bmp.height}")
+                }.onFailure { Log.w(TAG, "HDR: Ultra HDR kunde inte läggas till: $it", it) }
             }
-            return media.saveNewPhoto(bmp, format, s.jpegQuality, exif)
+            Log.i(TAG, "HDR/Natt: sparar ${bmp.width}x${bmp.height} som $format")
+            val uri = media.saveNewPhoto(bmp, format, s.jpegQuality, exif)
+            Log.i(TAG, "HDR/Natt: sparad ${uri != null}")
+            return uri
         } finally {
             bmp.recycle()
             gainBmp?.recycle()
