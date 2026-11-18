@@ -2,6 +2,11 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.8.1 – 2026-11-18
+
+- 16:9 och Video: sökaren går ut till skärmens kanter och upp till överkanten, utan rundade hörn. Knapparna överst och avtryckarraden ligger i glas ovanpå bilden, som i Helskärm. Det sparade fotot är oförändrat 16:9.
+- Etiketterna överst i sökaren (natt, HDR, meddelanden) hamnar under knapparna i Helskärm och 16:9.
+
 ## Version 1.8.0 – 2026-11-18
 
 - HDR i appen: HDR-knappen i Foto tar 3 exponeringar (vald, −2 och +2 EV) i handen och 5 på stativ (0, ±1,5, ±3 EV) och lägger ihop dem, så att både ljusa fönster och mörka hörn syns. Ljusskillnaden mäts i bilderna själva.
