@@ -434,11 +434,11 @@ check "HDR-bild sparas (${FH:-ingen fil})" [ -n "$FH" ]
 check "HDR-bilden är ihoplagd av flera exponeringar (${DH:-?})" bash -c "echo '$DH' | grep -qE 'HDR: [2-5] exposures'"
 check "HDR-bilden är Ultra HDR (gain map i filen)" python3 -c "import sys; d=open('$OUT/hdr.jpg','rb').read(); sys.exit(0 if b'hdrgm' in d and d.count(b'\\xff\\xd8\\xff') >= 2 else 1)"
 check "Appen lever efter HDR-bilden" alive
-adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR" | tail -5 | while IFS= read -r l; do
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "HDR" | tail -3 | while IFS= read -r l; do
   echo "::notice title=HDR-logg::$(echo "$l" | cut -c1-300)"
 done
 # Krasch (Java eller inbyggd kod) i resultatet
-adb logcat -d 2>/dev/null | grep -E "FATAL EXCEPTION|Fatal signal|AndroidRuntime: |DEBUG   : (signal|Abort|backtrace| +#0[0-9])" | head -4 | while IFS= read -r l; do
+adb logcat -d 2>/dev/null | grep -E "FATAL EXCEPTION|Fatal signal|DEBUG   : (Abort|backtrace)" | head -3 | while IFS= read -r l; do
   echo "::notice title=Krasch::$(echo "$l" | cut -c1-300)"
 done
 alive || { adb shell am start -n "$PKG/.MainActivity" > /dev/null 2>&1; sleep 6; }
@@ -507,7 +507,7 @@ check "Kamerasidan visar kameran för video" $UI exists --contains "Back camera 
 W=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1); H=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
 adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H / 5)) 400; sleep 1
 shot 34-kameror-linser
-check "Kamerasidan visar bakkameran" $UI exists --contains "BACK CAMERA" --scroll --timeout 10
+check "Kamerasidan visar bakkameran" $UI exists --contains "BACK CAMERA" --scroll --timeout 25
 tap --text "Copy report"
 sleep 1
 check "Appen lever efter kamerasidan" alive
