@@ -2,6 +2,10 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.7.1 – 2026-11-18
+
+- Helskärm med glas: bilden syns ända ned till kanten. Avtryckaren, miniatyren och byt kamera ligger i en genomskinlig glaspanel, knapparna överst har en mörk glasbotten under guldtonen så att de syns mot både ljusa och mörka motiv, och lägesmenyn är mer genomskinlig. Övriga bildformat ser ut som förut.
+
 ## Version 1.7.0 – 2026-11-17
 
 - Nytt nattläge: flera bilder tas efter varandra och läggs ihop till en ljusare bild med mindre brus – 8 bilder i handen (högst 1/15 s var, så att de blir skarpa) och 16 när telefonen står stilla på stativ eller bord (längre exponering). Gyrot avgör vilket, och etiketten överst visar det.

@@ -151,6 +151,8 @@ val CameraYellow = DarkPalette.Gold
 val RecordRed = DarkPalette.Danger
 val Glass = Color(0xA6132225)
 val GlassStrong = Color(0xD9132225)
+/** Glasbotten under knapparna när de ligger ovanpå bilden (Helskärm): mörkt och genomskinligt. */
+val PhotoGlass = Color(0x8C132225)
 val GlassLine = DarkPalette.GlassBorder
 val GoldTint = DarkPalette.BtnBg
 val GoldTintStrong = Color(0x40E8B04A)

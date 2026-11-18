@@ -110,6 +110,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.semantics.Role
 import se.snc.camera.ui.theme.GlassStrong
+import se.snc.camera.ui.theme.Glass
+import se.snc.camera.ui.theme.GlassLine
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.layout.onSizeChanged
 import se.snc.camera.data.AspectOption
 
@@ -493,6 +496,18 @@ private fun CameraContent(
             )
         }
 
+        // Helskärm: knapparna ligger i glas ovanpå bilden, med en lätt skugga i över- och nederkant
+        if (fullScreen) {
+            Box(
+                Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .height(120.dp)
+                    .background(Brush.verticalGradient(0f to Usb.Bg.copy(alpha = 0.45f), 1f to Color.Transparent))
+            )
+        }
+
+        CompositionLocalProvider(LocalOverPhoto provides fullScreen) {
         // --------------------------- Övre fältet ---------------------------
         TopBar(
             state = state,
@@ -526,11 +541,16 @@ private fun CameraContent(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .background(
-                    Brush.verticalGradient(
-                        0f to Color.Transparent,
-                        0.25f to Usb.Bg.copy(alpha = 0.6f),
-                        1f to Usb.Bg
-                    )
+                    if (fullScreen) {
+                        // Helskärm: bilden syns ända ned, bara en lätt skugga
+                        Brush.verticalGradient(0f to Color.Transparent, 1f to Usb.Bg.copy(alpha = 0.35f))
+                    } else {
+                        Brush.verticalGradient(
+                            0f to Color.Transparent,
+                            0.25f to Usb.Bg.copy(alpha = 0.6f),
+                            1f to Usb.Bg
+                        )
+                    }
                 )
                 .navigationBarsPadding()
                 .padding(top = 12.dp, bottom = 16.dp),
@@ -607,10 +627,23 @@ private fun CameraContent(
 
             Spacer(Modifier.height(14.dp))
 
+            val shutterRowShape = RoundedCornerShape(36.dp)
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 36.dp),
+                    .then(
+                        if (fullScreen) {
+                            // Helskärm: avtryckarraden i en glaspanel ovanpå bilden
+                            Modifier
+                                .padding(horizontal = 16.dp)
+                                .clip(shutterRowShape)
+                                .background(Glass)
+                                .border(1.dp, GlassLine, shutterRowShape)
+                                .padding(horizontal = 20.dp, vertical = 10.dp)
+                        } else {
+                            Modifier.padding(horizontal = 36.dp)
+                        }
+                    ),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -651,6 +684,7 @@ private fun CameraContent(
                 }
             }
         }
+        } // CompositionLocalProvider (glas i helskärm)
 
         // Skärmblixt
         if (state.screenFlash) {

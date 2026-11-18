@@ -100,6 +100,19 @@ import se.snc.camera.ui.theme.GlassLine
 import se.snc.camera.ui.theme.GlassStrong
 import androidx.compose.foundation.layout.width
 import se.snc.camera.ui.theme.GoldTintStrong
+import se.snc.camera.ui.theme.PhotoGlass
+import androidx.compose.runtime.staticCompositionLocalOf
+
+/**
+ * True när kamerans knappar ligger ovanpå bilden (Helskärm). Knapparna får då en mörk,
+ * genomskinlig glasbotten under guldtonen så att de syns mot både ljusa och mörka motiv,
+ * och glasraderna blir mer genomskinliga.
+ */
+val LocalOverPhoto = staticCompositionLocalOf { false }
+
+/** Glasbotten under en knapp när den ligger ovanpå bilden. */
+@Composable
+private fun Modifier.photoGlass(): Modifier = if (LocalOverPhoto.current) this.background(PhotoGlass) else this
 
 /**
  * Rund glasknapp som i Alif: mörkt glas med tunn guldkant. Påslagen ([tint] = guld eller [active]) får
@@ -137,6 +150,7 @@ fun GlassIconButton(
                 } else Modifier
             )
             .clip(CircleShape)
+            .photoGlass()
             // Alifs knapp: guldton och guldkant – påslagen får starkare ton och hel guldkant
             .background(if (on) GoldTintStrong else GoldTint)
             .border(if (glow) 2.dp else 1.dp, if (on) Usb.Gold else GoldEdge, CircleShape)
@@ -202,6 +216,7 @@ fun GlassTextButton(
             .height(44.dp)
             .widthIn(min = 52.dp)
             .clip(RoundedCornerShape(22.dp))
+            .photoGlass()
             .background(if (active) GoldTintStrong else GoldTint)
             .border(1.dp, if (active) Usb.Gold else GoldEdge, RoundedCornerShape(22.dp))
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
@@ -381,6 +396,7 @@ fun GoldSquareButton(
         modifier = modifier
             .size(56.dp)
             .clip(shape)
+            .photoGlass()
             .background(GoldTint)
             .border(1.dp, GoldEdge, shape)
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick),
@@ -474,7 +490,7 @@ fun ModeSelector(
             .padding(horizontal = 16.dp)
             .height(60.dp)
             .clip(barShape)
-            .background(GlassStrong)
+            .background(if (LocalOverPhoto.current) Glass else GlassStrong)
             .border(1.dp, GlassLine, barShape)
             .onSizeChanged { widthPx = it.width }
             .draggable(
@@ -660,7 +676,7 @@ fun LensPill(badge: LensBadge, rotation: Float, modifier: Modifier = Modifier) {
         modifier = modifier
             .rotate(rotation)
             .clip(RoundedCornerShape(50))
-            .background(GlassStrong)
+            .background(if (LocalOverPhoto.current) Glass else GlassStrong)
             .border(1.dp, GlassLine, RoundedCornerShape(50))
             .padding(horizontal = 12.dp, vertical = 5.dp)
     )
