@@ -247,7 +247,7 @@ tap --text "Zebra"; sleep 4
 shot 17b-pro-hjalpmedel
 check "Histogrammet visas i sökaren" $UI exists --desc "Live histogram" --timeout 10
 check "Hjälpmedlen räknas på sökarens bild" bash -c "adb logcat -d -s SncCamera:V | grep -qE 'Hj.lpmedel: bildruta'"
-adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Hj.lpmedel" | tail -2 | while IFS= read -r l; do
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Hj.lpmedel: bildruta" | tail -1 | while IFS= read -r l; do
   echo "::notice title=Hjälpmedel-logg::$(echo "$l" | cut -c1-300)"
 done
 FPA=$(snap jpg pro-hjalpmedel.jpg)
