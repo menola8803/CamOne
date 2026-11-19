@@ -17,7 +17,11 @@ import androidx.camera.lifecycle.ProcessCameraProvider
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import se.snc.camera.camera.DualVideoMath
 import se.snc.camera.camera.LensSelection
+import se.snc.camera.camera.LocationTracker
+import se.snc.camera.camera.SlowMotionProbe
+import se.snc.camera.camera.SlowOption
 import se.snc.camera.util.await
 import java.util.Locale
 import kotlin.math.atan
@@ -110,7 +114,16 @@ data class CameraReport(
     /** Bakkameran som appen använder för foto (den logiska kameran med flest linser). */
     val appBackCameraId: String? = null,
     /** Bakkameran som appen använder för video (standardkameran, kamera 0 på OnePlus 13R). */
-    val videoBackCameraId: String? = null
+    val videoBackCameraId: String? = null,
+    /** Kameraparet (bak, fram) som läget Dubbel använder. */
+    val dualPair: Pair<String, String>? = null,
+    /** Slow motion som appen erbjuder via Camera2 (bildfrekvens, storlek, kamera). */
+    val slowOptions: List<SlowOption> = emptyList(),
+    /** Videokodaren som dubbelvideon använder och den storlek (stående) den klarar i 30 fps. */
+    val dualEncoder: String? = null,
+    val dualEncoderSize: Pair<Int, Int>? = null,
+    /** Platstjänsterna (namn, påslagen) – till Spara plats. */
+    val locationProviders: List<Pair<String, Boolean>> = emptyList()
 ) {
     val appBackCamera: LensInfo? get() = lenses.firstOrNull { it.id == appBackCameraId }
     val videoBackCamera: LensInfo? get() = lenses.firstOrNull { it.id == videoBackCameraId }
@@ -204,6 +217,7 @@ object CameraProbe {
         val appBack = LensSelection.preferredBackCameraId(context)
         val videoBack = LensSelection.defaultBackCameraId(context)
         val ext = withContext(Dispatchers.Main) { cameraXExtensions(context, appBack) }
+        val (encoder, encoderSize) = dualVideoEncoder()
 
         CameraReport(
             lenses = result.values.sortedWith(compareBy<LensInfo>({ it.front }, { !it.listed }, { it.eqMm ?: 999 })),
@@ -212,9 +226,38 @@ object CameraProbe {
             device = "${Build.MANUFACTURER} ${Build.MODEL} (${Build.DEVICE})",
             android = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · ${Build.DISPLAY}",
             appBackCameraId = appBack,
-            videoBackCameraId = videoBack
+            videoBackCameraId = videoBack,
+            dualPair = dualPair(concurrent, result.values.filter { it.front }.map { it.id }.toSet(), appBack),
+            slowOptions = runCatching { SlowMotionProbe.camera2Options(context) }.getOrDefault(emptyList()),
+            dualEncoder = encoder,
+            dualEncoderSize = encoderSize,
+            locationProviders = runCatching { LocationTracker.providers(context) }.getOrDefault(emptyList())
         )
     }
+
+    /**
+     * Paret som läget Dubbel väljer (samma regel som kameran): helst appens bakkamera, annars kamera 0,
+     * annars det första paret med en bak- och en frontkamera.
+     */
+    fun dualPair(concurrent: List<Set<String>>, frontIds: Set<String>, preferredBack: String?): Pair<String, String>? {
+        val pairs = concurrent.mapNotNull { set ->
+            if (set.size != 2) return@mapNotNull null
+            val front = set.firstOrNull { it in frontIds } ?: return@mapNotNull null
+            val back = set.firstOrNull { it !in frontIds } ?: return@mapNotNull null
+            back to front
+        }
+        return pairs.firstOrNull { it.first == preferredBack } ?: pairs.firstOrNull { it.first == "0" } ?: pairs.firstOrNull()
+    }
+
+    /** H.264-kodaren som dubbelvideon får (den första) och den största stående 3:4-storleken den klarar i 30 fps. */
+    private fun dualVideoEncoder(): Pair<String?, Pair<Int, Int>?> = runCatching {
+        val info = MediaCodecList(MediaCodecList.REGULAR_CODECS).codecInfos.firstOrNull { ci ->
+            ci.isEncoder && ci.supportedTypes.any { it.equals(MediaFormat.MIMETYPE_VIDEO_AVC, ignoreCase = true) }
+        } ?: return@runCatching null to null
+        val caps = info.getCapabilitiesForType(MediaFormat.MIMETYPE_VIDEO_AVC).videoCapabilities
+        val size = DualVideoMath.VIDEO_SIZES.firstOrNull { (w, h) -> runCatching { caps.areSizeAndRateSupported(w, h, 30.0) }.getOrDefault(false) }
+        info.name to size
+    }.getOrDefault(null to null)
 
     @OptIn(androidx.camera.video.ExperimentalHighSpeedVideo::class)
     private suspend fun cameraXExtensions(context: Context, appBackId: String?): ExtensionSupport = try {
@@ -448,7 +491,13 @@ object CameraProbe {
         appendLine("Högupplöst läge: ${r.maxResMp?.let { String.format(Locale.US, "%.1f MP", it) } ?: "nej"}")
         appendLine("4K max fps: ${r.maxFps4k ?: "-"} · 1080p max fps: ${r.maxFps1080 ?: "-"}")
         appendLine("Slow motion: ${r.bestHighSpeed?.let { "${it.first.width}x${it.first.height} @ ${it.second}" } ?: "nej"}")
-        appendLine("Fram + bak samtidigt: ${if (r.dualView) "ja" else "nej"} ${r.concurrent}")
+        appendLine(
+            "Appens slow motion: ${if (r.extensions.highSpeed) "CameraX" else if (r.slowOptions.isNotEmpty()) "Camera2" else "-"} " +
+                r.slowOptions.joinToString { "${it.fps} fps ${it.width}x${it.height} (kamera ${it.cameraId})" }.ifEmpty { "" }
+        )
+        appendLine("Fram + bak samtidigt: ${if (r.dualView) "ja" else "nej"} ${r.concurrent} · Dubbel använder ${r.dualPair?.let { "${it.first} + ${it.second}" } ?: "-"}")
+        appendLine("Dubbelvideo-kodare: ${r.dualEncoder ?: "-"} · ${r.dualEncoderSize?.let { "${it.first}x${it.second} @ 30" } ?: "klarar inte 3:4 i 30 fps"}")
+        appendLine("Platstjänster: ${r.locationProviders.joinToString { "${it.first} ${if (it.second) "på" else "av"}" }.ifEmpty { "inga" }}")
         appendLine("Manuell sensor: ${r.manual} · RAW: ${r.raw}")
         appendLine("CameraX-tillägg bak: ${r.extensions.back.ifEmpty { listOf("-") }.joinToString()}")
         appendLine("CameraX-tillägg fram: ${r.extensions.front.ifEmpty { listOf("-") }.joinToString()}")

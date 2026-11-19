@@ -80,9 +80,12 @@ data class EditState(
     val adjustments: Adjustments = Adjustments(),
     /** 0, 90, 180, 270 */
     val rotation: Int = 0,
-    val flipHorizontal: Boolean = false
+    val flipHorizontal: Boolean = false,
+    /** Beskärning i den vridna bilden (null = hela bilden). */
+    val crop: CropRect? = null
 ) {
-    val isUnchanged get() = filter == PhotoFilter.ORIGINAL && adjustments.isDefault && rotation == 0 && !flipHorizontal
+    val isUnchanged get() = filter == PhotoFilter.ORIGINAL && adjustments.isDefault && rotation == 0 && !flipHorizontal &&
+        (crop == null || crop.isWhole)
 }
 
 // --------------------------- Matrisverktyg ---------------------------
@@ -187,9 +190,18 @@ fun Bitmap.transformed(rotation: Int, flipHorizontal: Boolean): Bitmap {
     return Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
 }
 
+/** Beskär till [crop] (delar av bilden). Ger samma bitmapp om hela bilden ska vara kvar. */
+fun Bitmap.croppedTo(crop: CropRect?): Bitmap {
+    if (crop == null || crop.isWhole) return this
+    val (x, y, w, h) = crop.toPixels(width, height)
+    return Bitmap.createBitmap(this, x, y, w, h)
+}
+
 /** Renderar slutbilden i full upplösning. */
 fun renderEdited(source: Bitmap, state: EditState): Bitmap {
-    val oriented = source.transformed(state.rotation, state.flipHorizontal)
+    val rotated = source.transformed(state.rotation, state.flipHorizontal)
+    val oriented = rotated.croppedTo(state.crop)
+    if (oriented !== rotated && rotated !== source) rotated.recycle()
     val out = Bitmap.createBitmap(oriented.width, oriented.height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(out)
     val paint = Paint(Paint.FILTER_BITMAP_FLAG).apply {

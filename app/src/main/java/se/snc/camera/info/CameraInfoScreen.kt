@@ -205,17 +205,48 @@ private fun Summary(r: CameraReport) {
         fpsRow(stringResource(R.string.cams_4k60), r.maxFps4k)
         fpsRow(stringResource(R.string.cams_1080_60), r.maxFps1080)
 
+        // Slow motion: appen använder CameraX om telefonen har profilerna, annars en egen Camera2-session
         val hs = r.bestHighSpeed
+        val slowUsed = r.extensions.highSpeed || r.slowOptions.isNotEmpty()
         StatusRow(
             stringResource(R.string.cams_slowmo),
-            if (hs != null) stringResource(R.string.cams_not_built_value, "${hs.first.height}p ${hs.second} fps")
-            else stringResource(R.string.cams_no),
-            if (hs != null) Level.POSSIBLE else Level.NO
+            when {
+                slowUsed -> stringResource(
+                    R.string.cams_slowmo_used,
+                    r.slowOptions.map { it.fps }.distinct().sorted().joinToString(", ").ifEmpty { "${hs?.second ?: "?"}" } + " fps",
+                    if (r.extensions.highSpeed) "CameraX" else "Camera2"
+                )
+                hs != null -> stringResource(R.string.cams_not_built_value, "${hs.first.height}p ${hs.second} fps")
+                else -> stringResource(R.string.cams_no)
+            },
+            when {
+                slowUsed -> Level.USED
+                hs != null -> Level.POSSIBLE
+                else -> Level.NO
+            }
         )
+        val pair = r.dualPair
         StatusRow(
             stringResource(R.string.cams_dual),
-            stringResource(if (r.dualView) R.string.cams_can_not_built else R.string.cams_no),
-            if (r.dualView) Level.POSSIBLE else Level.NO
+            if (pair != null) stringResource(R.string.cams_dual_used, pair.first, pair.second) else stringResource(R.string.cams_no),
+            if (pair != null) Level.USED else Level.NO
+        )
+        if (pair != null) {
+            val size = r.dualEncoderSize
+            StatusRow(
+                stringResource(R.string.cams_dual_video),
+                if (size != null) stringResource(R.string.cams_dual_video_value, "${size.first} × ${size.second}", r.dualEncoder ?: "?")
+                else stringResource(R.string.cams_no),
+                if (size != null) Level.USED else Level.NO
+            )
+        }
+        val onLabel = stringResource(R.string.cams_location_on)
+        val offLabel = stringResource(R.string.cams_location_off)
+        StatusRow(
+            stringResource(R.string.cams_location),
+            r.locationProviders.joinToString { "${it.first} (${if (it.second) onLabel else offLabel})" }
+                .ifEmpty { stringResource(R.string.cams_location_none) },
+            if (r.locationProviders.any { it.second }) Level.USED else Level.NO
         )
         StatusRow(
             stringResource(R.string.cams_pro),

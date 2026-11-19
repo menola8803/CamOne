@@ -94,6 +94,7 @@ import kotlinx.coroutines.delay
 import se.snc.camera.R
 import se.snc.camera.data.FlashOption
 import se.snc.camera.data.GridOption
+import se.snc.camera.data.PhotoFormat
 import se.snc.camera.data.TimerOption
 import se.snc.camera.ui.theme.CameraTheme
 import se.snc.camera.ui.theme.CameraYellow
@@ -513,6 +514,16 @@ private fun CameraContent(
 
             GridOverlay(settings.grid)
             if (settings.levelIndicator) LevelIndicator(orientation.tilt, orientation.quantized)
+
+            // Vattenstämpeln där den hamnar på fotot (inte i video, Skanna, dubbelvideo eller bara RAW)
+            val watermarkShown = settings.watermark && settings.photoFormat != PhotoFormat.RAW && when (state.mode) {
+                CameraMode.VIDEO, CameraMode.SCAN -> false
+                CameraMode.DUAL -> !state.dualVideo && state.dualAvailable == true
+                else -> true
+            }
+            if (watermarkShown) {
+                WatermarkOverlay(settings.watermarkText, settings.watermarkDetails, orientation.quantized)
+            }
 
             FocusRing(
                 position = focusPos,

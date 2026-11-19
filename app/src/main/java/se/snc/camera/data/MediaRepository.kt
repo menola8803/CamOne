@@ -1,12 +1,16 @@
 package se.snc.camera.data
 
+import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
 import android.content.IntentSender
 import android.graphics.Bitmap
 import android.graphics.ImageDecoder
+import android.location.Location
+import android.media.MediaMetadataRetriever
 import android.net.Uri
+import android.os.Bundle
 import android.provider.MediaStore
 import android.util.Size
 import kotlinx.coroutines.Dispatchers
@@ -32,8 +36,22 @@ data class MediaItem(
     val width: Int,
     val height: Int,
     val durationMs: Long,
-    val sizeBytes: Long
+    val sizeBytes: Long,
+    val isFavorite: Boolean = false,
+    /** Ligger i papperskorgen (tas bort för gott [expiresAt]). */
+    val trashed: Boolean = false,
+    /** När Android tar bort den ur papperskorgen (ms), 0 = okänt. */
+    val expiresAt: Long = 0L,
+    /** Adressen utan tillägg – för Androids dialoger (ta bort, papperskorg, favorit). */
+    val requestUri: Uri = uri
 )
+
+/** Resultatet av en åtgärd på bilder: klar, Android måste fråga användaren först, eller misslyckades. */
+sealed interface MediaOp {
+    data object Done : MediaOp
+    class NeedsConsent(val intent: IntentSender) : MediaOp
+    data object Failed : MediaOp
+}
 
 class MediaRepository(private val context: Context) {
 
@@ -93,7 +111,14 @@ class MediaRepository(private val context: Context) {
         (query(isVideo = false) + query(isVideo = true)).sortedByDescending { it.dateTaken }
     }
 
-    private fun query(isVideo: Boolean): List<MediaItem> {
+    /** Bilder och filmer i papperskorgen (Android tar bort dem för gott efter 30 dagar). */
+    suspend fun loadTrash(): List<MediaItem> = withContext(Dispatchers.IO) {
+        (query(isVideo = false, trashed = true) + query(isVideo = true, trashed = true)).sortedByDescending { it.expiresAt }
+    }
+
+    private val trashedPrefix = Regex("^\\.trashed-\\d+-")
+
+    private fun query(isVideo: Boolean, trashed: Boolean = false): List<MediaItem> {
         val collection = if (isVideo) {
             MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL)
         } else {
@@ -107,14 +132,22 @@ class MediaRepository(private val context: Context) {
             add(MediaStore.MediaColumns.WIDTH)
             add(MediaStore.MediaColumns.HEIGHT)
             add(MediaStore.MediaColumns.SIZE)
+            add(MediaStore.MediaColumns.IS_FAVORITE)
+            add(MediaStore.MediaColumns.DATE_EXPIRES)
             if (isVideo) add(MediaStore.Video.Media.DURATION)
         }.toTypedArray()
         val selection = "${MediaStore.MediaColumns.RELATIVE_PATH} LIKE ? AND ${MediaStore.MediaColumns.IS_PENDING} = 0"
         val args = arrayOf("$RELATIVE_PATH%")
         val sort = "${MediaStore.MediaColumns.DATE_ADDED} DESC"
+        val queryArgs = Bundle().apply {
+            putString(ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
+            putStringArray(ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, args)
+            putString(ContentResolver.QUERY_ARG_SQL_SORT_ORDER, sort)
+            if (trashed) putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_ONLY)
+        }
         val result = mutableListOf<MediaItem>()
         runCatching {
-            resolver.query(collection, projection, selection, args, sort)?.use { c ->
+            resolver.query(collection, projection, queryArgs, null)?.use { c ->
                 val idCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns._ID)
                 val nameCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DISPLAY_NAME)
                 val takenCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.DATE_TAKEN)
@@ -123,19 +156,27 @@ class MediaRepository(private val context: Context) {
                 val hCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.HEIGHT)
                 val sizeCol = c.getColumnIndexOrThrow(MediaStore.MediaColumns.SIZE)
                 val durCol = if (isVideo) c.getColumnIndexOrThrow(MediaStore.Video.Media.DURATION) else -1
+                val favCol = c.getColumnIndex(MediaStore.MediaColumns.IS_FAVORITE)
+                val expCol = c.getColumnIndex(MediaStore.MediaColumns.DATE_EXPIRES)
                 while (c.moveToNext()) {
                     val id = c.getLong(idCol)
                     val taken = c.getLong(takenCol).takeIf { it > 0 } ?: (c.getLong(addedCol) * 1000L)
+                    val plain = ContentUris.withAppendedId(collection, id)
                     result += MediaItem(
                         id = id,
-                        uri = ContentUris.withAppendedId(collection, id),
-                        name = c.getString(nameCol) ?: "",
+                        // Bilder i papperskorgen öppnas med en adress som säger att de får visas
+                        uri = if (trashed) includeTrashed(plain) else plain,
+                        name = (c.getString(nameCol) ?: "").replace(trashedPrefix, ""),
                         isVideo = isVideo,
                         dateTaken = taken,
                         width = c.getInt(wCol),
                         height = c.getInt(hCol),
                         durationMs = if (durCol >= 0) c.getLong(durCol) else 0L,
-                        sizeBytes = c.getLong(sizeCol)
+                        sizeBytes = c.getLong(sizeCol),
+                        isFavorite = favCol >= 0 && c.getInt(favCol) == 1,
+                        trashed = trashed,
+                        expiresAt = if (expCol >= 0) c.getLong(expCol) * 1000L else 0L,
+                        requestUri = plain
                     )
                 }
             }
@@ -333,7 +374,8 @@ class MediaRepository(private val context: Context) {
         format: PhotoFormat,
         quality: Int,
         exif: Map<String, String>,
-        prefix: String = "IMG"
+        prefix: String = "IMG",
+        location: Location? = null
     ): Uri? = withContext(Dispatchers.IO) {
         val fmt = if (format == PhotoFormat.HEIF || format == PhotoFormat.PNG) format else PhotoFormat.JPEG
         val values = ContentValues().apply {
@@ -349,12 +391,13 @@ class MediaRepository(private val context: Context) {
             runCatching { resolver.delete(uri, null, null) }
             return@withContext null
         }
-        if (fmt != PhotoFormat.HEIF && exif.isNotEmpty()) {
+        if (fmt != PhotoFormat.HEIF && (exif.isNotEmpty() || location != null)) {
             runCatching {
                 resolver.openFileDescriptor(uri, "rw")?.use { pfd ->
                     val e = ExifInterface(pfd.fileDescriptor)
                     exif.forEach { (tag, value) -> e.setAttribute(tag, value) }
                     e.setAttribute(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL.toString())
+                    if (location != null) e.setGpsInfo(location)
                     e.saveAttributes()
                 }
             }.onFailure { Log.w("MediaRepository", "EXIF kunde inte skrivas", it) }
@@ -369,6 +412,106 @@ class MediaRepository(private val context: Context) {
     /** Systemdialog för att ta bort filer (krävs för filer appen inte själv äger). */
     fun deleteRequest(uris: List<Uri>): IntentSender =
         MediaStore.createDeleteRequest(resolver, uris).intentSender
+
+    @Suppress("DEPRECATION")
+    private fun includeTrashed(uri: Uri): Uri = MediaStore.setIncludeTrashed(uri)
+
+    /**
+     * Sätter en kolumn (favorit eller papperskorg) direkt på appens egna filer. Filer som appen inte äger
+     * (t.ex. från en tidigare installation) kräver Androids dialog – då ges den i stället.
+     */
+    private suspend fun updateFlag(
+        items: List<MediaItem>,
+        column: String,
+        value: Boolean,
+        includeTrashedItems: Boolean,
+        request: (List<Uri>) -> IntentSender
+    ): MediaOp = withContext(Dispatchers.IO) {
+        if (items.isEmpty()) return@withContext MediaOp.Done
+        val values = ContentValues().apply { put(column, if (value) 1 else 0) }
+        val notDone = mutableListOf<MediaItem>()
+        for (item in items) {
+            val target = if (includeTrashedItems || item.trashed) includeTrashed(item.requestUri) else item.requestUri
+            val count = try {
+                resolver.update(target, values, null, null)
+            } catch (e: SecurityException) {
+                0
+            } catch (e: Exception) {
+                Log.w("MediaRepository", "$column kunde inte ändras på ${item.name}: $e")
+                0
+            }
+            if (count <= 0) notDone += item
+        }
+        if (notDone.size < items.size) notifyChanged()
+        if (notDone.isEmpty()) return@withContext MediaOp.Done
+        runCatching { MediaOp.NeedsConsent(request(notDone.map { it.requestUri })) }.getOrElse {
+            Log.w("MediaRepository", "$column: Androids dialog kunde inte skapas: $it")
+            MediaOp.Failed
+        }
+    }
+
+    /** Favorit eller inte. */
+    suspend fun setFavorite(items: List<MediaItem>, favorite: Boolean): MediaOp =
+        updateFlag(items, MediaStore.MediaColumns.IS_FAVORITE, favorite, includeTrashedItems = false) { uris ->
+            MediaStore.createFavoriteRequest(resolver, uris, favorite).intentSender
+        }
+
+    /** Flyttar till papperskorgen ([trashed] = true) eller tillbaka. */
+    suspend fun setTrashed(items: List<MediaItem>, trashed: Boolean): MediaOp =
+        updateFlag(items, MediaStore.MediaColumns.IS_TRASHED, trashed, includeTrashedItems = !trashed) { uris ->
+            MediaStore.createTrashRequest(resolver, uris, trashed).intentSender
+        }
+
+    /** Tar bort för gott (från papperskorgen). */
+    suspend fun deleteForever(items: List<MediaItem>): MediaOp = withContext(Dispatchers.IO) {
+        if (items.isEmpty()) return@withContext MediaOp.Done
+        val notDone = mutableListOf<MediaItem>()
+        for (item in items) {
+            val target = if (item.trashed) includeTrashed(item.requestUri) else item.requestUri
+            val count = try {
+                resolver.delete(target, null, null)
+            } catch (e: SecurityException) {
+                0
+            } catch (e: Exception) {
+                Log.w("MediaRepository", "${item.name} kunde inte tas bort: $e")
+                0
+            }
+            if (count <= 0) notDone += item
+        }
+        if (notDone.size < items.size) notifyChanged()
+        if (notDone.isEmpty()) return@withContext MediaOp.Done
+        runCatching { MediaOp.NeedsConsent(deleteRequest(notDone.map { it.requestUri })) }.getOrDefault(MediaOp.Failed)
+    }
+
+    /** Platsen i en bild (EXIF) eller film (MP4), som (latitud, longitud). Null om den saknas. */
+    suspend fun readLocation(item: MediaItem): Pair<Double, Double>? = withContext(Dispatchers.IO) {
+        runCatching {
+            if (item.isVideo) {
+                val r = MediaMetadataRetriever()
+                try {
+                    r.setDataSource(context, item.uri)
+                    parseIso6709(r.extractMetadata(MediaMetadataRetriever.METADATA_KEY_LOCATION))
+                } finally {
+                    r.release()
+                }
+            } else {
+                // Utan setRequireOriginal skulle Android kunna dölja platsen
+                val source = runCatching { MediaStore.setRequireOriginal(item.uri) }.getOrDefault(item.uri)
+                val stream = runCatching { resolver.openInputStream(source) }.getOrNull() ?: resolver.openInputStream(item.uri)
+                stream?.use { input ->
+                    ExifInterface(input).latLong?.let { it[0] to it[1] }
+                }
+            }
+        }.getOrNull()?.takeIf { !(it.first == 0.0 && it.second == 0.0) }
+    }
+
+    /** "+59.3293+018.0686/" → (59.3293, 18.0686). */
+    private fun parseIso6709(v: String?): Pair<Double, Double>? {
+        val m = Regex("([+-]\\d+(?:\\.\\d+)?)([+-]\\d+(?:\\.\\d+)?)").find(v ?: return null) ?: return null
+        val lat = m.groupValues[1].toDoubleOrNull() ?: return null
+        val lon = m.groupValues[2].toDoubleOrNull() ?: return null
+        return lat to lon
+    }
 
     fun mimeType(uri: Uri): String = resolver.getType(uri) ?: "image/jpeg"
 }

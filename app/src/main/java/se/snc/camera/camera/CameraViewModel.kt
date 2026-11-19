@@ -1,6 +1,7 @@
 package se.snc.camera.camera
 
 import android.Manifest
+import android.location.Location
 import android.annotation.SuppressLint
 import android.app.Application
 import android.content.ContentValues
@@ -255,6 +256,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         if (event == Lifecycle.Event.ON_STOP) finishDualRecording()
     }
 
+    // Spara plats (LocationTracker.kt): lyssnar bara medan kameraskärmen är öppen och inställningen är på
+    private val locationTracker = LocationTracker(context)
+
     // Läget Skanna (scan/): QR- och streckkoder med ML Kit, dokument med egen hörnsökning
     private var scanAnalysis: ImageAnalysis? = null
     private val scanExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SncScan") }
@@ -374,6 +378,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             settingsRepo.settings.map { it.flash }.distinctUntilChanged().collect { applyFlashMode() }
         }
         viewModelScope.launch {
+            settingsRepo.settings.map { it.saveLocation }.distinctUntilChanged().collect { updateLocationTracking(it) }
+        }
+        viewModelScope.launch {
             media.changes.collect { refreshThumbnail() }
         }
     }
@@ -387,6 +394,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         lifecycleOwner = owner
         owner.lifecycle.addObserver(stopObserver)
         previewView = view
+        updateLocationTracking()
         rebind()
     }
 
@@ -407,6 +415,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         finishDualRecording()
         dualVideoBound = false
         lifecycleOwner?.lifecycle?.removeObserver(stopObserver)
+        locationTracker.stop()
         stopScan()
         motion.stop()
         bindJob?.cancel()
@@ -1493,7 +1502,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         dualStopping = false
         if (s.shutterSound) sound.play(MediaActionSound.START_VIDEO_RECORDING)
         viewModelScope.launch {
-            val ok = rec.start(withAudio = audio, orientationHint = hint)
+            val ok = rec.start(withAudio = audio, orientationHint = hint, location = currentLocation(s))
             if (dualRecorder !== rec) {
                 // Stoppad (t.ex. appen stängdes) medan den startade
                 return@launch
@@ -1620,9 +1629,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                     DualCompose.stack(top, bottom, DUAL_HALF_RATIO, (360 - deviceDegrees) % 360, filter)
                 }
                 val exif = baseExif("SNC Camera: fram och bak samtidigt", 0L, 0)
-                val uri = media.saveNewPhoto(composed, s.photoFormat, s.jpegQuality, exif, prefix = "DUAL")
+                val photo = Watermark.specFor(s, exif)?.let { spec ->
+                    withContext(Dispatchers.Default) { Watermark.apply(context, composed, spec) }
+                } ?: composed
+                val uri = media.saveNewPhoto(photo, s.photoFormat, s.jpegQuality, exif, prefix = "DUAL", location = currentLocation(s))
                 if (uri != null) {
-                    Log.i(TAG, "Dubbel: sparad ${composed.width}x${composed.height} (${if (icBack != null) "kamerornas bilder" else "sökarna"})")
+                    Log.i(TAG, "Dubbel: sparad ${photo.width}x${photo.height} (${if (icBack != null) "kamerornas bilder" else "sökarna"})")
                     onMediaSaved(uri, isVideo = false)
                 } else {
                     showMessage(R.string.msg_capture_failed)
@@ -1925,11 +1937,19 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
      * sparar i valt filformat (HEIF eller PNG). Bilden avkodas och sparas bara en gång, i full upplösning,
      * och EXIF-uppgifterna följer med. Ger adressen till den färdiga bilden.
      */
-    private suspend fun finishPhoto(uri: Uri, aspect: AspectOption, filter: LiveFilter, format: PhotoFormat, quality: Int): Uri =
+    private suspend fun finishPhoto(
+        uri: Uri,
+        aspect: AspectOption,
+        filter: LiveFilter,
+        format: PhotoFormat,
+        quality: Int,
+        watermark: AppSettings? = null
+    ): Uri =
         withContext(Dispatchers.Default) {
             val convert = format == PhotoFormat.HEIF || format == PhotoFormat.PNG
             val crop = aspect.croppedAfter
-            if (!convert && !crop && !filter.isActive) return@withContext uri
+            val stamp = watermark?.watermark == true
+            if (!convert && !crop && !filter.isActive && !stamp) return@withContext uri
             val media = sncApp.mediaRepository
             if (convert) showMessage(R.string.msg_saving_format)
             val exif = media.readExif(uri)
@@ -1951,6 +1971,16 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 bmp.recycle()
                 bmp = filtered
             }
+            // Vattenstämpeln sist, så att den varken beskärs eller färgas av filtret
+            val spec = watermark?.let { Watermark.specFor(it, exif) }
+            if (spec != null) {
+                val stamped = runCatching { Watermark.apply(context, bmp, spec) }.getOrElse {
+                    Log.w(TAG, "Vattenstämpeln kunde inte ritas: $it", it)
+                    bmp
+                }
+                if (stamped !== bmp) bmp.recycle()
+                bmp = stamped
+            }
             val result = if (convert) {
                 media.replaceWithFormat(uri, bmp, format, quality, exif) ?: run {
                     // Gick inte att spara i formatet: behåll en JPEG med samma innehåll
@@ -1965,6 +1995,24 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             bmp.recycle()
             result
         }
+
+    // ---------------------------------------------------------------------------------------------
+    // Plats i foton och filmer
+    // ---------------------------------------------------------------------------------------------
+
+    /** Lyssnar på platsen när inställningen är på och kameraskärmen är öppen, annars inte. */
+    private fun updateLocationTracking(enabled: Boolean = settings.value.saveLocation) {
+        if (enabled && lifecycleOwner != null) locationTracker.start() else locationTracker.stop()
+    }
+
+    /** Platsen till fotot eller filmen (null när inställningen är av eller ingen färsk position finns). */
+    private fun currentLocation(s: AppSettings): Location? {
+        if (!s.saveLocation) return null
+        val loc = locationTracker.fresh()
+        if (loc == null) Log.i(TAG, "Plats: ingen färsk position – sparas utan plats")
+        else Log.i(TAG, String.format(Locale.US, "Plats: %.5f, %.5f (±%.0f m, %s)", loc.latitude, loc.longitude, loc.accuracy, loc.provider))
+        return loc
+    }
 
     // ---------------------------------------------------------------------------------------------
     // Användaråtgärder
@@ -2180,6 +2228,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             val baseName = MediaRepository.newFileName("IMG", "x").substringBeforeLast('.')
             val metadata = ImageCapture.Metadata().apply {
                 isReversedHorizontal = st.lensFront && s.mirrorFront
+                location = currentLocation(s)
             }
             fun outputOptions(extension: String, mime: String) = ImageCapture.OutputFileOptions.Builder(
                 context.contentResolver,
@@ -2224,7 +2273,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                         // Beskärning (3:2, 16:9, helskärm), live-filter och filformat i ett steg
                         val format = if (raw != null) PhotoFormat.JPEG else s.photoFormat
                         val final = runCatching {
-                            finishPhoto(uri, if (raw != null) AspectOption.RATIO_4_3 else s.aspect, st.filter, format, s.jpegQuality)
+                            finishPhoto(uri, if (raw != null) AspectOption.RATIO_4_3 else s.aspect, st.filter, format, s.jpegQuality, watermark = s)
                         }.getOrDefault(uri)
                         _state.update { it.copy(isCapturing = false) }
                         onMediaSaved(final, isVideo = false)
@@ -2265,15 +2314,18 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             _state.update { it.copy(isCapturing = true, burstCount = 0) }
             runCatching { ic.flashMode = ImageCapture.FLASH_MODE_OFF }
             val group = MediaRepository.newFileName("IMG", "x").substringBeforeLast('.')
-            val metadata = ImageCapture.Metadata().apply { isReversedHorizontal = st.lensFront && s.mirrorFront }
+            val metadata = ImageCapture.Metadata().apply {
+                isReversedHorizontal = st.lensFront && s.mirrorFront
+                location = currentLocation(s)
+            }
             val finished = Channel<Uri?>(Channel.UNLIMITED)
             val post = Channel<Uri>(Channel.UNLIMITED)
-            val needsPost = s.aspect.croppedAfter || st.filter.isActive ||
+            val needsPost = s.aspect.croppedAfter || st.filter.isActive || s.watermark ||
                 s.photoFormat == PhotoFormat.HEIF || s.photoFormat == PhotoFormat.PNG
             viewModelScope.launch {
                 for (uri in post) {
                     val final = if (needsPost) {
-                        runCatching { finishPhoto(uri, s.aspect, st.filter, s.photoFormat, s.jpegQuality) }.getOrDefault(uri)
+                        runCatching { finishPhoto(uri, s.aspect, st.filter, s.photoFormat, s.jpegQuality, watermark = s) }.getOrDefault(uri)
                     } else uri
                     onMediaSaved(final, isVideo = false)
                 }
@@ -2441,6 +2493,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 bmp.recycle()
                 bmp = filtered
             }
+            // Vattenstämpeln före gain map (Ultra HDR), så att den följer med i bilden
+            Watermark.specFor(s, exif)?.let { spec ->
+                val stamped = runCatching { Watermark.apply(context, bmp, spec) }.getOrDefault(bmp)
+                if (stamped !== bmp) bmp.recycle()
+                bmp = stamped
+            }
             val format = if (s.photoFormat.isRaw) PhotoFormat.JPEG else s.photoFormat
             if (gain != null && format == PhotoFormat.JPEG && Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
                 runCatching {
@@ -2452,7 +2510,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 }.onFailure { Log.w(TAG, "HDR: Ultra HDR kunde inte läggas till: $it", it) }
             }
             Log.i(TAG, "HDR/Natt: sparar ${bmp.width}x${bmp.height} som $format")
-            val uri = media.saveNewPhoto(bmp, format, s.jpegQuality, exif)
+            val uri = media.saveNewPhoto(bmp, format, s.jpegQuality, exif, location = currentLocation(s))
             Log.i(TAG, "HDR/Natt: sparad ${uri != null}")
             return uri
         } finally {
@@ -2588,7 +2646,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                         Surface.ROTATION_270 -> 270
                         else -> 0
                     }
-                    slowController().startRecording((sensor - device + 360) % 360)
+                    slowController().startRecording((sensor - device + 360) % 360, currentLocation(s))
                     return
                 }
                 SlowEngine.NONE -> {
@@ -2616,7 +2674,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val output = MediaStoreOutputOptions.Builder(
             context.contentResolver,
             MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-        ).setContentValues(values).build()
+        ).setContentValues(values).setLocation(currentLocation(s)).build()
 
         var pending = vc.output.prepareRecording(context, output)
         // Ljud bara i vanlig video (slow motion och tidsförlopp spelas upp i en annan takt)

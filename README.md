@@ -43,11 +43,14 @@ där man trycker på texten för att markera, kopiera eller dela den.
 
 **Bildvisare** (tryck på miniatyren till vänster om avtryckaren)
 - Bläddra mellan bilder och videor, nyp- och dubbeltrycks-zoom
-- **Redigera**, **Text**, **Dela**, **Detaljer**, **Radera**
+- **Alla**, **Favoriter** och **Papperskorg** överst
+- **Redigera**, **Text**, **Favorit** (hjärtat), **Dela**, **Detaljer** (med plats och Visa på karta), **Ta bort**
+- Ta bort flyttar till papperskorgen (Ångra en stund efteråt); där finns **Återställ**, **Radera** och **Töm**
 
 **Redigerare**
 - 12 filter med styrkereglage (Livfull, Varm, Kall, Gyllene, Film, Blek, Retro, Dramatisk, Svartvit, Noir, Sepia …)
 - Justera ljusstyrka, kontrast, mättnad, värme och vinjett
+- **Beskär**: dra i hörnen eller flytta ramen, fritt eller 1:1, 4:3, 3:2, 16:9 (Vänd för stående/liggande)
 - Rotera och spegla, håll in jämför-knappen för att se originalet
 - Sparas alltid som en **ny kopia** – originalet ändras aldrig
 
@@ -67,9 +70,13 @@ där man trycker på texten för att markera, kopiera eller dela den.
 **Inställningar och Om**
 - Bildformat, kvalitet, JPEG-kvalitet, spegling av frontkamera, videoupplösning,
   stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration, volymknappar
+- **Vattenstämpel** (av från början): egen text och valfritt brännvidd, bländare, slutartid, ISO och datum –
+  förhandsvisning i Inställningar och i sökaren
+- **Spara plats** (av från början): GPS-position i foton och filmer, behörigheten frågas först när den slås på
 - Språkval Svenska/English direkt i appen (Android 13+), som i USB-appen
 - **Kameror** visar vad telefonen ger appen tillgång till: varje lins med brännvidd, megapixlar,
-  bildfrekvens, slow motion, RAW och Pro-värden. Rapporten kan kopieras eller delas
+  bildfrekvens, slow motion (och appens val), kameraparet i Dubbel, kodaren för dubbelvideo,
+  platstjänster, RAW och Pro-värden. Rapporten kan kopieras eller delas
 - **Uppdateringar** direkt i appen, som i Alif: kortet "Ny version finns", Uppdatera, och appen startar om av sig själv
 - **Manual** under Inställningar › Manual, på svenska och engelska, uppdateras i varje version
 - **Om**-sidan visar *Developer: Claes Sundman S.N.C AB*, version, enhet och licenser

@@ -98,7 +98,7 @@
     <string name="editor_title">Edit</string>
     <string name="editor_filters">Filters</string>
     <string name="editor_adjust">Adjust</string>
-    <string name="editor_rotate">Rotate</string>
+    <string name="editor_rotate">Crop</string>
     <string name="editor_rotate_left">Rotate left</string>
     <string name="editor_rotate_right">Rotate right</string>
     <string name="editor_flip">Mirror</string>
@@ -441,4 +441,52 @@
     <string name="cams_video_camera">Back camera for video</string>
     <string name="cams_app_camera_value">ID %1$s – %2$s</string>
     <string name="cams_ois_phone">Handled by the phone – not controllable by apps</string>
+    <!-- 1.15.0: bildvisaren (favoriter, papperskorg), vattenstämpel, plats, beskärning, sidan Kameror -->
+    <string name="viewer_all">All</string>
+    <string name="viewer_favorites">Favorites</string>
+    <string name="viewer_trash">Trash</string>
+    <string name="action_favorite">Favorite</string>
+    <string name="action_restore">Restore</string>
+    <string name="action_delete_forever">Delete</string>
+    <string name="viewer_empty_trash">Empty</string>
+    <string name="viewer_moved_to_trash">Moved to trash</string>
+    <string name="viewer_undo">Undo</string>
+    <string name="viewer_restored">Restored</string>
+    <string name="viewer_no_favorites">No favorites yet – tap the heart on a photo or video</string>
+    <string name="viewer_trash_empty">The trash is empty</string>
+    <string name="viewer_delete_title">Delete for good?</string>
+    <string name="viewer_delete_confirm">Delete for good</string>
+    <string name="viewer_op_failed">The file couldn\'t be changed</string>
+    <plurals name="viewer_trash_days">
+        <item quantity="one">Deleted for good in %d day</item>
+        <item quantity="other">Deleted for good in %d days</item>
+    </plurals>
+    <plurals name="viewer_delete_text">
+        <item quantity="one">The photo or video is deleted for good. This can\'t be undone.</item>
+        <item quantity="other">%d photos and videos are deleted for good. This can\'t be undone.</item>
+    </plurals>
+    <string name="info_location">Location</string>
+    <string name="info_show_map">Show on map</string>
+    <string name="info_expires">Deleted for good</string>
+    <string name="setting_watermark">Watermark</string>
+    <string name="setting_watermark_desc">Your text in the corner of photos taken with the camera (not videos or RAW). Shown in the viewfinder too.</string>
+    <string name="setting_watermark_text">Watermark text</string>
+    <string name="setting_watermark_details">Show date and exposure</string>
+    <string name="setting_watermark_details_desc">Focal length, aperture, shutter speed, ISO and date on the line below</string>
+    <string name="setting_watermark_preview">Preview</string>
+    <string name="cd_watermark_preview">Watermark preview</string>
+    <string name="setting_location">Save location</string>
+    <string name="setting_location_desc">GPS position in photos and videos. Off from the start – the phone asks for permission when you turn it on.</string>
+    <string name="setting_location_denied">Location permission was denied. Allow it in Android\'s app settings to save the location.</string>
+    <string name="crop_free">Free</string>
+    <string name="crop_whole">Whole</string>
+    <string name="crop_turn">Turn</string>
+    <string name="cams_slowmo_used">Yes – %1$s in Video (%2$s)</string>
+    <string name="cams_dual_used">Yes – Dual mode, cameras %1$s + %2$s (photo and video)</string>
+    <string name="cams_dual_video">Dual video encoder</string>
+    <string name="cams_dual_video_value">%1$s at 30 fps – %2$s</string>
+    <string name="cams_location">Location services</string>
+    <string name="cams_location_none">None</string>
+    <string name="cams_location_on">on</string>
+    <string name="cams_location_off">off</string>
 </resources>

@@ -1,8 +1,33 @@
 package se.snc.camera.settings
 
+import android.Manifest
 import android.app.LocaleManager
 import android.os.Build
 import android.os.LocaleList
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import se.snc.camera.camera.Watermark
+import se.snc.camera.camera.WatermarkText
+import se.snc.camera.util.isGranted
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -104,6 +129,16 @@ fun SettingsScreen(
         scope.launch { repository.update(transform) }
     }
     var confirmReset by remember { mutableStateOf(false) }
+    // Plats: behörigheten frågas först när inställningen slås på
+    var locationDenied by remember { mutableStateOf(false) }
+    val locationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result.values.any { it }) {
+            locationDenied = false
+            update { it.copy(saveLocation = true) }
+        } else {
+            locationDenied = true
+        }
+    }
     val darkLabel = stringResource(R.string.theme_dark)
     val beigeLabel = stringResource(R.string.theme_beige)
 
@@ -228,6 +263,31 @@ fun SettingsScreen(
                 checked = settings.mirrorFront,
                 onChange = { v -> update { it.copy(mirrorFront = v) } }
             )
+            // Vattenstämpel: text i hörnet på foton (och i sökaren som förhandsvisning)
+            ToggleRow(
+                title = stringResource(R.string.setting_watermark),
+                subtitle = stringResource(R.string.setting_watermark_desc),
+                checked = settings.watermark,
+                onChange = { v -> update { it.copy(watermark = v) } }
+            )
+            if (settings.watermark) {
+                var text by rememberSaveable { mutableStateOf<String?>(null) }
+                val shown = text ?: settings.watermarkText
+                FieldLabel(stringResource(R.string.setting_watermark_text))
+                WatermarkField(value = shown, onChange = { v ->
+                    val t = v.replace("\n", " ").take(40)
+                    text = t
+                    update { it.copy(watermarkText = t) }
+                })
+                ToggleRow(
+                    title = stringResource(R.string.setting_watermark_details),
+                    subtitle = stringResource(R.string.setting_watermark_details_desc),
+                    checked = settings.watermarkDetails,
+                    onChange = { v -> update { it.copy(watermarkDetails = v) } }
+                )
+                FieldLabel(stringResource(R.string.setting_watermark_preview))
+                WatermarkPreview(title = WatermarkText.title(shown), details = settings.watermarkDetails)
+            }
         }
 
         // ---------------- Video ----------------
@@ -300,6 +360,23 @@ fun SettingsScreen(
                 subtitle = stringResource(R.string.setting_keep_mode_desc),
                 checked = settings.keepLastMode,
                 onChange = { v -> update { it.copy(keepLastMode = v) } }
+            )
+            ToggleRow(
+                title = stringResource(R.string.setting_location),
+                subtitle = stringResource(if (locationDenied) R.string.setting_location_denied else R.string.setting_location_desc),
+                checked = settings.saveLocation,
+                onChange = { v ->
+                    if (!v) {
+                        update { it.copy(saveLocation = false) }
+                    } else if (context.isGranted(Manifest.permission.ACCESS_FINE_LOCATION) ||
+                        context.isGranted(Manifest.permission.ACCESS_COARSE_LOCATION)
+                    ) {
+                        locationDenied = false
+                        update { it.copy(saveLocation = true) }
+                    } else {
+                        locationLauncher.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
+                }
             )
             FieldLabel(stringResource(R.string.setting_volume_keys))
             ChoiceGrid(
@@ -378,6 +455,67 @@ fun SettingsScreen(
                 TextButton(onClick = { confirmReset = false }) { Text(stringResource(R.string.cancel), color = Ui.Muted) }
             }
         )
+    }
+}
+
+/** Textfältet för vattenstämpelns text. */
+@Composable
+private fun WatermarkField(value: String, onChange: (String) -> Unit) {
+    val shape = RoundedCornerShape(14.dp)
+    BasicTextField(
+        value = value,
+        onValueChange = onChange,
+        singleLine = true,
+        textStyle = TextStyle(color = Ui.Text, fontFamily = BodyFont, fontSize = 16.sp, fontWeight = FontWeight.SemiBold),
+        cursorBrush = SolidColor(Ui.Gold),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, imeAction = ImeAction.Done),
+        decorationBox = { inner ->
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .clip(shape)
+                    .background(Ui.Card2)
+                    .border(1.dp, Ui.Line, shape)
+                    .padding(horizontal = 14.dp, vertical = 12.dp)
+            ) {
+                if (value.isEmpty()) Text(WatermarkText.DEFAULT_TITLE, color = Ui.Dim, fontFamily = BodyFont, fontSize = 16.sp)
+                inner()
+            }
+        },
+        modifier = Modifier.fillMaxWidth()
+    )
+}
+
+/** Förhandsvisning av vattenstämpeln på en bild i kvällsljus (samma ritning som på fotot). */
+@Composable
+private fun WatermarkPreview(title: String, details: Boolean) {
+    val context = LocalContext.current
+    val fonts = remember { Watermark.fonts(context) }
+    val sample = remember(details) {
+        if (!details) null else WatermarkText.details(
+            "24", "1.88", "0.008333", "100",
+            SimpleDateFormat("yyyy:MM:dd HH:mm:ss", Locale.US).format(Date())
+        )
+    }
+    val shape = RoundedCornerShape(16.dp)
+    val description = stringResource(R.string.cd_watermark_preview)
+    Canvas(
+        Modifier
+            .fillMaxWidth()
+            .aspectRatio(4f / 3f)
+            .clip(shape)
+            .background(
+                Brush.verticalGradient(
+                    0f to Color(0xFF1C3B4A),
+                    0.55f to Color(0xFF7A6A55),
+                    1f to Color(0xFF2B2219)
+                )
+            )
+            .semantics { contentDescription = description }
+    ) {
+        drawIntoCanvas { c ->
+            Watermark.draw(c.nativeCanvas, size.width, size.height, Watermark.Spec(title, sample), fonts)
+        }
     }
 }
 

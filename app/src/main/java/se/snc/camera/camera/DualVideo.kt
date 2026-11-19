@@ -485,9 +485,17 @@ class DualVideoRenderer {
  * Skriver bild och ljud till MP4. Bilden börjar på 0 med sin första (hel)bild; ljud från före den kastas.
  * Prover som kommer innan båda spåren är kända väntar i en kö.
  */
-private class DualMuxer(fd: java.io.FileDescriptor, orientation: Int, @Volatile var expectAudio: Boolean) {
+private class DualMuxer(
+    fd: java.io.FileDescriptor,
+    orientation: Int,
+    @Volatile var expectAudio: Boolean,
+    location: android.location.Location? = null
+) {
     private val lock = Any()
-    private val muxer = MediaMuxer(fd, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).apply { setOrientationHint(orientation) }
+    private val muxer = MediaMuxer(fd, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).apply {
+        setOrientationHint(orientation)
+        if (location != null) setLocation(location.latitude.toFloat(), location.longitude.toFloat())
+    }
     private var videoTrack = -1
     private var audioTrack = -1
     private var started = false
@@ -599,7 +607,8 @@ class DualRecorder(private val context: Context, private val renderer: DualVideo
         private set
 
     /** Startar inspelningen. False om det inte gick (då är allt städat). */
-    suspend fun start(withAudio: Boolean, orientationHint: Int): Boolean = withContext(Dispatchers.IO) {
+    suspend fun start(withAudio: Boolean, orientationHint: Int, location: android.location.Location? = null): Boolean =
+        withContext(Dispatchers.IO) {
         try {
             val (codec, size) = createVideoCodec()
             width = size.first
@@ -615,7 +624,7 @@ class DualRecorder(private val context: Context, private val renderer: DualVideo
             uri = newUri
             val fd = resolver.openFileDescriptor(newUri, "rw") ?: error("filen kunde inte öppnas")
             pfd = fd
-            val m = DualMuxer(fd.fileDescriptor, orientationHint, expectAudio = withAudio)
+            val m = DualMuxer(fd.fileDescriptor, orientationHint, expectAudio = withAudio, location = location)
             muxer = m
             val t = HandlerThread("SncDualEncoder").apply { start() }
             codecThread = t

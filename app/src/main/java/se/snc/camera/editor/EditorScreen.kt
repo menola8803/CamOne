@@ -8,10 +8,12 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -60,11 +62,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -74,6 +81,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -151,10 +159,32 @@ fun EditorScreen(
         var saving by remember { mutableStateOf(false) }
         var confirmDiscard by remember { mutableStateOf(false) }
 
-        val preview by produceState<ImageBitmap?>(null, base, edit.rotation, edit.flipHorizontal) {
+        // Den vridna bilden (hela) och den beskurna – beskärningsramen visas på den hela i fliken Beskär
+        val oriented by produceState<Bitmap?>(null, base, edit.rotation, edit.flipHorizontal) {
             val b = base ?: return@produceState
-            value = withContext(Dispatchers.Default) { b.transformed(edit.rotation, edit.flipHorizontal).asImageBitmap() }
+            value = withContext(Dispatchers.Default) { b.transformed(edit.rotation, edit.flipHorizontal) }
         }
+        val fullPreview = remember(oriented) { oriented?.asImageBitmap() }
+        val croppedPreview by produceState<ImageBitmap?>(null, oriented, edit.crop) {
+            val o = oriented ?: return@produceState
+            value = withContext(Dispatchers.Default) { o.croppedTo(edit.crop).asImageBitmap() }
+        }
+        var cropRatio by remember { mutableStateOf<Pair<Float, Float>?>(null) }
+        var cropTurned by remember { mutableStateOf(false) }
+        val orientedW = oriented?.width ?: 0
+        val orientedH = oriented?.height ?: 0
+        val lockedRatio = cropRatio?.let { (long, short) ->
+            if (long == short) 1f else CropMath.ratioFor(long, short, portrait = orientedH > orientedW, turned = cropTurned)
+        }
+        fun applyRatio(choice: Pair<Float, Float>?, turned: Boolean) {
+            cropRatio = choice
+            cropTurned = turned
+            if (choice == null) return
+            val r = if (choice.first == choice.second) 1f else CropMath.ratioFor(choice.first, choice.second, orientedH > orientedW, turned)
+            edit = edit.copy(crop = CropMath.centered(orientedW, orientedH, r))
+        }
+        val cropping = tab == EditorTab.TRANSFORM
+        val preview = if (cropping) fullPreview else (croppedPreview ?: fullPreview)
         val colorFilter = remember(edit.filter, edit.intensity, edit.adjustments) {
             ColorFilter.colorMatrix(buildColorMatrix(edit).toCompose())
         }
@@ -268,29 +298,40 @@ fun EditorScreen(
                 if (img == null) {
                     CircularProgressIndicator(color = Usb.Gold)
                 } else {
-                    val vignette = if (comparing) 0f else edit.adjustments.vignette
-                    Image(
-                        bitmap = img,
-                        contentDescription = null,
-                        contentScale = ContentScale.Fit,
-                        colorFilter = if (comparing) null else colorFilter,
-                        modifier = Modifier
-                            .aspectRatio(img.width.toFloat() / img.height.toFloat())
-                            .drawWithContent {
-                                drawContent()
-                                if (vignette > 0f) {
-                                    drawRect(
-                                        Brush.radialGradient(
-                                            0f to Color.Transparent,
-                                            0.55f to Color.Transparent,
-                                            1f to Color.Black.copy(alpha = 0.75f * vignette),
-                                            center = center,
-                                            radius = size.minDimension.coerceAtLeast(1f) * 0.5f * 1.414f
+                    val vignette = if (comparing || cropping) 0f else edit.adjustments.vignette
+                    Box(Modifier.aspectRatio(img.width.toFloat() / img.height.toFloat())) {
+                        Image(
+                            bitmap = img,
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            colorFilter = if (comparing) null else colorFilter,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .drawWithContent {
+                                    drawContent()
+                                    if (vignette > 0f) {
+                                        drawRect(
+                                            Brush.radialGradient(
+                                                0f to Color.Transparent,
+                                                0.55f to Color.Transparent,
+                                                1f to Color.Black.copy(alpha = 0.75f * vignette),
+                                                center = center,
+                                                radius = size.minDimension.coerceAtLeast(1f) * 0.5f * 1.414f
+                                            )
                                         )
-                                    )
+                                    }
                                 }
-                            }
-                    )
+                        )
+                        if (cropping && !comparing) {
+                            CropOverlay(
+                                crop = edit.crop ?: CropRect.WHOLE,
+                                imageW = orientedW,
+                                imageH = orientedH,
+                                ratio = lockedRatio,
+                                onChange = { edit = edit.copy(crop = it) }
+                            )
+                        }
+                    }
                 }
                 if (saving) {
                     Box(
@@ -374,20 +415,53 @@ fun EditorScreen(
                         }
                     }
 
-                    EditorTab.TRANSFORM -> Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(top = 24.dp),
-                        horizontalArrangement = Arrangement.SpaceEvenly
+                    EditorTab.TRANSFORM -> Column(
+                        Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        ToolButton(Icons.Rounded.RotateLeft, stringResource(R.string.editor_rotate_left), false, false) {
-                            edit = edit.copy(rotation = (edit.rotation + 270) % 360)
+                        // Format: fritt eller låst (följer bildens riktning; Vänd byter stående/liggande)
+                        Row(
+                            Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            val choices = listOf<Pair<String, Pair<Float, Float>?>>(
+                                stringResource(R.string.crop_free) to null,
+                                "1:1" to (1f to 1f),
+                                "4:3" to (4f to 3f),
+                                "3:2" to (3f to 2f),
+                                "16:9" to (16f to 9f)
+                            )
+                            choices.forEach { (label, choice) ->
+                                RatioChip(label, selected = cropRatio == choice) { applyRatio(choice, cropTurned) }
+                            }
+                            val canTurn = cropRatio != null && cropRatio?.first != cropRatio?.second
+                            RatioChip(stringResource(R.string.crop_turn), selected = cropTurned && canTurn, enabled = canTurn) {
+                                applyRatio(cropRatio, !cropTurned)
+                            }
                         }
-                        ToolButton(Icons.Rounded.RotateRight, stringResource(R.string.editor_rotate_right), false, false) {
-                            edit = edit.copy(rotation = (edit.rotation + 90) % 360)
-                        }
-                        ToolButton(Icons.Rounded.Flip, stringResource(R.string.editor_flip), edit.flipHorizontal, false) {
-                            edit = edit.copy(flipHorizontal = !edit.flipHorizontal)
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ) {
+                            ToolButton(Icons.Rounded.RotateLeft, stringResource(R.string.editor_rotate_left), false, false) {
+                                edit = edit.copy(rotation = (edit.rotation + 270) % 360, crop = edit.crop?.rotatedCcw())
+                            }
+                            ToolButton(Icons.Rounded.RotateRight, stringResource(R.string.editor_rotate_right), false, false) {
+                                edit = edit.copy(rotation = (edit.rotation + 90) % 360, crop = edit.crop?.rotatedCw())
+                            }
+                            ToolButton(Icons.Rounded.Flip, stringResource(R.string.editor_flip), edit.flipHorizontal, false) {
+                                // Spegling före vridningen: i en vriden bild blir det en lodrät spegling
+                                val c = edit.crop?.let { if (edit.rotation % 180 == 0) it.flipped() else it.flippedV() }
+                                edit = edit.copy(flipHorizontal = !edit.flipHorizontal, crop = c)
+                            }
+                            ToolButton(Icons.Rounded.Crop, stringResource(R.string.crop_whole), false, edit.crop?.isWhole == false) {
+                                cropRatio = null
+                                cropTurned = false
+                                edit = edit.copy(crop = null)
+                            }
                         }
                     }
                 }
@@ -436,6 +510,107 @@ fun EditorScreen(
                 }
             )
         }
+    }
+}
+
+@Composable
+private fun RatioChip(label: String, selected: Boolean, enabled: Boolean = true, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(18.dp)
+    Text(
+        label,
+        color = when {
+            selected -> Usb.Bg
+            enabled -> Usb.Text
+            else -> Usb.Dim
+        },
+        fontSize = 13.sp,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier
+            .clip(shape)
+            .background(if (selected) Usb.Gold else Usb.Card)
+            .border(1.dp, if (selected) Usb.Gold else Usb.Line, shape)
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    )
+}
+
+/**
+ * Beskärningsramen ovanpå bilden: mörkt utanför, guldram med tredjedelslinjer och hörn. Dra i ett hörn
+ * för att ändra storlek (med låst format följer den andra sidan med), dra inne i ramen för att flytta den.
+ */
+@Composable
+private fun CropOverlay(crop: CropRect, imageW: Int, imageH: Int, ratio: Float?, onChange: (CropRect) -> Unit) {
+    val current by rememberUpdatedState(crop)
+    val lock by rememberUpdatedState(ratio)
+    val change by rememberUpdatedState(onChange)
+    val density = LocalDensity.current
+    val slop = with(density) { 36.dp.toPx() }
+    val stroke = with(density) { 2.dp.toPx() }
+    val handle = with(density) { 18.dp.toPx() }
+    val handleStroke = with(density) { 4.dp.toPx() }
+    Canvas(
+        Modifier
+            .fillMaxSize()
+            .pointerInput(imageW, imageH) {
+                var corner: CropCorner? = null
+                var moving = false
+                detectDragGestures(
+                    onDragStart = { pos ->
+                        val w = size.width.toFloat().coerceAtLeast(1f)
+                        val h = size.height.toFloat().coerceAtLeast(1f)
+                        val nx = pos.x / w
+                        val ny = pos.y / h
+                        val c = current
+                        corner = CropMath.hitCorner(c, nx, ny, slop / w, slop / h)
+                        moving = corner == null && nx in c.left..c.right && ny in c.top..c.bottom
+                    },
+                    onDragEnd = { corner = null; moving = false },
+                    onDragCancel = { corner = null; moving = false },
+                    onDrag = { pointer, drag ->
+                        val w = size.width.toFloat().coerceAtLeast(1f)
+                        val h = size.height.toFloat().coerceAtLeast(1f)
+                        val dx = drag.x / w
+                        val dy = drag.y / h
+                        val k = corner
+                        val next = when {
+                            k != null -> CropMath.dragCorner(current, k, dx, dy, imageW, imageH, lock)
+                            moving -> CropMath.move(current, dx, dy)
+                            else -> null
+                        }
+                        if (next != null) {
+                            pointer.consume()
+                            change(next)
+                        }
+                    }
+                )
+            }
+    ) {
+        val l = crop.left * size.width
+        val t = crop.top * size.height
+        val r = crop.right * size.width
+        val b = crop.bottom * size.height
+        val shade = Color.Black.copy(alpha = 0.55f)
+        drawRect(shade, topLeft = Offset.Zero, size = Size(size.width, t))
+        drawRect(shade, topLeft = Offset(0f, b), size = Size(size.width, size.height - b))
+        drawRect(shade, topLeft = Offset(0f, t), size = Size(l, b - t))
+        drawRect(shade, topLeft = Offset(r, t), size = Size(size.width - r, b - t))
+        val thirds = Color.White.copy(alpha = 0.35f)
+        for (i in 1..2) {
+            val x = l + (r - l) * i / 3f
+            val y = t + (b - t) * i / 3f
+            drawLine(thirds, Offset(x, t), Offset(x, b), strokeWidth = stroke / 2)
+            drawLine(thirds, Offset(l, y), Offset(r, y), strokeWidth = stroke / 2)
+        }
+        drawRect(Usb.Gold, topLeft = Offset(l, t), size = Size(r - l, b - t), style = Stroke(stroke))
+        // Hörnen
+        fun corner(x: Float, y: Float, sx: Float, sy: Float) {
+            drawLine(Usb.Gold, Offset(x, y), Offset(x + handle * sx, y), strokeWidth = handleStroke, cap = StrokeCap.Round)
+            drawLine(Usb.Gold, Offset(x, y), Offset(x, y + handle * sy), strokeWidth = handleStroke, cap = StrokeCap.Round)
+        }
+        corner(l, t, 1f, 1f)
+        corner(r, t, -1f, 1f)
+        corner(l, b, 1f, -1f)
+        corner(r, b, -1f, -1f)
     }
 }
 

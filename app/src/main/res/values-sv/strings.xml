@@ -97,7 +97,7 @@
     <string name="editor_title">Redigera</string>
     <string name="editor_filters">Filter</string>
     <string name="editor_adjust">Justera</string>
-    <string name="editor_rotate">Rotera</string>
+    <string name="editor_rotate">Beskär</string>
     <string name="editor_rotate_left">Vänster</string>
     <string name="editor_rotate_right">Höger</string>
     <string name="editor_flip">Spegla</string>
@@ -438,4 +438,52 @@
     <string name="cams_video_camera">Bakkamera för video</string>
     <string name="cams_app_camera_value">ID %1$s – %2$s</string>
     <string name="cams_ois_phone">Sköts av telefonen – kan inte styras av appar</string>
+    <!-- 1.15.0: bildvisaren (favoriter, papperskorg), vattenstämpel, plats, beskärning, sidan Kameror -->
+    <string name="viewer_all">Alla</string>
+    <string name="viewer_favorites">Favoriter</string>
+    <string name="viewer_trash">Papperskorg</string>
+    <string name="action_favorite">Favorit</string>
+    <string name="action_restore">Återställ</string>
+    <string name="action_delete_forever">Radera</string>
+    <string name="viewer_empty_trash">Töm</string>
+    <string name="viewer_moved_to_trash">Flyttad till papperskorgen</string>
+    <string name="viewer_undo">Ångra</string>
+    <string name="viewer_restored">Återställd</string>
+    <string name="viewer_no_favorites">Inga favoriter än – tryck på hjärtat på en bild eller film</string>
+    <string name="viewer_trash_empty">Papperskorgen är tom</string>
+    <string name="viewer_delete_title">Radera för gott?</string>
+    <string name="viewer_delete_confirm">Radera för gott</string>
+    <string name="viewer_op_failed">Filen kunde inte ändras</string>
+    <plurals name="viewer_trash_days">
+        <item quantity="one">Tas bort för gott om %d dag</item>
+        <item quantity="other">Tas bort för gott om %d dagar</item>
+    </plurals>
+    <plurals name="viewer_delete_text">
+        <item quantity="one">Bilden eller filmen tas bort för gott. Det går inte att ångra.</item>
+        <item quantity="other">%d bilder och filmer tas bort för gott. Det går inte att ångra.</item>
+    </plurals>
+    <string name="info_location">Plats</string>
+    <string name="info_show_map">Visa på karta</string>
+    <string name="info_expires">Tas bort för gott</string>
+    <string name="setting_watermark">Vattenstämpel</string>
+    <string name="setting_watermark_desc">Din text i hörnet på foton som tas med kameran (inte filmer eller RAW). Syns också i sökaren.</string>
+    <string name="setting_watermark_text">Vattenstämpelns text</string>
+    <string name="setting_watermark_details">Visa datum och exponering</string>
+    <string name="setting_watermark_details_desc">Brännvidd, bländare, slutartid, ISO och datum på raden under</string>
+    <string name="setting_watermark_preview">Förhandsvisning</string>
+    <string name="cd_watermark_preview">Förhandsvisning av vattenstämpeln</string>
+    <string name="setting_location">Spara plats</string>
+    <string name="setting_location_desc">GPS-position i foton och filmer. Av från början – telefonen frågar om behörighet när du slår på den.</string>
+    <string name="setting_location_denied">Platsbehörigheten nekades. Tillåt den i Androids appinställningar för att spara platsen.</string>
+    <string name="crop_free">Fri</string>
+    <string name="crop_whole">Hela</string>
+    <string name="crop_turn">Vänd</string>
+    <string name="cams_slowmo_used">Ja – %1$s i Video (%2$s)</string>
+    <string name="cams_dual_used">Ja – läget Dubbel, kamera %1$s + %2$s (foto och video)</string>
+    <string name="cams_dual_video">Kodare för dubbelvideo</string>
+    <string name="cams_dual_video_value">%1$s i 30 fps – %2$s</string>
+    <string name="cams_location">Platstjänster</string>
+    <string name="cams_location_none">Inga</string>
+    <string name="cams_location_on">på</string>
+    <string name="cams_location_off">av</string>
 </resources>

@@ -184,6 +184,78 @@ sleep 1
 key KEYCODE_BACK
 sleep 4
 
+step "Bildvisaren: favorit, papperskorg och beskärning"
+tap --desc "Open last photo"
+sleep 4
+tap --text "Favorite"
+sleep 2
+tap --text "Favorites"
+sleep 3
+shot 12b-favoriter
+check "Favoriten syns under Favoriter" $UI exists --text "1 / 1" --timeout 6
+tap --text "All"
+sleep 3
+# Ta bort flyttar till papperskorgen (appens egen bild: ingen dialog från Android). Papperskorgens filer
+# heter .trashed-… och syns inte i ls.
+TB=$(count '\.jpg')
+tap --text "Delete"
+sleep 3
+shot 12c-flyttad
+check "Ta bort visar Ångra" $UI exists --text "Moved to trash" --timeout 4
+TA=$(count '\.jpg')
+check "Bilden flyttas till papperskorgen ($TB → $TA)" [ "$TA" -lt "$TB" ]
+tap --text "Undo"
+sleep 3
+check "Ångra tar tillbaka bilden ($TA → $(count '\.jpg'))" [ "$(count '\.jpg')" -eq "$TB" ]
+tap --text "Delete"
+sleep 3
+tap --text "Trash"
+sleep 4
+shot 12d-papperskorg
+check "Papperskorgen visar bilden" $UI exists --text "Restore" --timeout 6
+check "Papperskorgen visar hur länge den ligger kvar" $UI exists --contains "Deleted for good in"
+tap --text "Restore"
+sleep 3
+check "Bilden återställs från papperskorgen" [ "$(count '\.jpg')" -eq "$TB" ]
+check "Papperskorgen är tom efter återställningen" $UI exists --text "The trash is empty" --timeout 5
+tap --text "All"
+sleep 3
+tap --text "Delete"
+sleep 3
+tap --text "Trash"
+sleep 4
+tap --text "Delete"
+sleep 2
+check "Radera för gott frågar först" $UI exists --text "Delete for good?" --timeout 4
+tap --text "Delete for good"
+sleep 3
+shot 12e-raderad
+check "Papperskorgen är tom efter Radera" $UI exists --text "The trash is empty" --timeout 5
+check "Raderad bild kommer inte tillbaka ($(count '\.jpg') < $TB)" [ "$(count '\.jpg')" -lt "$TB" ]
+tap --text "All"
+sleep 3
+tap --text "Edit"
+sleep 4
+tap --text "Crop"
+sleep 2
+tap --text "1:1"
+sleep 2
+shot 12f-beskar
+CB=$(count '\.jpg')
+tap --text "Save copy"
+for w in $(seq 1 15); do sleep 1; [ "$(count '\.jpg')" -gt "$CB" ] && break; done
+check "Beskuren kopia sparas ($CB → $(count '\.jpg'))" [ "$(count '\.jpg')" -gt "$CB" ]
+FC=$(adb shell "ls -t '$DIR' | grep 'IMG_EDIT.*jpg' | head -1" | tr -d '\r')
+if [ -n "$FC" ]; then
+  adb pull "$DIR/$FC" "$OUT/beskuren.jpg" >> "$OUT/ui.log" 2>&1
+  RC=$(ratio "$OUT/beskuren.jpg")
+  log "  Beskuren bild: $FC form ${RC:-?}"
+  check "Beskärningen 1:1 ger en kvadratisk bild (${RC:-?})" python3 -c "import sys; sys.exit(0 if abs(float('${RC:-0}')-1)<0.02 else 1)"
+fi
+check "Appen lever efter bildvisaren" alive
+key KEYCODE_BACK
+sleep 4
+
 step "Video"
 tap --text "VIDEO"
 sleep 5
@@ -679,6 +751,75 @@ check "Selfie sparas ($before → $after)" [ "$after" -gt "$before" ]
 tap --desc "Switch camera"
 sleep 5
 
+step "Vattenstämpel och plats"
+# Emulatorns GPS: Stockholm
+adb shell cmd location set-location-enabled true >> "$OUT/ui.log" 2>&1
+adb emu geo fix 18.0686 59.3293 >> "$OUT/ui.log" 2>&1
+tap --desc "Settings"
+sleep 3
+$UI tap --text "Watermark" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Vattenstämpel i inställningarna"
+sleep 2
+check "Förhandsvisningen av vattenstämpeln visas" $UI exists --desc "Watermark preview" --scroll --timeout 10
+shot 21d-vattenstampel
+$UI tap --text "Save location" --scroll --timeout 20 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Spara plats i inställningarna"
+sleep 2
+shot 21e-spara-plats
+key KEYCODE_BACK
+sleep 4
+adb emu geo fix 18.0686 59.3293 >> "$OUT/ui.log" 2>&1
+check "Vattenstämpeln syns i sökaren" $UI exists --desc "Watermark preview" --timeout 6
+shot 21f-vattenstampel-sokare
+sleep 4
+adb emu geo fix 18.0687 59.3294 >> "$OUT/ui.log" 2>&1
+sleep 2
+FWM=$(snap jpg vattenstampel.jpg)
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Vattenstämpel:|Plats:" | tail -4 | while IFS= read -r l; do
+  echo "::notice title=Vattenstämpel och plats::$(echo "$l" | cut -c1-300)"
+done
+check "Fotot får vattenstämpeln (${FWM:-ingen fil})" sh -c "adb logcat -d -s SncCamera:V 2>/dev/null | grep -q 'Vattenstämpel: '"
+if [ -f "$OUT/vattenstampel.jpg" ]; then
+  WMC=$(python3 - "$OUT/vattenstampel.jpg" <<'PY'
+import sys
+from PIL import Image, ImageOps
+im = ImageOps.exif_transpose(Image.open(sys.argv[1])).convert("RGB")
+w, h = im.size
+s = min(w, h)
+# Guldlinjen: 0,045 · kortsidan in, 0,006 bred, nedre kanten 0,045 upp
+x0 = int(s * 0.0458); x1 = int(s * 0.0502)
+y1 = int(h - s * 0.050); y0 = int(h - s * 0.070)
+r, g, b = [sum(c) / len(c) for c in zip(*im.crop((x0, y0, x1, y1)).getdata())]
+print(f"{'1' if r > 140 and r - b > 45 else '0'} {r:.0f},{g:.0f},{b:.0f}")
+PY
+)
+  log "  Vattenstämpelns guldlinje i fotot: ${WMC:-?}"
+  check "Guldlinjen i vattenstämpeln finns i fotot (${WMC:-?})" [ "${WMC%% *}" = "1" ]
+  GPS=$(python3 - "$OUT/vattenstampel.jpg" <<'PY'
+import sys
+from PIL import Image
+e = Image.open(sys.argv[1]).getexif()
+g = e.get_ifd(0x8825)
+def deg(v, ref):
+    d = float(v[0]) + float(v[1]) / 60 + float(v[2]) / 3600
+    return -d if ref in ("S", "W") else d
+if 2 in g and 4 in g:
+    print(f"{deg(g[2], g.get(1, 'N')):.4f},{deg(g[4], g.get(3, 'E')):.4f}")
+PY
+)
+  log "  Plats i fotot: ${GPS:-ingen}"
+  check "Fotot har platsen (${GPS:-ingen})" python3 -c "import sys; a,b=map(float,'${GPS:-0,0}'.split(',')); sys.exit(0 if abs(a-59.33)<0.05 and abs(b-18.07)<0.05 else 1)"
+fi
+check "Appen lever efter vattenstämpel och plats" alive
+# Av igen, så att resten av testet tar vanliga bilder
+tap --desc "Settings"
+sleep 3
+$UI tap --text "Watermark" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Vattenstämpel (av)"
+sleep 1
+$UI tap --text "Save location" --scroll --timeout 20 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Spara plats (av)"
+sleep 1
+key KEYCODE_BACK
+sleep 4
+check "Vattenstämpeln syns inte i sökaren när den är av" bash -c "! $UI exists --desc 'Watermark preview' --timeout 2"
+
 step "Inställningar och Om"
 tap --desc "Settings"
 sleep 3
@@ -865,6 +1006,9 @@ check "Kamerasidan visar sammanfattningen" $UI exists --text "AVAILABLE TO THE A
 shot 33-kameror
 # Video använder standardkameran (kamera 0), foto den logiska kameran med flest linser
 check "Kamerasidan visar kameran för video" $UI exists --contains "Back camera for video" --scroll --timeout 15
+check "Kamerasidan visar kameraparet i Dubbel" $UI exists --contains "Dual mode, cameras" --scroll --timeout 15
+check "Kamerasidan visar kodaren för dubbelvideo" $UI exists --text "Dual video encoder" --scroll --timeout 15
+check "Kamerasidan visar platstjänsterna" $UI exists --text "Location services" --scroll --timeout 15
 # Bakkamerans rubrik kommer direkt efter sammanfattningen – leta innan sidan rullas långt ned
 # (--scroll rullar bara nedåt)
 check "Kamerasidan visar bakkameran" $UI exists --contains "BACK CAMERA" --scroll --timeout 25

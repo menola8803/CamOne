@@ -77,6 +77,14 @@ data class AppSettings(
     val jpegQuality: Int = 95,
     val volumeKeyAction: VolumeKeyAction = VolumeKeyAction.SHUTTER,
     val recordAudio: Boolean = true,
+    /** Vattenstämpel i hörnet på foton från kameran (inte i film eller RAW). */
+    val watermark: Boolean = false,
+    /** Vattenstämpelns text (tom = "SNC Camera"). */
+    val watermarkText: String = "SNC Camera",
+    /** Vattenstämpeln visar också brännvidd, bländare, tid, ISO och datum. */
+    val watermarkDetails: Boolean = true,
+    /** Spara platsen (GPS) i foton och filmer. Av från början – kräver platsbehörighet. */
+    val saveLocation: Boolean = false,
     val keepLastMode: Boolean = true,
     val lastMode: String = "PHOTO",
     val lastLensFront: Boolean = false,
@@ -118,6 +126,10 @@ class SettingsRepository(private val context: Context) {
         val jpegQuality = intPreferencesKey("jpeg_quality")
         val volumeKey = stringPreferencesKey("volume_key")
         val recordAudio = booleanPreferencesKey("record_audio")
+        val watermark = booleanPreferencesKey("watermark")
+        val watermarkText = stringPreferencesKey("watermark_text")
+        val watermarkDetails = booleanPreferencesKey("watermark_details")
+        val saveLocation = booleanPreferencesKey("save_location")
         val keepLastMode = booleanPreferencesKey("keep_last_mode")
         val lastMode = stringPreferencesKey("last_mode")
         val lastLensFront = booleanPreferencesKey("last_lens_front")
@@ -165,6 +177,10 @@ class SettingsRepository(private val context: Context) {
             jpegQuality = (p[K.jpegQuality] ?: d.jpegQuality).coerceIn(50, 100),
             volumeKeyAction = p.enumOr(K.volumeKey, d.volumeKeyAction),
             recordAudio = p[K.recordAudio] ?: d.recordAudio,
+            watermark = p[K.watermark] ?: d.watermark,
+            watermarkText = (p[K.watermarkText] ?: d.watermarkText).take(40),
+            watermarkDetails = p[K.watermarkDetails] ?: d.watermarkDetails,
+            saveLocation = p[K.saveLocation] ?: d.saveLocation,
             keepLastMode = p[K.keepLastMode] ?: d.keepLastMode,
             lastMode = p[K.lastMode] ?: d.lastMode,
             lastLensFront = p[K.lastLensFront] ?: d.lastLensFront,
@@ -197,6 +213,10 @@ class SettingsRepository(private val context: Context) {
         p[K.jpegQuality] = s.jpegQuality
         p[K.volumeKey] = s.volumeKeyAction.name
         p[K.recordAudio] = s.recordAudio
+        p[K.watermark] = s.watermark
+        p[K.watermarkText] = s.watermarkText.take(40)
+        p[K.watermarkDetails] = s.watermarkDetails
+        p[K.saveLocation] = s.saveLocation
         p[K.keepLastMode] = s.keepLastMode
         p[K.lastMode] = s.lastMode
         p[K.lastLensFront] = s.lastLensFront

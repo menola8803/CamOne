@@ -139,8 +139,8 @@ class SlowMotionCamera(private val context: Context, private val listener: Liste
         handler.post { openInternal(opt, texture, attempt = 1) }
     }
 
-    fun startRecording(orientationDegrees: Int) {
-        handler.post { startInternal(orientationDegrees) }
+    fun startRecording(orientationDegrees: Int, location: android.location.Location? = null) {
+        handler.post { startInternal(orientationDegrees, location) }
     }
 
     fun stopRecording() {
@@ -298,7 +298,7 @@ class SlowMotionCamera(private val context: Context, private val listener: Liste
         s.setRepeatingBurst(s.createHighSpeedRequestList(b.build()), null, handler)
     }
 
-    private fun startInternal(orientationDegrees: Int) {
+    private fun startInternal(orientationDegrees: Int, location: android.location.Location?) {
         if (recording || closed) return
         val s = session
         val d = device
@@ -324,6 +324,7 @@ class SlowMotionCamera(private val context: Context, private val listener: Liste
             pfd = fd
             muxer = MediaMuxer(fd.fileDescriptor, MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4).also {
                 it.setOrientationHint(orientationDegrees)
+                if (location != null) it.setLocation(location.latitude.toFloat(), location.longitude.toFloat())
             }
             uri = newUri
             track = -1

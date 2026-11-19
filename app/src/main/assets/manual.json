@@ -1,5 +1,5 @@
 {
-  "version": "1.14.0",
+  "version": "1.15.0",
   "sv": [
     {
       "title": "Kameran",
@@ -89,9 +89,11 @@
     {
       "title": "Bildvisaren och redigeraren",
       "items": [
-        "Bläddra mellan bilder och videor. Nyp eller dubbeltryck för att zooma.",
-        "Redigera: filter med styrka, ljusstyrka, kontrast, mättnad, värme och vinjett, rotera och spegla. Håll in jämför-knappen för att se originalet. Den redigerade bilden sparas alltid som en ny kopia.",
-        "Detaljer visar datum, kamera och exponering. Radera tar bort bilden."
+        "Bläddra mellan bilder och videor. Nyp eller dubbeltryck för att zooma. Överst väljer du Alla, Favoriter eller Papperskorg.",
+        "Favorit (hjärtat) markerar bilden eller filmen; under Favoriter syns bara de markerade. Favoriterna syns också i andra galleriappar.",
+        "Ta bort flyttar till papperskorgen – Ångra syns en stund efteråt. I Papperskorg kan du återställa eller radera för gott, och Töm raderar allt. Android tar bort det som legat i papperskorgen i 30 dagar.",
+        "Redigera: filter med styrka, ljusstyrka, kontrast, mättnad, värme och vinjett. Under Beskär drar du i hörnen eller flyttar ramen, väljer fritt format eller 1:1, 4:3, 3:2 och 16:9 (Vänd byter mellan stående och liggande), roterar och speglar. Hela tar bort beskärningen. Håll in jämför-knappen för att se originalet. Den redigerade bilden sparas alltid som en ny kopia.",
+        "Detaljer visar datum, storlek och – om platsen sparades – var bilden togs, med Visa på karta."
       ]
     },
     {
@@ -107,7 +109,9 @@
       "items": [
         "Språk (Svenska eller English) och tema (Mörk eller Beige). Kameran, bildvisaren och redigeraren är alltid mörka.",
         "Foto, Video, Sökare och Allmänt: bildformat, filformat, kvalitet, Ultra HDR, stabilisering, ljud, rutnät, vattenpass, slutarljud, vibration och volymknappar.",
-        "Kameror visar vad telefonen ger appen tillgång till: varje lins, bildfrekvens, slow motion, RAW, 1440p-video, Ultra HDR, HDR-video och dolda högupplösta inställningar. Rapporten kan kopieras eller delas."
+        "Vattenstämpel (Foto, av från början): din text i nedre vänstra hörnet på foton, med en tunn guldlinje – och om du vill brännvidd, bländare, slutartid, ISO och datum på raden under. Förhandsvisningen visar hur den blir, och i sökaren syns den där den hamnar på bilden. Filmer och RAW-filer får ingen vattenstämpel.",
+        "Spara plats (Allmänt, av från början): när du slår på den frågar telefonen om platsbehörighet. Därefter sparas GPS-positionen i foton och filmer. Appen lyssnar bara på platsen medan kameran är öppen och använder Androids egna platstjänster.",
+        "Kameror visar vad telefonen ger appen tillgång till: varje lins, bildfrekvens, slow motion (och vilka val appen erbjuder), vilket kamerapar Dubbel använder, kodaren för dubbelvideo, platstjänster, RAW, 1440p-video, Ultra HDR, HDR-video och dolda högupplösta inställningar. Rapporten kan kopieras eller delas."
       ]
     },
     {
@@ -216,9 +220,11 @@
     {
       "title": "Viewer and editor",
       "items": [
-        "Browse photos and videos. Pinch or double-tap to zoom.",
-        "Edit: filters with strength, brightness, contrast, saturation, warmth and vignette, rotate and flip. Hold the compare button to see the original. The edited photo is always saved as a new copy.",
-        "Details shows the date, camera and exposure. Delete removes the photo."
+        "Swipe between photos and videos. Pinch or double-tap to zoom. At the top, choose All, Favorites or Trash.",
+        "Favorite (the heart) marks the photo or video; Favorites shows only the marked ones. Favorites also show up in other gallery apps.",
+        "Delete moves to the trash – Undo shows for a moment afterwards. In Trash you can restore or delete for good, and Empty deletes everything. Android removes what has been in the trash for 30 days.",
+        "Edit: filters with strength, brightness, contrast, saturation, warmth and vignette. Under Crop you drag the corners or move the frame, choose free format or 1:1, 4:3, 3:2 and 16:9 (Turn switches between portrait and landscape), rotate and mirror. Whole removes the crop. Hold the compare button to see the original. The edited photo is always saved as a new copy.",
+        "Details shows the date, size and – if the location was saved – where the photo was taken, with Show on map."
       ]
     },
     {
@@ -233,8 +239,10 @@
       "title": "Settings",
       "items": [
         "Language (Svenska or English) and theme (Dark or Beige). The camera, viewer and editor are always dark.",
-        "Photo, Video, Viewfinder and General: aspect ratio, file format, quality, Ultra HDR, stabilisation, sound, grid, level, shutter sound, vibration and volume keys.",
-        "Cameras shows what the phone gives the app access to: each lens, frame rate, slow motion, RAW, 1440p video, Ultra HDR, HDR video and hidden high-resolution settings. The report can be copied or shared."
+        "Photo, Video, Viewfinder and General: aspect ratio, file format, quality, Ultra HDR, stabilization, sound, grid, level, shutter sound, vibration and volume keys.",
+        "Watermark (Photo, off from the start): your text in the bottom-left corner of photos, with a thin gold line – and if you like, focal length, aperture, shutter speed, ISO and date on the line below. The preview shows how it looks, and the viewfinder shows it where it lands on the photo. Videos and RAW files get no watermark.",
+        "Save location (General, off from the start): when you turn it on, the phone asks for location permission. After that the GPS position is saved in photos and videos. The app only listens for the location while the camera is open and uses Android's own location services.",
+        "Cameras shows what the phone gives the app access to: each lens, frame rates, slow motion (and the choices the app offers), the camera pair Dual uses, the dual video encoder, location services, RAW, 1440p video, Ultra HDR, HDR video and hidden high-resolution settings. The report can be copied or shared."
       ]
     },
     {

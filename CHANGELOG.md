@@ -2,6 +2,15 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.15.0 – 2026-11-19
+
+- Bildvisaren har Alla, Favoriter och Papperskorg överst. Hjärtat gör en bild eller film till favorit (Androids egen favoritmarkering, syns även i andra galleriappar).
+- Ta bort flyttar till papperskorgen, med Ångra en stund efteråt. I Papperskorg finns Återställ, Radera (för gott) och Töm; Android tar bort det som legat där i 30 dagar.
+- Beskärning i redigeraren (fliken Beskär): dra i hörnen eller flytta ramen, fritt format eller 1:1, 4:3, 3:2 och 16:9 (Vänd för stående/liggande), tillsammans med rotera och spegla.
+- Vattenstämpel under Inställningar › Foto (av från början): egen text med en tunn guldlinje och – valfritt – brännvidd, bländare, slutartid, ISO och datum. Förhandsvisning i Inställningar och i sökaren där den hamnar på fotot. Gäller foton från kameran (även natt, HDR, porträtt, serie och dubbelfoto), inte film eller RAW.
+- Spara plats under Inställningar › Allmänt (av från början): GPS-position i foton och filmer (även slow motion och dubbelvideo). Behörigheten frågas först när den slås på; appen lyssnar bara medan kameran är öppen. Detaljer i bildvisaren visar platsen med Visa på karta.
+- Sidan Kameror och kamerarapporten visar nu vad appen använder: slow motion (val och väg – Camera2 eller CameraX), vilket kamerapar Dubbel använder, kodaren för dubbelvideo och platstjänsterna. Slow motion och fram och bak samtidigt står inte längre som "inte byggt än".
+
 ## Version 1.14.0 – 2026-11-19
 
 - Dubbelvideo: läget Dubbel har nu Foto och Video under sökaren. I Video spelas båda kamerorna in samtidigt, i var sin halva som i sökaren, med guldlinjen emellan – 1080 × 1440 i 30 bilder per sekund med ljud från mikrofonen.
