@@ -162,7 +162,7 @@ fun ViewerScreen(
         var undoItem by remember { mutableStateOf<MediaItem?>(null) }
         LaunchedEffect(undoItem) {
             if (undoItem != null) {
-                delay(5000)
+                delay(8000)
                 undoItem = null
             }
         }

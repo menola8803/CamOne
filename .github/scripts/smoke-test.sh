@@ -199,14 +199,16 @@ sleep 3
 # heter .trashed-… och syns inte i ls.
 TB=$(count '\.jpg')
 tap --text "Delete"
-sleep 3
+sleep 2
 shot 12c-flyttad
 check "Ta bort visar Ångra" $UI exists --text "Moved to trash" --timeout 4
-TA=$(count '\.jpg')
-check "Bilden flyttas till papperskorgen ($TB → $TA)" [ "$TA" -lt "$TB" ]
+# Ångra syns i 8 s – tryck direkt
 tap --text "Undo"
+TA=$(count '\.jpg')
 sleep 3
-check "Ångra tar tillbaka bilden ($TA → $(count '\.jpg'))" [ "$(count '\.jpg')" -eq "$TB" ]
+TU=$(count '\.jpg')
+log "  Papperskorg: före $TB, efter Ta bort och Ångra $TU"
+check "Ångra tar tillbaka bilden ($TB → $TU)" [ "$TU" -eq "$TB" ]
 tap --text "Delete"
 sleep 3
 tap --text "Trash"
@@ -214,9 +216,13 @@ sleep 4
 shot 12d-papperskorg
 check "Papperskorgen visar bilden" $UI exists --text "Restore" --timeout 6
 check "Papperskorgen visar hur länge den ligger kvar" $UI exists --contains "Deleted for good in"
+TT=$(count '\.jpg')
+check "Bilden flyttas till papperskorgen ($TB → $TT)" [ "$TT" -lt "$TB" ]
 tap --text "Restore"
 sleep 3
-check "Bilden återställs från papperskorgen" [ "$(count '\.jpg')" -eq "$TB" ]
+TR=$(count '\.jpg')
+log "  Papperskorg: i korgen $TT, efter Återställ $TR"
+check "Bilden återställs från papperskorgen ($TT → $TR)" [ "$TR" -eq "$TB" ]
 check "Papperskorgen är tom efter återställningen" $UI exists --text "The trash is empty" --timeout 5
 tap --text "All"
 sleep 3
