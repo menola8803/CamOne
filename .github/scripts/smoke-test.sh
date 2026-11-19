@@ -19,7 +19,11 @@ FAIL=0
 
 log()  { echo "$*" | tee -a "$REPORT"; }
 ok()   { PASS=$((PASS + 1)); log "- ✅ $*"; }
-bad()  { FAIL=$((FAIL + 1)); log "- ❌ $*"; echo "::error title=Röktest::$*"; }
+bad()  {
+  FAIL=$((FAIL + 1)); log "- ❌ $*"; echo "::error title=Röktest::$*"
+  # Det som syntes på skärmen när felet kom (ui.py skriver ut det) – i jobbloggen för felsökning
+  echo "::group::ui.log vid felet: $*"; tail -n 30 "$OUT/ui.log" | cut -c1-240; echo "::endgroup::"
+}
 check() { local d="$1"; shift; if "$@" >> "$OUT/ui.log" 2>&1; then ok "$d"; else bad "$d"; fi; }
 tap()  { $UI tap "$@" >> "$OUT/ui.log" 2>&1 || bad "Hittade inte $* på skärmen"; }
 shot() { adb exec-out screencap -p > "$OUT/$1.png" 2>/dev/null || true; }
@@ -59,9 +63,9 @@ shot 02-efter-foto
 after=$(count '\.jpg')
 check "Foto tas med volymknappen och sparas ($before → $after)" [ "$after" -gt "$before" ]
 
-step "Omstart tre gånger (fångar startproblem)"
+step "Omstart fem gånger (fångar startproblem)"
 COLD=()
-for n in 1 2 3; do
+for n in 1 2 3 4 5; do
   adb shell am force-stop "$PKG"
   sleep 1
   T=$(start_ms)
@@ -87,7 +91,8 @@ step "Starttid (kameran först – allt annat laddas efteråt)"
 # Gränser för emulatorn i GitHub Actions (långsammare än telefonen). Blir starten långsammare stoppas bygget.
 FIRST_LIMIT=8000
 COLD_LIMIT=3500
-MEDIAN=$(printf '%s\n' "${COLD[@]}" | sort -n | sed -n '2p')
+# Medianen av fem kallstarter (emulatorn i GitHub Actions varierar mycket mellan enskilda starter)
+MEDIAN=$(printf '%s\n' "${COLD[@]}" | sort -n | sed -n '3p')
 log "  Kallstart median: ${MEDIAN:-?} ms (gräns $COLD_LIMIT ms), första starten: ${FIRST_MS:-?} ms (gräns $FIRST_LIMIT ms)"
 echo "::notice title=Starttid::Kallstart median ${MEDIAN:-?} ms · första starten ${FIRST_MS:-?} ms (emulator)"
 check "Första starten går fort (${FIRST_MS:-?} ms ≤ $FIRST_LIMIT ms)" [ "${FIRST_MS:-99999}" -le "$FIRST_LIMIT" ]
@@ -480,7 +485,8 @@ fi
 check "Appen lever efter slow motion" alive
 tap --text "Video"
 sleep 4
-check "Tillbaka till vanlig video" $UI exists --text "Video" --selected --timeout 4
+# Bildfrekvensknappen visas bara i vanlig video
+check "Tillbaka till vanlig video" $UI exists --desc "Frame rate" --timeout 6
 tap --text "PHOTO"
 sleep 4
 
