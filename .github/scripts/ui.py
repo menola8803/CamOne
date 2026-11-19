@@ -90,13 +90,27 @@ def describe(root):
     return "\n".join(items)
 
 
+def signature(root):
+    """Vad som syns (text och läge) – för att se om sidan rörde sig efter ett svep."""
+    if root is None:
+        return None
+    return tuple((n.get("text", ""), n.get("content-desc", ""), n.get("bounds")) for n in root.iter("node")
+                 if n.get("text") or n.get("content-desc"))
+
+
 def wait_for(args):
     w, h = screen_size()
     deadline = time.time() + args.timeout
     root = None
     attempt = 0
+    down = True       # rulla nedåt först
+    last = None
     while True:
+        t0 = time.time()
         root = dump()
+        sig = signature(root)
+        print(f"[ui] försök {attempt + 1}: {'ingen dump' if root is None else f'{len(sig)} element'} ({time.time() - t0:.1f} s)",
+              file=sys.stderr)
         if root is not None:
             node = find(root, args, w, h)
             if node is not None:
@@ -105,7 +119,13 @@ def wait_for(args):
             return None, root
         attempt += 1
         if args.scroll:
-            adb("shell", "input", "swipe", str(w // 2), str(int(h * 0.75)), str(w // 2), str(int(h * 0.3)), "300")
+            # Rörde sig sidan inte efter förra svepet är vi i botten (eller toppen): byt riktning
+            if last is not None and sig == last:
+                down = not down
+                print(f"[ui] sidan står still – rullar {'nedåt' if down else 'uppåt'}", file=sys.stderr)
+            last = sig
+            y1, y2 = (int(h * 0.75), int(h * 0.3)) if down else (int(h * 0.3), int(h * 0.75))
+            adb("shell", "input", "swipe", str(w // 2), str(y1), str(w // 2), str(y2), "300")
             time.sleep(0.8)
         else:
             time.sleep(1)

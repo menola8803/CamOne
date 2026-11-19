@@ -585,7 +585,12 @@ key KEYCODE_BACK
 sleep 2
 
 step "Manual och tema"
-$UI tap --text "Manual" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Manual i inställningarna"
+# Inställningarna öppnas på nytt från kameran (överst), så att sökningen alltid börjar på samma ställe
+key KEYCODE_BACK
+sleep 3
+tap --desc "Settings"
+sleep 3
+$UI tap --text "Manual" --scroll --timeout 20 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Manual i inställningarna"
 sleep 3
 shot 22b-manual
 check "Manualen öppnas med sina avsnitt" $UI exists --text "THE CAMERA" --timeout 10
