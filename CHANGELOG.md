@@ -2,6 +2,10 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.16.2 – 2026-11-19
+
+- Dubbelvideo: båda halvorna i filmen är nu rättvända och har rätt proportioner. Förut vreds och speglades kamerabilden en gång till i filmen, så att framkamerans bild (och bakkamerans) blev vriden och hoptryckt. Framkameran spegelvänds i filmen enligt Spegla framkameran, som i dubbelfotot.
+
 ## Version 1.16.1 – 2026-11-19
 
 - Panorama: snabbare hopsömnad (en grov sökning i 1/8 upplösning först, sedan finjustering) och mindre analysbilder (helst 1280 × 960).

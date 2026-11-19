@@ -76,6 +76,40 @@ object DualVideoMath {
         )
     }
 
+    /**
+     * Vad SurfaceTexture-matrisen [t] redan gör med kamerans bild. En yta som kameran skriver direkt till
+     * får kamerans egen transform i matrisen: vridningen till stående (90°/270° byter axlarna) och, för
+     * frontkameran, spegelvändningen. Matrisen vänder dessutom alltid t (determinant −1); en spegling till
+     * ger determinant +1.
+     */
+    fun texRotated(t: FloatArray): Boolean = abs(t[1]) + abs(t[4]) > abs(t[0]) + abs(t[5])
+
+    fun texMirrored(t: FloatArray): Boolean = t[0] * t[5] - t[4] * t[1] > 0f
+
+    /**
+     * Som [halfMatrix], men för SurfaceTexture-matrisen [t] som den faktiskt ser ut. Finns kamerans
+     * vridning redan i matrisen är bilden stående där, och bara beskärningen och den spegling som saknas
+     * eller är för mycket läggs till. Annars (en kamera utan transform i matrisen) vrids bilden här som
+     * förut. [wantMirror] = halvan ska visas spegelvänd (frontkameran med Spegla framkameran).
+     */
+    fun halfMatrixFor(
+        t: FloatArray,
+        rotation: Int,
+        wantMirror: Boolean,
+        bufW: Int,
+        bufH: Int,
+        halfAspect: Float
+    ): FloatArray {
+        val r = ((rotation % 360) + 360) % 360
+        val rotated = texRotated(t)
+        val sideways = r == 90 || r == 270
+        // En kamera som ska vridas 90°/270° men vars matris inte byter axlar har ingen transform i matrisen
+        if (sideways && !rotated) return halfMatrix(r, wantMirror, bufW, bufH, halfAspect)
+        val w = if (rotated) bufH else bufW
+        val h = if (rotated) bufW else bufH
+        return halfMatrix(0, wantMirror != texMirrored(t), w, h, halfAspect)
+    }
+
     /** Tillämpar en kolumnvis 4 × 4-matris på punkten (x, y, 0, 1). */
     fun apply(m: FloatArray, x: Float, y: Float): Pair<Float, Float> =
         (m[0] * x + m[4] * y + m[12]) to (m[1] * x + m[5] * y + m[13])

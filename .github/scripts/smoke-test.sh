@@ -638,6 +638,8 @@ PY
   done
   check "Dubbel binds för video (båda sökarna genom appens OpenGL-steg)" sh -c "adb logcat -d -s SncCamera:V 2>/dev/null | grep -q 'Dubbel: bunden för video'"
   VB=$(count 'DUAL_.*mp4')
+  # Byten hittills: udda = frontkameran ligger överst när inspelningen börjar
+  SWR=$(adb logcat -d -s SncCamera:V 2>/dev/null | grep -c "Dubbel: bytt plats")
   key KEYCODE_VOLUME_UP
   sleep 2
   tap --desc "Swap places"
@@ -646,7 +648,7 @@ PY
   key KEYCODE_VOLUME_UP
   for w in $(seq 1 15); do sleep 1; [ "$(count 'DUAL_.*mp4')" -gt "$VB" ] && break; done
   sleep 1
-  adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Dubbelvideo: (kodare|inspelning|första bildrutan i filmen|ljudet|kodarfel)" | tail -5 | while IFS= read -r l; do
+  adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Dubbelvideo: (kodare|inspelning|första bildrutan i filmen|kamerans transform|ljudet|kodarfel)" | tail -6 | while IFS= read -r l; do
     echo "::notice title=Dubbelvideo-inspelning::$(echo "$l" | cut -c1-300)"
   done
   VA=$(count 'DUAL_.*mp4')
@@ -686,6 +688,44 @@ PY
       check "Dubbelvideon visar bild i båda halvorna (${HALVES:-?})" [ "${HALVES%% *}" = "1" ]
       GOLD=$(echo "$HALVES" | cut -d' ' -f2)
       check "Guldlinjen mellan halvorna finns i filmen" [ "$GOLD" = "1" ]
+      # Halvorna ska vara rättvända och ha rätt proportioner: jämför med dubbelbilden (bakkameran överst)
+      if [ -f "$OUT/dubbel.jpg" ]; then
+        ORIENT=$(python3 -W ignore - "$OUT/dubbel.jpg" "$OUT/dubbelvideo.png" "$((SWR % 2))" <<'PY'
+import sys
+from PIL import Image, ImageOps
+def halves(p):
+    im = Image.open(p).convert("L")
+    w, h = im.size
+    m = max(4, h // 60)
+    return im.crop((0, 0, w, h // 2 - m)), im.crop((0, h // 2 + m, w, h))
+def vec(im):
+    d = list(im.resize((48, 32), Image.BILINEAR).getdata())
+    mu = sum(d) / len(d)
+    d = [x - mu for x in d]
+    n = sum(x * x for x in d) ** 0.5 or 1.0
+    return [x / n for x in d]
+def ncc(a, b):
+    return sum(x * y for x, y in zip(vec(a), vec(b)))
+photo = halves(sys.argv[1])          # bak överst, fram nedtill
+video = halves(sys.argv[2])
+if sys.argv[3] == "1":
+    video = video[::-1]               # frontkameran låg överst när filmen började
+ok = True
+out = []
+for name, ph, vh in zip(("bak", "fram"), photo, video):
+    same = ncc(ph, vh)
+    # Felet som rättades: halvan vriden ett kvarts varv och hoptryckt
+    rot = max(ncc(ph, vh.rotate(90, expand=True)), ncc(ph, vh.rotate(270, expand=True)))
+    flip = ncc(ph, ImageOps.mirror(vh))
+    ok = ok and same >= rot - 0.05
+    out.append(f"{name} rätt {same:.2f} vriden {rot:.2f} spegel {flip:.2f}")
+print(("1 " if ok else "0 ") + ", ".join(out))
+PY
+)
+        echo "::notice title=Dubbelvideo mot dubbelbilden::${ORIENT:-?}"
+        log "  Dubbelvideo mot dubbelbilden: ${ORIENT:-?}"
+        check "Dubbelvideons halvor är rättvända som dubbelbilden (${ORIENT#* })" [ "${ORIENT%% *}" = "1" ]
+      fi
     fi
   fi
   SWV=$(adb logcat -d -s SncCamera:V 2>/dev/null | grep -c "Dubbel: bytt plats")

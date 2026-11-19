@@ -266,13 +266,23 @@ class DualVideoRenderer {
         lastEncTs = mono
         if (encFrames++ == 0) {
             Log.i(TAG, "Dubbelvideo: första bildrutan i filmen ${encW}x$encH (bak ${backCam.bufW}x${backCam.bufH}, fram ${frontCam.bufW}x${frontCam.bufH}, klocka ${if (offset == 0L) "monotonic" else "realtime"})")
+            Log.i(TAG, "Dubbelvideo: kamerans transform i matrisen – bak ${texInfo(backCam)}, fram ${texInfo(frontCam)}")
         }
+    }
+
+    private fun texInfo(c: Cam): String {
+        val t = c.texMatrix
+        val m = "[%.2f %.2f %.2f %.2f %.2f %.2f]".format(java.util.Locale.ROOT, t[0], t[1], t[4], t[5], t[12], t[13])
+        return "${if (DualVideoMath.texRotated(t)) "vriden" else "ej vriden"}, " +
+            "${if (DualVideoMath.texMirrored(t)) "speglad" else "ej speglad"} (sensor ${c.rotation}°, " +
+            "spegla ${if (c.mirror) "ja" else "nej"}) $m"
     }
 
     private fun drawHalf(c: Cam, topPx: Int, half: Int, color: FloatArray, offset: FloatArray) {
         if (!c.hasFrame || c.texture == null || c.bufW <= 0) return
         GLES20.glViewport(0, encH - topPx - half, encW, half)
-        val a = DualVideoMath.halfMatrix(c.rotation, c.mirror, c.bufW, c.bufH, encW.toFloat() / half)
+        // Kamerans vridning till stående och frontkamerans spegling finns oftast redan i texMatrix
+        val a = DualVideoMath.halfMatrixFor(c.texMatrix, c.rotation, c.mirror, c.bufW, c.bufH, encW.toFloat() / half)
         Matrix.multiplyMM(halfMatrix, 0, c.texMatrix, 0, a, 0)
         draw(c.tex, halfMatrix, color, offset)
     }
