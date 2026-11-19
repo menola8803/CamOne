@@ -503,17 +503,28 @@ private fun MediaPage(
     onTap: () -> Unit,
     onPlay: () -> Unit
 ) {
-    val image by produceState<ImageBitmap?>(null, item.uri) {
-        value = if (item.isVideo) {
-            media.loadThumbnail(item.uri, 1280)?.asImageBitmap()
-        } else {
-            media.loadBitmap(item.uri, 2560)?.asImageBitmap()
+    // null = laddas fortfarande; en tom lista = gick inte att visa
+    val image by produceState<List<ImageBitmap>?>(null, item.uri) {
+        val bmp = when {
+            item.trashed -> media.loadTrashPreview(item)
+            item.isVideo -> media.loadThumbnail(item.uri, 1280)
+            else -> media.loadBitmap(item.uri, 2560)
         }
+        value = listOfNotNull(bmp?.asImageBitmap())
     }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        val bmp = image
+        val loaded = image
+        val bmp = loaded?.firstOrNull()
         when {
-            bmp == null -> CircularProgressIndicator(color = Usb.Gold.copy(alpha = 0.8f), strokeWidth = 2.dp)
+            loaded == null -> CircularProgressIndicator(color = Usb.Gold.copy(alpha = 0.8f), strokeWidth = 2.dp)
+            bmp == null -> Column(
+                Modifier.clickable(onClick = onTap).padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Seal(size = 72.dp, iconSize = 30.dp, icon = if (item.isVideo) Icons.Rounded.PlayArrow else Icons.Outlined.PhotoLibrary)
+                Spacer(Modifier.height(12.dp))
+                Text(item.name, color = Usb.Muted, fontSize = 13.sp, textAlign = TextAlign.Center)
+            }
             item.isVideo -> {
                 Image(
                     bitmap = bmp,

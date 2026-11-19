@@ -413,8 +413,41 @@ class MediaRepository(private val context: Context) {
     fun deleteRequest(uris: List<Uri>): IntentSender =
         MediaStore.createDeleteRequest(resolver, uris).intentSender
 
-    @Suppress("DEPRECATION")
-    private fun includeTrashed(uri: Uri): Uri = MediaStore.setIncludeTrashed(uri)
+    /**
+     * Adress som ber Android visa en fil i papperskorgen (samma tillägg som den borttagna
+     * MediaStore.setIncludeTrashed). Fungerar den inte används miniatyren som sparades när filen flyttades.
+     */
+    private fun includeTrashed(uri: Uri): Uri = uri.buildUpon().appendQueryParameter("includeTrashed", "1").build()
+
+    /** Ändringar och borttagning som även ska träffa filer i papperskorgen. */
+    private fun trashArgs(): Bundle = Bundle().apply { putInt(MediaStore.QUERY_ARG_MATCH_TRASHED, MediaStore.MATCH_INCLUDE) }
+
+    private val trashThumbDir get() = java.io.File(context.cacheDir, "trash-thumbs")
+
+    private fun trashThumbFile(item: MediaItem) = java.io.File(trashThumbDir, "${if (item.isVideo) "v" else "i"}${item.id}.jpg")
+
+    /** Sparar en bild av filen innan den flyttas till papperskorgen (Android visar inte filer där). */
+    private suspend fun saveTrashThumb(item: MediaItem) {
+        val bmp = (if (item.isVideo) loadThumbnail(item.uri, 1280) else loadBitmap(item.uri, 1600)) ?: return
+        runCatching {
+            trashThumbDir.mkdirs()
+            trashThumbFile(item).outputStream().use { bmp.compress(Bitmap.CompressFormat.JPEG, 85, it) }
+        }
+        bmp.recycle()
+    }
+
+    /** Bilden för en fil i papperskorgen: från Android om det går, annars miniatyren som sparades. */
+    suspend fun loadTrashPreview(item: MediaItem): Bitmap? = withContext(Dispatchers.IO) {
+        val direct = if (item.isVideo) {
+            runCatching { resolver.loadThumbnail(item.uri, Size(1280, 1280), null) }.getOrNull()
+        } else {
+            loadBitmap(item.uri, 2560)
+        }
+        direct ?: runCatching {
+            val f = trashThumbFile(item)
+            if (f.exists()) android.graphics.BitmapFactory.decodeFile(f.absolutePath) else null
+        }.getOrNull()
+    }
 
     /**
      * Sätter en kolumn (favorit eller papperskorg) direkt på appens egna filer. Filer som appen inte äger
@@ -431,9 +464,9 @@ class MediaRepository(private val context: Context) {
         val values = ContentValues().apply { put(column, if (value) 1 else 0) }
         val notDone = mutableListOf<MediaItem>()
         for (item in items) {
-            val target = if (includeTrashedItems || item.trashed) includeTrashed(item.requestUri) else item.requestUri
+            val extras = if (includeTrashedItems || item.trashed) trashArgs() else null
             val count = try {
-                resolver.update(target, values, null, null)
+                resolver.update(item.requestUri, values, extras)
             } catch (e: SecurityException) {
                 0
             } catch (e: Exception) {
@@ -457,26 +490,29 @@ class MediaRepository(private val context: Context) {
         }
 
     /** Flyttar till papperskorgen ([trashed] = true) eller tillbaka. */
-    suspend fun setTrashed(items: List<MediaItem>, trashed: Boolean): MediaOp =
-        updateFlag(items, MediaStore.MediaColumns.IS_TRASHED, trashed, includeTrashedItems = !trashed) { uris ->
+    suspend fun setTrashed(items: List<MediaItem>, trashed: Boolean): MediaOp {
+        if (trashed) items.forEach { saveTrashThumb(it) }
+        val r = updateFlag(items, MediaStore.MediaColumns.IS_TRASHED, trashed, includeTrashedItems = !trashed) { uris ->
             MediaStore.createTrashRequest(resolver, uris, trashed).intentSender
         }
+        if (!trashed && r == MediaOp.Done) items.forEach { runCatching { trashThumbFile(it).delete() } }
+        return r
+    }
 
     /** Tar bort för gott (från papperskorgen). */
     suspend fun deleteForever(items: List<MediaItem>): MediaOp = withContext(Dispatchers.IO) {
         if (items.isEmpty()) return@withContext MediaOp.Done
         val notDone = mutableListOf<MediaItem>()
         for (item in items) {
-            val target = if (item.trashed) includeTrashed(item.requestUri) else item.requestUri
             val count = try {
-                resolver.delete(target, null, null)
+                resolver.delete(item.requestUri, if (item.trashed) trashArgs() else null)
             } catch (e: SecurityException) {
                 0
             } catch (e: Exception) {
                 Log.w("MediaRepository", "${item.name} kunde inte tas bort: $e")
                 0
             }
-            if (count <= 0) notDone += item
+            if (count <= 0) notDone += item else runCatching { trashThumbFile(item).delete() }
         }
         if (notDone.size < items.size) notifyChanged()
         if (notDone.isEmpty()) return@withContext MediaOp.Done
