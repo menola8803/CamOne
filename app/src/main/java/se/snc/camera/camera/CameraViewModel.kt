@@ -111,7 +111,6 @@ import androidx.camera.video.ExperimentalHighSpeedVideo
 import androidx.camera.video.HighSpeedVideoSessionConfig
 import androidx.camera.video.VideoCapabilities
 import kotlinx.coroutines.isActive
-import android.graphics.Bitmap
 import android.graphics.Matrix
 import androidx.camera.core.ConcurrentCamera
 import androidx.camera.core.ImageProxy
