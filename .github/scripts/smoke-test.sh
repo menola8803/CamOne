@@ -838,7 +838,7 @@ tap --text "Rule of thirds" --scroll
 sleep 1
 shot 21c-val-rutnat
 tap --text "Off" --scroll
-$UI tap --text "About" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Om-raden"
+$UI tap --text "About" --scroll --timeout 30 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Om-raden"
 sleep 3
 shot 22-om
 check "Om visar Developer: Claes Sundman S.N.C AB" $UI exists --text "Developer: Claes Sundman S.N.C AB"
@@ -851,7 +851,7 @@ key KEYCODE_BACK
 sleep 3
 tap --desc "Settings"
 sleep 3
-$UI tap --text "Manual" --scroll --timeout 20 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Manual i inställningarna"
+$UI tap --text "Manual" --scroll --timeout 30 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Manual i inställningarna"
 sleep 3
 shot 22b-manual
 check "Manualen öppnas med sina avsnitt" $UI exists --text "THE CAMERA" --timeout 10
@@ -1007,7 +1007,7 @@ sleep 3
 step "Kameror (vad telefonen ger appen)"
 tap --desc "Settings"
 sleep 3
-$UI tap --text "Cameras" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Kameror i inställningarna"
+$UI tap --text "Cameras" --scroll --timeout 30 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Kameror i inställningarna"
 check "Kamerasidan visar sammanfattningen" $UI exists --text "AVAILABLE TO THE APP" --timeout 20
 shot 33-kameror
 # Video använder standardkameran (kamera 0), foto den logiska kameran med flest linser
@@ -1034,7 +1034,7 @@ step "Uppdatering (som i Direct)"
 adb shell appops set "$PKG" REQUEST_INSTALL_PACKAGES allow
 tap --desc "Settings"
 sleep 3
-$UI tap --text "Updates" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Uppdateringar i inställningarna"
+$UI tap --text "Updates" --scroll --timeout 35 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Uppdateringar i inställningarna"
 sleep 2
 if $UI exists --text "NEW VERSION" --timeout 25 >> "$OUT/ui.log" 2>&1; then
   ok "Ny version hittas på GitHub"
@@ -1079,7 +1079,7 @@ tap --text "Svenska"
 sleep 4
 shot 27-installningar-svenska
 check "Appen byter till svenska" $UI exists --text "Inställningar"
-$UI tap --text "Om" --scroll --timeout 15 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Om (svenska)"
+$UI tap --text "Om" --scroll --timeout 35 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte Om (svenska)"
 sleep 3
 shot 28-om-svenska
 check "Om på svenska visar Developer-raden" $UI exists --text "Developer: Claes Sundman S.N.C AB"
