@@ -104,6 +104,9 @@ import androidx.compose.material.icons.outlined.Description
 import se.snc.camera.ui.theme.CameraTheme
 import se.snc.camera.util.awaitTask
 import se.snc.camera.util.shareText
+import se.snc.camera.scan.CodeCard
+import se.snc.camera.scan.ScanCodes
+import se.snc.camera.scan.ScannedCode
 import kotlin.math.min
 
 /** En textrad som hittats i bilden, i bildens koordinater. */
@@ -149,6 +152,10 @@ fun TextRecognitionScreen(
         val density = LocalDensity.current
         val recognizer = remember { TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS) }
         DisposableEffect(recognizer) { onDispose { recognizer.close() } }
+        // QR- och streckkoder i samma bild (ML Kit, inbäddad modell)
+        val barcodes = remember { ScanCodes.newScanner() }
+        DisposableEffect(barcodes) { onDispose { barcodes.close() } }
+        var codes by remember { mutableStateOf<List<ScannedCode>>(emptyList()) }
 
         var state by remember { mutableStateOf<OcrState>(OcrState.Loading) }
         var selected by remember { mutableStateOf(setOf<Int>()) }
@@ -162,6 +169,11 @@ fun TextRecognitionScreen(
                 state = OcrState.Failed
                 return@LaunchedEffect
             }
+            codes = runCatching {
+                barcodes.process(InputImage.fromBitmap(bmp, 0)).awaitTask()
+                    .mapNotNull { ScanCodes.from(it) }
+                    .distinctBy { it.raw }
+            }.getOrDefault(emptyList())
             state = runCatching {
                 val result = recognizer.process(InputImage.fromBitmap(bmp, 0)).awaitTask()
                 val lines = mutableListOf<OcrLine>()
@@ -318,6 +330,15 @@ fun TextRecognitionScreen(
                     }
                 }
                 if (state is OcrState.Loading) ScanSweep(show = true)
+            }
+
+            // Koder i bilden: ett kort per kod (högst två) med det man kan göra
+            codes.take(2).forEach { code ->
+                CodeCard(
+                    code,
+                    onClose = { codes = codes - code },
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                )
             }
 
             // Åtgärdsfält

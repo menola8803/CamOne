@@ -120,6 +120,16 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
+import androidx.camera.core.ExperimentalGetImage
+import com.google.mlkit.vision.barcode.BarcodeScanner
+import com.google.mlkit.vision.common.InputImage
+import se.snc.camera.scan.CodeBox
+import se.snc.camera.scan.DocFilter
+import se.snc.camera.scan.DocumentMath
+import se.snc.camera.scan.DocumentPdf
+import se.snc.camera.scan.ScanCodes
+import se.snc.camera.scan.ScanFrame
+import java.io.File
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -228,6 +238,27 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var dualFrontCapture: ImageCapture? = null
     private var dualBound = false
 
+    // Läget Skanna (scan/): QR- och streckkoder med ML Kit, dokument med egen hörnsökning
+    private var scanAnalysis: ImageAnalysis? = null
+    private val scanExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SncScan") }
+    private var barcodeScanner: BarcodeScanner? = null
+    private val _scanFrame = MutableStateFlow<ScanFrame?>(null)
+    val scanFrame: StateFlow<ScanFrame?> = _scanFrame.asStateFlow()
+    @Volatile private var lastCodeSeenMs = 0L
+    @Volatile private var dismissedRaw: String? = null
+    @Volatile private var dismissedSeenMs = 0L
+    private var scanY = ByteArray(0)
+    private var liveQuad: FloatArray? = null
+    private var quadMisses = 0
+    private var lastDocAnalysisMs = 0L
+    @Volatile private var scanLogged = false
+
+    /** Dokumentet som justeras just nu: den tagna bilden och hörnen (normaliserade). */
+    class DocEdit(val bitmap: Bitmap, val quad: FloatArray)
+    private val _docEdit = MutableStateFlow<DocEdit?>(null)
+    val docEdit: StateFlow<DocEdit?> = _docEdit.asStateFlow()
+    private val docPageFiles = mutableListOf<File>()
+
     // Serietagning: håll in avtryckaren
     private var burstJob: Job? = null
     @Volatile private var burstHeld = false
@@ -297,6 +328,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     init {
+        // Sidor från en tidigare körning som aldrig blev en PDF
+        runCatching { DocumentPdf.pagesDir(context).deleteRecursively() }
         sound.load(MediaActionSound.SHUTTER_CLICK)
         sound.load(MediaActionSound.START_VIDEO_RECORDING)
         sound.load(MediaActionSound.STOP_VIDEO_RECORDING)
@@ -305,7 +338,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             val s = settingsRepo.settings.first()
             val mode = pendingMode ?: if (s.keepLastMode) {
                 // Dubbel öppnas aldrig av sig själv vid start (två kameror tar längre tid att starta)
-                CameraMode.entries.firstOrNull { it.name == s.lastMode }?.takeIf { it != CameraMode.DUAL } ?: CameraMode.PHOTO
+                CameraMode.entries.firstOrNull { it.name == s.lastMode }
+                    ?.takeIf { it != CameraMode.DUAL && it != CameraMode.SCAN } ?: CameraMode.PHOTO
             } else CameraMode.PHOTO
             pendingMode = null
             _state.update { it.copy(mode = mode, lensFront = s.lastLensFront) }
@@ -351,6 +385,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         dualBackCapture = null
         dualFrontCapture = null
         dualBound = false
+        stopScan()
         motion.stop()
         bindJob?.cancel()
         zoomLiveData?.removeObserver(zoomObserver)
@@ -371,6 +406,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         videoFilter?.release()
         timelapseEffect?.release()
         slowCam?.release()
+        runCatching { barcodeScanner?.close() }
+        scanExecutor.shutdown()
+        runCatching { DocumentPdf.pagesDir(context).deleteRecursively() }
         sound.release()
         portrait.close()
         super.onCleared()
@@ -460,6 +498,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         // En pågående nattbild avbryts (kameran binds om)
         stopStacking()
         stopAssist()
+        stopScan()
         // Slow motion med Camera2 stängs (öppnas igen nedan om det fortfarande gäller)
         slowCam?.closeAndWait()
         videoFilterBound = false
@@ -520,6 +559,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             var vc: VideoCapture<Recorder>? = null
             var na: ImageAnalysis? = null
             var aa: ImageAnalysis? = null
+            var sa: ImageAnalysis? = null
             // Natt (utan tillverkarens nattläge) och HDR i Foto (utan tillverkarens HDR) läggs ihop i appen
             val stacking = (st.mode == CameraMode.NIGHT || (st.mode == CameraMode.PHOTO && s.hdr)) &&
                 !(useExtension && wantedExtension != null)
@@ -553,6 +593,42 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 if (fpsRange != null) videoBuilder.setTargetFrameRate(fpsRange)
                 vc = videoBuilder.build()
                 useCases += vc
+            } else if (st.mode == CameraMode.SCAN) {
+                // Skanna: en analysbild (QR-kod: 1280 × 960 för små koder, dokument: 640 × 480 för hörnen)
+                // och för dokument även en ImageCapture (sidan tas i full upplösning)
+                val doc = st.scanKind == ScanKind.DOCUMENT
+                sa = ImageAnalysis.Builder()
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setAspectRatioStrategy(photoAspect)
+                            .setResolutionStrategy(
+                                ResolutionStrategy(
+                                    if (doc) ASSIST_SIZE else Size(1280, 960),
+                                    ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER
+                                )
+                            )
+                            .build()
+                    )
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_YUV_420_888)
+                    // Skärmen är alltid stående: rutorna ritas i sökarens riktning
+                    .setTargetRotation(Surface.ROTATION_0)
+                    .build()
+                useCases += sa
+                if (doc) {
+                    ic = ImageCapture.Builder()
+                        .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                        .setResolutionSelector(
+                            ResolutionSelector.Builder()
+                                .setAspectRatioStrategy(photoAspect)
+                                .setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY)
+                                .build()
+                        )
+                        .setTargetRotation(targetRotation)
+                        .setFlashMode(ImageCapture.FLASH_MODE_OFF)
+                        .build()
+                    useCases += ic
+                }
             } else {
                 // RAW (DNG) i Foto och Pro om kameran stöder det
                 val wantRaw = allowRaw && s.photoFormat.isRaw && (st.mode == CameraMode.PHOTO || st.mode == CameraMode.PRO) &&
@@ -642,6 +718,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 na?.setAnalyzer(analysisExecutor, stackAnalyzer)
                 assistAnalysis = aa
                 aa?.setAnalyzer(analysisExecutor, assistAnalyzer)
+                scanAnalysis = sa
+                sa?.setAnalyzer(scanExecutor, scanAnalyzer)
                 rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
@@ -764,6 +842,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         if (nightAnalysis != null) motion.start() else motion.stop()
         nightAnalysis?.let { Log.i(TAG, "Natt: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
         assistAnalysis?.let { Log.i(TAG, "Hjälpmedel: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
+        scanAnalysis?.let { Log.i(TAG, "Skanna: ${_state.value.scanKind} analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
 
         when (st.mode) {
             CameraMode.PRO -> applyProOptions()
@@ -1402,6 +1481,220 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Läget Skanna: QR- och streckkoder, dokument till PDF
+    // ---------------------------------------------------------------------------------------------
+
+    private fun stopScan() {
+        runCatching { scanAnalysis?.clearAnalyzer() }
+        scanAnalysis = null
+        _scanFrame.value = null
+        liveQuad = null
+    }
+
+    fun setScanKind(kind: ScanKind) {
+        val st = _state.value
+        if (kind == st.scanKind || st.isCapturing) return
+        _state.update { it.copy(scanKind = kind, scanCode = null) }
+        if (st.mode == CameraMode.SCAN) rebind()
+    }
+
+    /** Stänger kortet; samma kod visas inte igen förrän den har varit borta en stund. */
+    fun dismissCode() {
+        dismissedRaw = _state.value.scanCode?.raw
+        dismissedSeenMs = SystemClock.uptimeMillis()
+        _state.update { it.copy(scanCode = null) }
+    }
+
+    fun dismissPdf() {
+        _state.update { it.copy(lastPdf = null) }
+    }
+
+    private val scanAnalyzer = ImageAnalysis.Analyzer { image ->
+        when (_state.value.scanKind) {
+            ScanKind.CODE -> analyzeCode(image)
+            ScanKind.DOCUMENT -> analyzeDocument(image)
+        }
+    }
+
+    @androidx.annotation.OptIn(ExperimentalGetImage::class)
+    private fun analyzeCode(image: ImageProxy) {
+        val media = image.image
+        if (media == null) {
+            image.close()
+            return
+        }
+        val rotation = image.imageInfo.rotationDegrees
+        val uw = if (rotation % 180 == 0) image.width else image.height
+        val uh = if (rotation % 180 == 0) image.height else image.width
+        val scanner = barcodeScanner ?: ScanCodes.newScanner().also { barcodeScanner = it }
+        if (!scanLogged) {
+            scanLogged = true
+            Log.i(TAG, "Skanna: första bildrutan ${image.width}x${image.height} vriden $rotation°")
+        }
+        scanner.process(InputImage.fromMediaImage(media, rotation))
+            .addOnSuccessListener(scanExecutor) { codes ->
+                val now = SystemClock.uptimeMillis()
+                val found = codes.mapNotNull { b -> ScanCodes.from(b)?.let { it to b.boundingBox } }
+                if (found.isEmpty()) {
+                    // Rutorna ligger kvar en kort stund så att de inte blinkar
+                    if (now - lastCodeSeenMs > 600) _scanFrame.value = ScanFrame(uw, uh)
+                    return@addOnSuccessListener
+                }
+                lastCodeSeenMs = now
+                _scanFrame.value = ScanFrame(
+                    uw, uh,
+                    boxes = found.mapNotNull { (_, r) -> r?.let { CodeBox(it.left.toFloat(), it.top.toFloat(), it.right.toFloat(), it.bottom.toFloat()) } }
+                )
+                // Kortet visar den största koden
+                val best = found.maxBy { (_, r) -> r?.let { it.width() * it.height() } ?: 0 }.first
+                if (best.raw == dismissedRaw && now - dismissedSeenMs < 1500) {
+                    dismissedSeenMs = now
+                    return@addOnSuccessListener
+                }
+                if (best.raw != _state.value.scanCode?.raw) {
+                    dismissedRaw = null
+                    Log.i(TAG, "Skanna: ${best.format} ${best.kind} (${best.raw.length} tecken)")
+                    _state.update { it.copy(scanCode = best) }
+                }
+            }
+            .addOnFailureListener(scanExecutor) { e -> Log.w(TAG, "Skanna: avläsningen misslyckades", e) }
+            .addOnCompleteListener(scanExecutor) { image.close() }
+    }
+
+    /** Dokument i sökaren: papperets hörn ungefär tio gånger per sekund (litet rutnät av Y-planet). */
+    private fun analyzeDocument(image: ImageProxy) {
+        try {
+            val now = SystemClock.uptimeMillis()
+            if (now - lastDocAnalysisMs < 100) return
+            lastDocAnalysisMs = now
+            val plane = image.planes[0]
+            val w = image.width
+            val h = image.height
+            val stride = plane.rowStride
+            val buf = plane.buffer
+            buf.rewind()
+            val n = minOf(buf.remaining(), stride * h)
+            if (scanY.size < stride * h) scanY = ByteArray(stride * h)
+            buf.get(scanY, 0, n)
+            val factor = maxOf(1, w / DocumentMath.GRID)
+            val grid = DocumentMath.downscale(scanY, stride, w, h, factor)
+            val rotation = image.imageInfo.rotationDegrees
+            val q = DocumentMath.detect(grid, w / factor, h / factor)?.let { DocumentMath.rotate(it, rotation) }
+            if (q != null) {
+                liveQuad = DocumentMath.smooth(liveQuad, q)
+                quadMisses = 0
+            } else if (++quadMisses > 3) {
+                liveQuad = null
+            }
+            val uw = if (rotation % 180 == 0) w else h
+            val uh = if (rotation % 180 == 0) h else w
+            _scanFrame.value = ScanFrame(uw, uh, quad = liveQuad)
+            if (!scanLogged) {
+                scanLogged = true
+                Log.i(TAG, "Skanna: dokument ${w}x$h, papper ${if (q != null) "hittat" else "inte hittat"}")
+            }
+        } catch (t: Throwable) {
+            Log.w(TAG, "Skanna: dokumentbilden kunde inte läsas", t)
+        } finally {
+            image.close()
+        }
+    }
+
+    /** Tar en dokumentsida och öppnar redigeraren med papperets hörn. */
+    private fun takeDocumentPhoto() {
+        val st = _state.value
+        val ic = imageCapture ?: return
+        if (st.isCapturing || st.docBusy || _docEdit.value != null) return
+        _state.update { it.copy(isCapturing = true, shutterBlink = System.currentTimeMillis()) }
+        if (settings.value.shutterSound) sound.play(MediaActionSound.SHUTTER_CLICK)
+        ic.takePicture(Dispatchers.Default.asExecutor(), object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                try {
+                    val raw = image.toBitmap()
+                    val m = Matrix().apply { postRotate(image.imageInfo.rotationDegrees.toFloat()) }
+                    // Högst 3000 bildpunkter på längden räcker för en A4-sida i 200 dpi
+                    val long = maxOf(raw.width, raw.height)
+                    if (long > 3000) (3000f / long).let { k -> m.postScale(k, k) }
+                    val upright = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, m, true)
+                    if (upright !== raw) raw.recycle()
+                    val quad = DocumentPdf.detectInBitmap(upright)
+                    Log.i(TAG, "Dokument: bild ${upright.width}x${upright.height}, hörn ${quad.joinToString { "%.2f".format(Locale.US, it) }}")
+                    _docEdit.value = DocEdit(upright, quad)
+                } catch (t: Throwable) {
+                    Log.w(TAG, "Dokument: bilden kunde inte behandlas", t)
+                    showMessage(R.string.msg_doc_failed)
+                } finally {
+                    image.close()
+                    _state.update { it.copy(isCapturing = false) }
+                }
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                Log.w(TAG, "Dokument: bilden kunde inte tas", exception)
+                showMessage(R.string.msg_capture_failed)
+                _state.update { it.copy(isCapturing = false) }
+            }
+        })
+    }
+
+    fun retakeDocument() {
+        _docEdit.value = null
+    }
+
+    /** Rätar och förbättrar sidan i bakgrunden och lägger den sist bland sidorna. */
+    fun addDocumentPage(quad: FloatArray, filter: DocFilter) {
+        val edit = _docEdit.value ?: return
+        _docEdit.value = null
+        _state.update { it.copy(docBusy = true, lastPdf = null) }
+        viewModelScope.launch {
+            val n = docPageFiles.size + 1
+            val file = File(DocumentPdf.pagesDir(context), String.format(Locale.US, "page_%03d_%d.jpg", n, System.currentTimeMillis()))
+            val size = withContext(Dispatchers.Default) {
+                runCatching { DocumentPdf.makePage(edit.bitmap, quad, filter, file) }
+                    .onFailure { Log.w(TAG, "Dokument: sidan kunde inte göras", it) }
+                    .getOrNull()
+            }
+            if (size != null) {
+                docPageFiles += file
+                Log.i(TAG, "Dokument: sida $n ${size.first}x${size.second} ($filter)")
+            } else {
+                showMessage(R.string.msg_doc_failed)
+            }
+            _state.update { it.copy(docPages = docPageFiles.size, docBusy = false) }
+        }
+    }
+
+    /** Sätter ihop sidorna till en PDF i Dokument/SNC Camera. */
+    fun saveDocumentPdf() {
+        val st = _state.value
+        if (docPageFiles.isEmpty() || st.docBusy) return
+        _state.update { it.copy(docBusy = true) }
+        val pages = docPageFiles.toList()
+        viewModelScope.launch {
+            val uri = withContext(Dispatchers.IO) {
+                runCatching { DocumentPdf.savePdf(context, pages) }
+                    .onFailure { Log.w(TAG, "Dokument: PDF:en kunde inte sparas", it) }
+                    .getOrNull()
+            }
+            if (uri != null) {
+                pages.forEach { runCatching { it.delete() } }
+                docPageFiles.clear()
+                Log.i(TAG, "Dokument: PDF sparad (${pages.size} sidor)")
+                _state.update { it.copy(docPages = 0, docBusy = false, lastPdf = uri, lastPdfPages = pages.size) }
+            } else {
+                showMessage(R.string.msg_pdf_failed)
+                _state.update { it.copy(docBusy = false) }
+            }
+        }
+    }
+
+    fun discardDocumentPages() {
+        docPageFiles.forEach { runCatching { it.delete() } }
+        docPageFiles.clear()
+        _state.update { it.copy(docPages = 0) }
+    }
+
     fun updatePro(transform: (ProState) -> ProState) {
         _state.update { it.copy(pro = transform(it.pro)) }
         applyProOptions()
@@ -1522,6 +1815,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Används av t.ex. VIDEO_CAMERA-intent; fungerar även innan kameran startat. */
     fun requestMode(mode: CameraMode) {
+        // Snabbinställningsrutan öppnar läget Skanna för QR-koder
+        if (mode == CameraMode.SCAN) _state.update { it.copy(scanKind = ScanKind.CODE) }
         if (!initialized) pendingMode = mode else setMode(mode)
     }
 
@@ -1676,6 +1971,11 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         if (st.isCapturing) return
         if (st.mode == CameraMode.DUAL) {
             runWithTimer { takeDualShot() }
+            return
+        }
+        if (st.mode == CameraMode.SCAN) {
+            // QR-koder läses av sig själva; avtryckaren tar en dokumentsida
+            if (st.scanKind == ScanKind.DOCUMENT) takeDocumentPhoto()
             return
         }
         if (st.mode == CameraMode.NIGHT && nightAnalysis != null) {

@@ -118,6 +118,8 @@ dependencies {
 
     // Textigenkänning – inbäddad modell, kräver INTE Google Play-tjänster (fungerar på LineageOS utan GApps)
     implementation("com.google.mlkit:text-recognition:16.0.1")
+    // QR- och streckkoder (inbäddad modell, utan Google Play-tjänster)
+    implementation("com.google.mlkit:barcode-scanning:17.3.0")
     // Mjukvaruporträtt (bakgrundsoskärpa) när tillverkarens porträttläge saknas – också inbäddad modell
     implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta6")
 }

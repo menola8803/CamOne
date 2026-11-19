@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Snabbinställningsrutan "Skanna QR": tre hörnrutor och några punkter som i en QR-kod -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,3h8v8H3V3zM5,5v4h4V5H5zM13,3h8v8h-8V3zM15,5v4h4V5h-4zM3,13h8v8H3v-8zM5,15v4h4v-4H5zM6,6h2v2H6zM16,6h2v2h-2zM6,16h2v2H6zM13,13h3v3h-3zM18,13h3v2h-3zM16,16h2v2h-2zM13,18h3v3h-3zM19,17h2v4h-3v-2h1z" />
+</vector>

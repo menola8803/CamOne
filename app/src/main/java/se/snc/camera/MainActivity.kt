@@ -218,6 +218,11 @@ class MainActivity : ComponentActivity() {
                 resetTo(Screen.Camera)
                 requestedMode = CameraMode.VIDEO
             }
+            // Snabbinställningsrutan "Skanna QR"
+            se.snc.camera.scan.ScanTileService.ACTION_SCAN -> {
+                resetTo(Screen.Camera)
+                requestedMode = CameraMode.SCAN
+            }
         }
     }
 

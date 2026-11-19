@@ -553,6 +553,55 @@ sleep 3
 tap --text "PHOTO"
 sleep 4
 
+step "Skanna: snabbinställningsrutan, QR-kod och dokument till PDF"
+# Snabbinställningsrutan öppnar kameran i läget Skanna (QR-kod)
+adb shell cmd statusbar add-tile "$PKG/.scan.ScanTileService" >> "$OUT/ui.log" 2>&1
+sleep 2
+adb shell cmd statusbar click-tile "$PKG/.scan.ScanTileService" >> "$OUT/ui.log" 2>&1
+sleep 3
+adb shell cmd statusbar collapse >> "$OUT/ui.log" 2>&1
+sleep 5
+shot 19n-skanna-qr
+check "Snabbinställningsrutan öppnar läget Skanna (QR-kod)" $UI exists --text "Point the camera at a QR code or barcode" --timeout 10
+check "Skanna visar valen QR-kod och Dokument" $UI exists --text "Document"
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Skanna: (CODE|första)" | tail -1 | while IFS= read -r l; do
+  echo "::notice title=Skanna-logg::$(echo "$l" | cut -c1-300)"
+done
+check "Appen lever i läget Skanna" alive
+tap --text "Document"
+sleep 5
+check "Dokumentläget visar uppmaningen" $UI exists --text "Hold the phone over the page and tap the shutter" --timeout 8
+tap --desc "Shutter"
+sleep 6
+shot 19o-dokument-horn
+check "Dokumentet öppnas för att justera hörnen" $UI exists --text "Adjust the corners" --timeout 12
+tap --text "Add page"
+sleep 6
+check "Sidan läggs till" $UI exists --text "Pages: 1" --timeout 15
+PB=$(adb shell "ls '/sdcard/Documents/SNC Camera' 2>/dev/null | grep -c '\.pdf$'" | tr -d '\r')
+tap --text "Save PDF"
+sleep 6
+shot 19p-pdf-sparad
+check "PDF:en sparas" $UI exists --text "PDF saved · 1 pages" --timeout 15
+PDF=$(adb shell "ls -t '/sdcard/Documents/SNC Camera' 2>/dev/null | grep '\.pdf$' | head -1" | tr -d '\r')
+if [ -n "$PDF" ]; then
+  adb pull "/sdcard/Documents/SNC Camera/$PDF" "$OUT/dokument.pdf" >> "$OUT/ui.log" 2>&1
+  PAGES=$(python3 -c "import re,sys; d=open(sys.argv[1],'rb').read(); print(len(re.findall(rb'/Type\s*/Page[^s]', d)) if d[:4]==b'%PDF' else -1)" "$OUT/dokument.pdf" 2>> "$OUT/ui.log")
+  SIZE=$(stat -c %s "$OUT/dokument.pdf" 2>/dev/null)
+  log "  PDF: $PDF – ${PAGES:-?} sida, $((${SIZE:-0} / 1024)) kB"
+  check "PDF-filen är en riktig PDF med en sida (${PAGES:-?})" [ "${PAGES:-0}" -eq 1 ]
+else
+  bad "Ingen PDF i Dokument/SNC Camera (${PB:-0} före)"
+fi
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Dokument: (bild|sida|PDF)" | tail -2 | while IFS= read -r l; do
+  echo "::notice title=Dokument-logg::$(echo "$l" | cut -c1-300)"
+done
+check "Appen lever efter dokumentet" alive
+# Tillbaka till Foto (kamerans egen avsikt väljer Foto)
+adb shell am start -a android.media.action.STILL_IMAGE_CAMERA -n "$PKG/.MainActivity" >> "$OUT/ui.log" 2>&1
+sleep 5
+check "Tillbaka i Foto" $UI exists --text "PHOTO" --selected --timeout 8
+
 step "Framkamera"
 tap --desc "Switch camera"
 sleep 6
@@ -704,6 +753,31 @@ if python3 -c "import PIL" 2> /dev/null || pip install --quiet pillow > /dev/nul
   fi
 else
   log "- ⚠️ Pillow saknas, hoppar över texttestet"
+fi
+
+step "QR-kod i en delad bild"
+if python3 -c "import qrcode" 2> /dev/null; then
+  python3 -c "import qrcode; qrcode.make('https://example.com/snc-camera-test').save('$OUT/qr-testbild.png')"
+  adb push "$OUT/qr-testbild.png" "$DIR/QR_TEST.png" >> "$OUT/ui.log" 2>&1
+  sleep 4
+  QID=$(adb shell "content query --uri content://media/external/images/media --projection _id:_display_name" \
+    | grep "QR_TEST.png" | grep -oE '_id=[0-9]+' | head -1 | cut -d= -f2)
+  if [ -n "$QID" ]; then
+    adb shell am start -a android.intent.action.SEND -t image/png \
+      --eu android.intent.extra.STREAM "content://media/external/images/media/$QID" \
+      -n "$PKG/.MainActivity" >> "$OUT/ui.log" 2>&1
+    sleep 10
+    shot 23c-qr-i-bild
+    check "QR-koden i bilden läses (länk)" $UI exists --text "https://example.com/snc-camera-test" --timeout 15
+    check "Kortet har knappen Öppna länk" $UI exists --text "Open link"
+    key KEYCODE_BACK
+    sleep 3
+  else
+    bad "QR-testbilden hittades inte i MediaStore"
+  fi
+  adb shell rm -f "$DIR/QR_TEST.png"
+else
+  log "  qrcode saknas – steget hoppas över"
 fi
 
 step "Galleri: textknappen"

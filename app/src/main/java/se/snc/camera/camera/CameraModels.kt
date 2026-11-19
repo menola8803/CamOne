@@ -14,9 +14,17 @@ enum class CameraMode(@StringRes val label: Int) {
     PHOTO(R.string.mode_photo),
     PORTRAIT(R.string.mode_portrait),
     /** Fram- och bakkameran samtidigt, i var sin halva. */
-    DUAL(R.string.mode_dual);
+    DUAL(R.string.mode_dual),
+    /** QR- och streckkoder eller dokument (PDF). */
+    SCAN(R.string.mode_scan);
 
     val isVideo get() = this == VIDEO
+}
+
+/** Läget Skanna: QR- och streckkoder, eller dokument som blir en PDF. */
+enum class ScanKind(@StringRes val label: Int) {
+    CODE(R.string.scan_kind_code),
+    DOCUMENT(R.string.scan_kind_document)
 }
 
 /** Videoläget: vanlig video, slow motion eller tidsförlopp. */
@@ -138,6 +146,18 @@ data class CameraUiState(
     val stackProgress: Float? = null,
     /** Bilderna läggs ihop och sparas. */
     val stackMerging: Boolean = false,
+
+    /** Läget Skanna: QR-kod eller dokument. */
+    val scanKind: ScanKind = ScanKind.CODE,
+    /** Den senast avlästa koden (visas i ett kort tills den stängs eller en annan kod läses). */
+    val scanCode: se.snc.camera.scan.ScannedCode? = null,
+    /** Dokument: antal sidor som väntar på att bli en PDF. */
+    val docPages: Int = 0,
+    /** Dokument: en sida eller PDF:en håller på att göras. */
+    val docBusy: Boolean = false,
+    /** Den senast sparade PDF:en (kortet med Öppna och Dela) och dess antal sidor. */
+    val lastPdf: Uri? = null,
+    val lastPdfPages: Int = 0,
 
     /** Läget Dubbel: true = fram och bak samtidigt fungerar, false = stöds inte, null = inte bundet än. */
     val dualAvailable: Boolean? = null,

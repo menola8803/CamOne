@@ -2,6 +2,15 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.13.0 – 2026-11-19
+
+- Nytt läge Skanna (längst till höger i lägesmenyn) med QR-kod och Dokument.
+- QR- och streckkoder läses direkt i sökaren (ML Kit med inbäddad modell – utan Google Play-tjänster). En guldram visar koden och ett kort visar innehållet med knappar efter typ: öppna länk, anslut till Wi-Fi, lägg till kontakt, ring, mejla, skicka sms, visa på karta, sök produktkod – och alltid kopiera och dela. Ficklampa överst.
+- Koder i bilder som delas till appen visas också på textskärmen.
+- Dokumentskanner: en guldram visar papperet i sökaren. Efter bilden kan hörnen dras till sidans kanter; sidan rätas (perspektiv), belysningen jämnas ut och den blir Svartvit, Färg eller Original. Flera sidor blir en PDF (A4) i Dokument/SNC Camera, som kan öppnas eller delas direkt.
+- Snabbinställningsrutan Skanna QR öppnar kameran i läget Skanna.
+- Appen startar aldrig i läget Skanna (modellen laddas först när läget öppnas).
+
 ## Version 1.12.0 – 2026-11-19
 
 - Nytt läge Dubbel (längst till höger i lägesmenyn): bakkameran och frontkameran samtidigt, i var sin halva av sökaren med en tunn guldlinje emellan.

@@ -1,5 +1,11 @@
 package se.snc.camera.camera
 
+import se.snc.camera.scan.ScanOverlayFrom
+import se.snc.camera.scan.PdfSavedCard
+import se.snc.camera.scan.DocumentEditor
+import se.snc.camera.scan.DocPagesBar
+import se.snc.camera.scan.CodeCard
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.material.icons.rounded.SwapVert
 import androidx.compose.ui.zIndex
@@ -259,7 +265,8 @@ private fun CameraContent(
 
     // Live-filter: samma färgmatris som läggs på den sparade bilden. I video ritar OpenGL-effekten filtret i
     // sökaren och filmen – utom i tidsförlopp, där effekten bara gäller filmen och sökaren får RenderEffect.
-    val liveFilterOn = state.filter.isActive && (!state.mode.isVideo || state.videoStyle == VideoStyle.TIMELAPSE)
+    val liveFilterOn = state.filter.isActive && state.mode != CameraMode.SCAN &&
+        (!state.mode.isVideo || state.videoStyle == VideoStyle.TIMELAPSE)
     LaunchedEffect(previewView, liveFilterOn, state.filter) {
         val effect = if (liveFilterOn) RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(state.filter.matrix())) else null
         previewView.setRenderEffect(effect)
@@ -347,12 +354,13 @@ private fun CameraContent(
         }
     }
 
-    // Läget Dubbel: alltid 3:4, delat i två halvor
+    // Läget Dubbel: alltid 3:4, delat i två halvor. Skanna: alltid 3:4.
     val dual = state.mode == CameraMode.DUAL
+    val scan = state.mode == CameraMode.SCAN
     // Helskärm: sökaren fyller hela skärmen, knapparna ligger ovanpå
-    val fullScreen = !state.mode.isVideo && !dual && settings.aspect == AspectOption.FULL
+    val fullScreen = !state.mode.isVideo && !dual && !scan && settings.aspect == AspectOption.FULL
     // 16:9 (foto och video): sökaren går ut till kanterna och upp till skärmens överkant
-    val edge169 = !fullScreen && !dual && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
+    val edge169 = !fullScreen && !dual && !scan && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
     // Knapparna ligger ovanpå bilden (glas) i helskärm och 16:9
     val overPhoto = fullScreen || edge169
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -363,7 +371,7 @@ private fun CameraContent(
     val overlayTop = if (overPhoto) statusTop + 64.dp else 0.dp
     val previewRatio = when {
         state.mode.isVideo -> 9f / 16f
-        dual -> 3f / 4f
+        dual || scan -> 3f / 4f
         else -> settings.aspect.portraitRatio.takeIf { it > 0f } ?: (3f / 4f)
     }
     val animatedRatio by animateFloatAsState(previewRatio, tween(280), label = "previewRatio")
@@ -546,6 +554,19 @@ private fun CameraContent(
                 )
             }
 
+            // Skanna: guldrutor runt koderna, papperets kanter och en kort uppmaning
+            if (state.mode == CameraMode.SCAN) {
+                ScanOverlayFrom(viewModel.scanFrame)
+                if (state.scanCode == null) {
+                    InfoPill(
+                        stringResource(if (state.scanKind == ScanKind.CODE) R.string.scan_hint_code else R.string.scan_hint_doc),
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = overlayTop + 12.dp)
+                    )
+                }
+            }
+
             val filterShown = liveFilterOn || (state.mode.isVideo && state.filter.isActive && state.videoFilterOn)
             if (filterShown && !state.filterPanelOpen && !state.isRecording) {
                 FilterBadge(
@@ -644,7 +665,7 @@ private fun CameraContent(
             videoFps = settings.videoFps,
             onFps = viewModel::cycleFps,
             rotation = iconRotation,
-            onFlash = { if (state.mode.isVideo) viewModel.toggleTorch() else viewModel.cycleFlash() },
+            onFlash = { if (state.mode.isVideo || state.mode == CameraMode.SCAN) viewModel.toggleTorch() else viewModel.cycleFlash() },
             onHdr = viewModel::toggleHdr,
             onTimer = viewModel::cycleTimer,
             onAspect = viewModel::cycleAspect,
@@ -722,6 +743,41 @@ private fun CameraContent(
                     onInterval = viewModel::setTimelapseInterval,
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
+            }
+
+            // Skanna: QR-kod eller Dokument, kortet för koden, sidorna och den sparade PDF:en
+            if (state.mode == CameraMode.SCAN && !state.filterPanelOpen) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    val code = state.scanCode
+                    val pdf = state.lastPdf
+                    if (state.scanKind == ScanKind.CODE && code != null) {
+                        CodeCard(code, onClose = viewModel::dismissCode)
+                    } else if (state.scanKind == ScanKind.DOCUMENT && pdf != null) {
+                        PdfSavedCard(pdf, state.lastPdfPages, onClose = viewModel::dismissPdf)
+                    }
+                    if (state.scanKind == ScanKind.DOCUMENT && (state.docPages > 0 || state.docBusy)) {
+                        DocPagesBar(
+                            pages = state.docPages,
+                            busy = state.docBusy,
+                            onSave = viewModel::saveDocumentPdf,
+                            onDiscard = viewModel::discardDocumentPages
+                        )
+                    }
+                    GlassChipRow {
+                        ScanKind.entries.forEach { k ->
+                            GlassChip(stringResource(k.label), selected = k == state.scanKind, enabled = !state.isCapturing) {
+                                viewModel.setScanKind(k)
+                            }
+                        }
+                    }
+                }
             }
 
             // Visar en stund vilken lins som tog över när man zoomar (t.ex. "Tele · 47 mm")
@@ -808,7 +864,8 @@ private fun CameraContent(
                     }
                 }
 
-                ShutterButton(
+                // Skanna QR: koderna läses av sig själva – ingen avtryckare
+                if (state.mode == CameraMode.SCAN && state.scanKind == ScanKind.CODE) Spacer(Modifier.size(84.dp)) else ShutterButton(
                     isVideo = state.mode.isVideo,
                     isRecording = state.isRecording,
                     isBusy = state.isCapturing,
@@ -848,6 +905,18 @@ private fun CameraContent(
                 Modifier
                     .fillMaxSize()
                     .background(Color.White)
+            )
+        }
+
+        // Dokument: justera hörnen och välj utseende innan sidan läggs till
+        val docEdit by viewModel.docEdit.collectAsStateWithLifecycle()
+        docEdit?.let { edit ->
+            BackHandler(onBack = viewModel::retakeDocument)
+            DocumentEditor(
+                bitmap = edit.bitmap,
+                initialQuad = edit.quad,
+                onRetake = viewModel::retakeDocument,
+                onAdd = viewModel::addDocumentPage
             )
         }
     }
@@ -906,7 +975,8 @@ private fun TopBar(
             // Ingen blixt i nattläget eller när HDR läggs ihop i appen (flera bilder)
             val stackedHdr = mode == CameraMode.PHOTO && hdr && state.stackAvailable
             if (mode != CameraMode.NIGHT && flashUsable && !stackedHdr) {
-                if (mode.isVideo) {
+                if (mode.isVideo || mode == CameraMode.SCAN) {
+                    // Video och Skanna: ficklampa
                     GlassIconButton(
                         size = iconSize,
                         icon = if (state.torchOn) Icons.Rounded.FlashOn else Icons.Rounded.FlashOff,
@@ -946,7 +1016,8 @@ private fun TopBar(
                 )
             }
 
-            GlassIconButton(
+            // Ingen självutlösare i Skanna
+            if (mode != CameraMode.SCAN) GlassIconButton(
                 size = iconSize,
                 icon = if (timer == TimerOption.OFF) Icons.Rounded.TimerOff else Icons.Rounded.Timer,
                 contentDescription = stringResource(R.string.cd_timer),
@@ -983,8 +1054,8 @@ private fun TopBar(
                 )
             }
 
-            // Live-filter (alla lägen – i video läggs det på filmen med OpenGL)
-            GlassIconButton(
+            // Live-filter (alla lägen utom Skanna – i video läggs det på filmen med OpenGL)
+            if (mode != CameraMode.SCAN) GlassIconButton(
                 size = iconSize,
                 icon = Icons.Rounded.PhotoFilter,
                 contentDescription = stringResource(R.string.cd_filter),

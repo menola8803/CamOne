@@ -67,6 +67,18 @@
             </intent-filter>
         </activity>
 
+        <!-- Snabbinställningsrutan "Skanna QR" öppnar kameran i läget Skanna -->
+        <service
+            android:name=".scan.ScanTileService"
+            android:exported="true"
+            android:icon="@drawable/ic_tile_scan"
+            android:label="@string/tile_scan_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
         <!-- Öppnar appen igen när en uppdatering som appen startade har installerats (som i Alif) -->
         <receiver
             android:name=".update.UpdateRestartReceiver"

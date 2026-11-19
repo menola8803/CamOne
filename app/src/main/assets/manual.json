@@ -1,10 +1,10 @@
 {
-  "version": "1.12.0",
+  "version": "1.13.0",
   "sv": [
     {
       "title": "Kameran",
       "items": [
-        "Lägena Pro, Natt, Video, Foto, Porträtt och Dubbel ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
+        "Lägena Pro, Natt, Video, Foto, Porträtt, Dubbel och Skanna ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
         "Linserna: .6 är ultravidvinkeln (16 mm), 1× huvudkameran (24 mm) och 2× telelinsen (47 mm). Nyp för att zooma upp till 10×. En liten etikett visar vilken lins som tar över. I Video är 2 och 5 digital zoom: filmen tas med telefonens standardkamera, samma som LineageOS kameraapp, som inte har telelinsen.",
         "Tryck i sökaren för att fokusera och dra sedan uppåt eller nedåt för att ändra exponeringen.",
         "Övre raden: blixt, självutlösare, bildformat (4:3, 1:1, 16:9, 3:2 eller Full – i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser starkare guld.",
@@ -67,6 +67,16 @@
       ]
     },
     {
+      "title": "Skanna: QR-koder och dokument",
+      "items": [
+        "I läget Skanna väljer du QR-kod eller Dokument i glasvalen ovanför zoomen. Ficklampan finns överst.",
+        "QR-kod: rikta kameran mot en QR- eller streckkod – den läses av direkt, en guldram visar var den sitter och ett kort visar vad den innehåller. Knapparna i kortet gör det som passar: öppna länken, ansluta till Wi-Fi, lägga till en kontakt, ringa, mejla, skicka sms, visa en plats på kartan eller söka på en produktkod. Allt kan också kopieras eller delas. Läsningen sker helt i telefonen, utan Google Play-tjänster.",
+        "Snabbinställningsrutan Skanna QR (dra ned panelen och lägg till rutan med pennan) öppnar kameran direkt i läget Skanna.",
+        "Dokument: håll telefonen över sidan – en guldram visar papperet. Tryck på avtryckaren, dra hörnen till sidans kanter om det behövs och välj Svartvit (vitt papper, tydlig text), Färg eller Original. Lägg till sida, ta nästa sida, och tryck Spara PDF när du är klar.",
+        "PDF:en sparas i Dokument/SNC Camera (A4, en sida per bild) och kan öppnas eller delas direkt från kortet. Släng tar bort sidorna som inte har sparats."
+      ]
+    },
+    {
       "title": "Bildformat och filformat",
       "items": [
         "Bildformat: 4:3 (hela sensorn), 3:2, 16:9, 1:1 och Full. Full fyller hela skärmen och bilden får skärmens form. I 16:9 (även Video) går sökaren ut till skärmens kanter. I Full och 16:9 ligger knapparna i genomskinligt glas ovanpå bilden. 3:2, 16:9 och Full beskärs från sensorns hela 4:3-bild: sökaren visar mitten av 4:3-bilden och fotot beskärs direkt efteråt, precis som sökaren visar.",
@@ -86,7 +96,8 @@
       "title": "Text i bilden",
       "items": [
         "Texten i bilden hittas automatiskt. Tryck på en rad för att markera den, eller håll in och dra för att markera flera.",
-        "Kopiera eller dela texten, eller öppna länkar, telefonnummer och mejladresser direkt. Det fungerar utan nät och utan Google-tjänster."
+        "Kopiera eller dela texten, eller öppna länkar, telefonnummer och mejladresser direkt. Det fungerar utan nät och utan Google-tjänster.",
+        "QR- och streckkoder i en bild som delas till appen visas också, med samma knappar som i läget Skanna."
       ]
     },
     {
@@ -118,7 +129,7 @@
     {
       "title": "The camera",
       "items": [
-        "The modes Pro, Night, Video, Photo, Portrait and Dual are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
+        "The modes Pro, Night, Video, Photo, Portrait, Dual and Scan are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
         "The lenses: .6 is the ultra-wide (16 mm), 1× the main camera (24 mm) and 2× the telephoto (47 mm). Pinch to zoom up to 10×. A small label shows which lens takes over. In Video, 2 and 5 are digital zoom: video is recorded with the phone's standard camera, the same as the LineageOS camera app, which has no telephoto lens.",
         "Tap the viewfinder to focus, then drag up or down to change the exposure.",
         "Top row: flash, self-timer, aspect ratio (4:3, 1:1, 16:9, 3:2 or Full – in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow brighter gold.",
@@ -181,6 +192,16 @@
       ]
     },
     {
+      "title": "Scan: QR codes and documents",
+      "items": [
+        "In Scan mode, choose QR code or Document in the glass options above the zoom. The flashlight is at the top.",
+        "QR code: point the camera at a QR code or barcode – it is read straight away, a gold frame shows where it is and a card shows what it contains. The buttons on the card do what fits: open the link, connect to Wi-Fi, add a contact, call, email, send a text, show a place on the map or search for a product code. Everything can also be copied or shared. Reading happens entirely on the phone, without Google Play services.",
+        "The Scan QR quick settings tile (pull down the panel and add the tile with the pencil) opens the camera straight in Scan mode.",
+        "Document: hold the phone over the page – a gold frame shows the paper. Tap the shutter, drag the corners to the edges of the page if needed and choose Black & white (white paper, clear text), Colour or Original. Add page, take the next page, and tap Save PDF when you are done.",
+        "The PDF is saved in Documents/SNC Camera (A4, one page per picture) and can be opened or shared straight from the card. Discard removes pages that have not been saved."
+      ]
+    },
+    {
       "title": "Aspect ratio and file format",
       "items": [
         "Aspect ratio: 4:3 (the whole sensor), 3:2, 16:9, 1:1 and Full. Full fills the whole screen and the photo gets the screen's shape. In 16:9 (also Video) the viewfinder reaches the edges of the screen. In Full and 16:9 the buttons sit in see-through glass on top of the picture. 3:2, 16:9 and Full are cropped from the sensor's whole 4:3 picture: the viewfinder shows the middle of the 4:3 picture and the photo is cropped right after it is taken, exactly as the viewfinder shows.",
@@ -200,7 +221,8 @@
       "title": "Text in the picture",
       "items": [
         "The text in the picture is found automatically. Tap a line to select it, or hold and drag to select several.",
-        "Copy or share the text, or open links, phone numbers and email addresses directly. It works offline and without Google services."
+        "Copy or share the text, or open links, phone numbers and email addresses directly. It works offline and without Google services.",
+        "QR codes and barcodes in a picture shared to the app are shown too, with the same buttons as in Scan mode."
       ]
     },
     {
