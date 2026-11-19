@@ -2,6 +2,11 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.16.1 – 2026-11-19
+
+- Panorama: snabbare hopsömnad (en grov sökning i 1/8 upplösning först, sedan finjustering) och mindre analysbilder (helst 1280 × 960).
+- Långsammare visas också när bilderna inte hinner sys ihop. Sveper man så fort att två bilder inte längre överlappar avslutas panoramat där och sparas så långt det kom – i stället för att bilder utan överlapp sys ihop fel.
+
 ## Version 1.16.0 – 2026-11-19
 
 - Nytt läge Panorama (mellan Porträtt och Dubbel): tryck på avtryckaren och svep sakta åt höger eller vänster med telefonen stående; tryck igen för att avsluta, eller svep ett helt varv.

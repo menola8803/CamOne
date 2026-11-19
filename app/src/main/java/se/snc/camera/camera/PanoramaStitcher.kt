@@ -84,6 +84,10 @@ class PanoramaStitcher(
     var gyroOnly = 0
         private set
 
+    /** Sista bilden låg för långt från den förra (inget överlapp) – panoramat slutar där. */
+    var gap = false
+        private set
+
     /** Hur många grader panoramat täcker. */
     val degrees: Float get() = if (frames == 0) 0f else (rightEdge / focal * 180f / PI.toFloat())
 
@@ -99,6 +103,9 @@ class PanoramaStitcher(
         val w4 = w2 / 2
         val h4 = h2 / 2
         val l4: FloatArray = downscale(l2, w2, h2, w4, h4)
+        val w8 = w4 / 2
+        val h8 = h4 / 2
+        val l8: FloatArray = downscale(l4, w4, h4, w8, h8)
 
         companion object {
             /** Ljusstyrka 0–255, eller -1 där bilden saknas. */
@@ -166,7 +173,13 @@ class PanoramaStitcher(
         val p = prev ?: return false
         val cur = warp(if (mirror) flip(frame) else frame)
         val dir = if (mirror) -1f else 1f
-        val guessDx = ((yaw - prevYaw) * dir * focal).roundToInt().coerceIn(warpW / 20, warpW - warpW / 20)
+        val rawDx = ((yaw - prevYaw) * dir * focal).roundToInt()
+        // Utan tillräckligt överlapp går bilderna inte att sy ihop: panoramat slutar vid den förra
+        if (rawDx > warpW * 0.85f) {
+            gap = true
+            return false
+        }
+        val guessDx = rawDx.coerceIn(warpW / 20, warpW - warpW / 20)
         val guessDy = (-(pitch - prevPitch) * focal).roundToInt().coerceIn(-frameH / 6, frameH / 6)
         val (dx, dy) = align(p, cur, guessDx, guessDy)
         val nx = prevX + dx
@@ -288,27 +301,41 @@ class PanoramaStitcher(
             gyroOnly++
             return guessDx to guessDy
         }
-        // 1/4: sök brett runt gissningen
-        val rx = max(6, (0.14f * c.w4).toInt())
-        val ry = max(4, (0.07f * c.h4).toInt())
-        val gx4 = guessDx / 4
-        val gy4 = guessDy / 4
+        // 1/8: sök brett runt gissningen
+        val rx = max(4, (0.14f * c.w8).toInt())
+        val ry = max(3, (0.07f * c.h8).toInt())
+        val gx8 = guessDx / 8
+        val gy8 = guessDy / 8
         var best = Float.MAX_VALUE
-        var bx = gx4
-        var by = gy4
-        val minCount4 = (c.w4 * c.h4) / 40
-        for (sy in gy4 - ry..gy4 + ry) for (sx in gx4 - rx..gx4 + rx) {
-            if (sx <= 0 || sx >= c.w4) continue
-            val v = cost(p.l4, c.l4, c.w4, c.h4, sx, sy, 2, minCount4 / 4) ?: continue
+        var b8x = gx8
+        var b8y = gy8
+        val minCount8 = (c.w8 * c.h8) / 60
+        for (sy in gy8 - ry..gy8 + ry) for (sx in gx8 - rx..gx8 + rx) {
+            if (sx <= 0 || sx >= c.w8) continue
+            val v = cost(p.l8, c.l8, c.w8, c.h8, sx, sy, 1, minCount8) ?: continue
             if (v < best) {
                 best = v
-                bx = sx
-                by = sy
+                b8x = sx
+                b8y = sy
             }
         }
         if (best == Float.MAX_VALUE) {
             gyroOnly++
             return guessDx to guessDy
+        }
+        // 1/4: finjustera runt träffen
+        var bx = b8x * 2
+        var by = b8y * 2
+        best = Float.MAX_VALUE
+        val minCount4 = (c.w4 * c.h4) / 160
+        for (sy in b8y * 2 - 2..b8y * 2 + 2) for (sx in b8x * 2 - 2..b8x * 2 + 2) {
+            if (sx <= 0 || sx >= c.w4) continue
+            val v = cost(p.l4, c.l4, c.w4, c.h4, sx, sy, 1, minCount4) ?: continue
+            if (v < best) {
+                best = v
+                bx = sx
+                by = sy
+            }
         }
         // 1/2 och hel upplösning: finjustera
         var b2x = bx * 2

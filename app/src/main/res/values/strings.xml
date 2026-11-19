@@ -500,5 +500,6 @@
     <string name="cd_pano_preview">Panorama so far</string>
     <string name="msg_pano_short">Sweep further to the side for a panorama</string>
     <string name="msg_pano_no_gyro">Panorama needs the phone\'s gyroscope</string>
+    <string name="msg_pano_fast">You swept too fast – the panorama was saved up to that point</string>
     <string name="msg_pano_failed">The panorama couldn\'t be saved</string>
 </resources>

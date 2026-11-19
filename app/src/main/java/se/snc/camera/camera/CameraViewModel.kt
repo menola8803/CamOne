@@ -689,7 +689,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                         ResolutionSelector.Builder()
                             .setAspectRatioStrategy(photoAspect)
                             .setResolutionStrategy(
-                                ResolutionStrategy(Size(1280, 960), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)
+                                ResolutionStrategy(Size(1280, 960), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)
                             )
                             .build()
                     )
@@ -2110,13 +2110,15 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val s = settings.value
         if (s.shutterSound) sound.play(MediaActionSound.STOP_VIDEO_RECORDING)
         _state.update { it.copy(panoActive = false, panoMerging = true, isCapturing = true) }
-        session.finish { result, frames, degrees ->
+        session.finish { result, frames, degrees, gap ->
             viewModelScope.launch {
                 try {
                     if (result == null) {
-                        showMessage(R.string.msg_pano_short)
+                        showMessage(if (gap) R.string.msg_pano_fast else R.string.msg_pano_short)
                         return@launch
                     }
+                    // Svepet gick för fort: panoramat sparas fram till där bilderna slutade överlappa
+                    if (gap) showMessage(R.string.msg_pano_fast)
                     val uri = withContext(Dispatchers.Default) {
                         val (px, w, h) = result
                         var bmp = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)

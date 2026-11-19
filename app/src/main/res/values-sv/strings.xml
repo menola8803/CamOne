@@ -497,5 +497,6 @@
     <string name="cd_pano_preview">Panoramat hittills</string>
     <string name="msg_pano_short">Svep längre åt sidan för ett panorama</string>
     <string name="msg_pano_no_gyro">Panorama behöver telefonens gyroskop</string>
+    <string name="msg_pano_fast">Du svepte för fort – panoramat sparades fram till dit</string>
     <string name="msg_pano_failed">Panoramat kunde inte sparas</string>
 </resources>

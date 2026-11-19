@@ -714,13 +714,13 @@ check "Panorama visar uppmaningen" $UI exists --text "Tap the shutter and sweep 
 PB=$(count 'PANO_')
 key KEYCODE_VOLUME_UP
 sleep 1
-# Emulatorns gyro: vrid åt höger ca 26° per sekund (runt telefonens y-axel)
-GY=$(adb emu sensor set gyroscope 0:-0.45:0 2>&1 | tr -d '\r' | tail -1)
+# Emulatorns gyro: vrid åt höger ca 17° per sekund (runt telefonens y-axel)
+GY=$(adb emu sensor set gyroscope 0:-0.30:0 2>&1 | tr -d '\r' | tail -1)
 log "  Emulatorns gyro: ${GY:-?}"
-sleep 3
+sleep 4
 shot 19q-panorama-svep
-check "Panoramat visar grader och bilder under svepet" $UI exists --contains "photos – tap to finish" --timeout 4
-sleep 3
+check "Panoramat visar förloppet under svepet (grader och bilder, eller Långsammare)" bash -c "$UI exists --contains 'tap to finish' --timeout 3 || $UI exists --text 'Slower' --timeout 2"
+sleep 4
 adb emu sensor set gyroscope 0:0:0 >> "$OUT/ui.log" 2>&1
 sleep 1
 key KEYCODE_VOLUME_UP

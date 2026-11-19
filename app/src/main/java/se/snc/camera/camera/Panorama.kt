@@ -120,21 +120,26 @@ class PanoramaSession(
         active = true
     }
 
-    /** Slutar ta emot bilder. Ger panoramat (ARGB, bredd, höjd, antal bilder, grader) när tråden är klar. */
-    fun finish(done: (Triple<IntArray, Int, Int>?, Int, Int) -> Unit) {
+    /**
+     * Slutar ta emot bilder. Ger panoramat (ARGB, bredd, höjd), antal bilder, grader och om det slutade
+     * för att svepet gick för fort (inget överlapp) när tråden är klar.
+     */
+    fun finish(done: (Triple<IntArray, Int, Int>?, Int, Int, Boolean) -> Unit) {
         active = false
         worker.execute {
             val s = stitcher
             val result = runCatching { s?.result() }.onFailure { Log.w(TAG, "Panorama: kunde inte sättas ihop: $it", it) }.getOrNull()
             val frames = s?.frames ?: 0
             val deg = s?.degrees?.toInt() ?: 0
+            val gap = s?.gap == true
             Log.i(
                 TAG,
                 "Panorama: klart – $frames bilder, $deg°, ${result?.second ?: 0}x${result?.third ?: 0}, " +
-                    "${if (s?.leftwards == true) "åt vänster" else "åt höger"}, gyro ensamt ${s?.gyroOnly ?: 0}, förskjutningar ${s?.offsets}"
+                    "${if (s?.leftwards == true) "åt vänster" else "åt höger"}, gyro ensamt ${s?.gyroOnly ?: 0}, " +
+                    "${if (gap) "slutade vid för stort hopp, " else ""}förskjutningar ${s?.offsets}"
             )
             stitcher = null
-            done(result, frames, deg)
+            done(result, frames, deg, gap)
         }
     }
 
@@ -154,7 +159,8 @@ class PanoramaSession(
             val now = System.currentTimeMillis()
             val yaw = motion.yaw
             val pitch = motion.pitch
-            val tooFast = motion.speed > 0.9f
+            // För fort: gyrot säger det, eller så hinner sömnaden inte med (bilder väntar)
+            val tooFast = motion.speed > 0.9f || queued.get() >= 2
             val s = stitcher
             if (now - lastStatusMs > 80) {
                 lastStatusMs = now
@@ -168,7 +174,7 @@ class PanoramaSession(
                 )
             }
             val keep = !keptAny || abs(yaw - lastKeptYaw) >= stepRad
-            if (!keep || queued.get() >= 3) return
+            if (!keep || queued.get() >= 4) return
             val frame = copyUpright(image) ?: return
             val (px, w, h) = frame
             keptAny = true
