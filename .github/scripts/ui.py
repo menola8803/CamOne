@@ -5,6 +5,7 @@
   ui.py tap --desc "Switch camera"   tryck på ett element med innehållsbeskrivning
   ui.py exists --contains "SNC"      finns det något som innehåller texten?
   ui.py exists --text "PHOTO" --selected   är elementet valt (t.ex. aktivt kameraläge)?
+  ui.py exists --text "Colour" --checked   är valet markerat (Compose-val med Role.RadioButton)?
   ui.py swipe --text "PHOTO" --dx=-160     svep i sidled från elementets mitt
   ui.py swipe --y 0.4 --dx=-0.35           svep i sidled mitt på skärmen (dx som andel av bredden)
   ui.py tap --desc "Red" --fx 0          tryck längst till vänster på ett element (t.ex. ett reglage)
@@ -72,6 +73,9 @@ def find(root, args, w, h):
         )
         if hit and getattr(args, "selected", False) and n.get("selected") != "true":
             continue
+        # Compose-val med Role.RadioButton syns som "checked", inte "selected"
+        if hit and getattr(args, "checked", False) and n.get("checked") != "true":
+            continue
         if hit and visible(n, w, h):
             return n
     return None
@@ -85,7 +89,7 @@ def describe(root):
         t = n.get("text", "")
         d = n.get("content-desc", "")
         if t or d:
-            sel = " selected" if n.get("selected") == "true" else ""
+            sel = (" selected" if n.get("selected") == "true" else "") + (" checked" if n.get("checked") == "true" else "")
             items.append(f"text={t!r} desc={d!r} bounds={n.get('bounds')}{sel}")
     return "\n".join(items)
 
@@ -145,6 +149,7 @@ def main():
     p.add_argument("--timeout", type=float, default=8)
     p.add_argument("--scroll", action="store_true")
     p.add_argument("--selected", action="store_true")
+    p.add_argument("--checked", action="store_true")
     p.add_argument("--dx", type=float, default=0)
     p.add_argument("--y", type=float, default=0.4)
     p.add_argument("--ms", type=int, default=600)

@@ -357,7 +357,8 @@ fun DocumentEditor(
     onAdd: (FloatArray, DocFilter) -> Unit
 ) {
     val quad = remember(bitmap) { mutableStateOf(initialQuad.copyOf()) }
-    var filter by remember { mutableStateOf(DocFilter.DOCUMENT) }
+    // Färg är valt från början (användarens val); Svartvit för vitt papper och tydlig text
+    var filter by remember { mutableStateOf(DocFilter.COLOR) }
     var box by remember { mutableStateOf(IntSize.Zero) }
     var dragging by remember { mutableIntStateOf(-1) }
     val image = remember(bitmap) { bitmap.asImageBitmap() }
@@ -458,8 +459,8 @@ fun DocumentEditor(
             horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally)
         ) {
             listOf(
-                DocFilter.DOCUMENT to R.string.doc_filter_document,
                 DocFilter.COLOR to R.string.doc_filter_color,
+                DocFilter.DOCUMENT to R.string.doc_filter_document,
                 DocFilter.ORIGINAL to R.string.doc_filter_original
             ).forEach { (f, label) ->
                 val selected = f == filter

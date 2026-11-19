@@ -1,5 +1,5 @@
 {
-  "version": "1.16.2",
+  "version": "1.16.3",
   "sv": [
     {
       "title": "Kameran",
@@ -83,7 +83,7 @@
         "I läget Skanna väljer du QR-kod eller Dokument i glasvalen ovanför zoomen. Ficklampan finns överst.",
         "QR-kod: rikta kameran mot en QR- eller streckkod – den läses av direkt, en guldram visar var den sitter och ett kort visar vad den innehåller. Knapparna i kortet gör det som passar: öppna länken, ansluta till Wi-Fi, lägga till en kontakt, ringa, mejla, skicka sms, visa en plats på kartan eller söka på en produktkod. Allt kan också kopieras eller delas. Läsningen sker helt i telefonen, utan Google Play-tjänster.",
         "Snabbinställningsrutan Skanna QR (dra ned panelen och lägg till rutan med pennan) öppnar kameran direkt i läget Skanna.",
-        "Dokument: håll telefonen över sidan – en guldram visar papperet. Tryck på avtryckaren, dra hörnen till sidans kanter om det behövs och välj Svartvit (vitt papper, tydlig text), Färg eller Original. Lägg till sida, ta nästa sida, och tryck Spara PDF när du är klar.",
+        "Dokument: håll telefonen över sidan – en guldram visar papperet. Tryck på avtryckaren, dra hörnen till sidans kanter om det behövs och välj Färg (valt från början), Svartvit (vitt papper, tydlig text) eller Original. Lägg till sida, ta nästa sida, och tryck Spara PDF när du är klar.",
         "PDF:en sparas i Dokument/SNC Camera (A4, en sida per bild) och kan öppnas eller delas direkt från kortet. Släng tar bort sidorna som inte har sparats."
       ]
     },
@@ -223,7 +223,7 @@
         "In Scan mode, choose QR code or Document in the glass options above the zoom. The flashlight is at the top.",
         "QR code: point the camera at a QR code or barcode – it is read straight away, a gold frame shows where it is and a card shows what it contains. The buttons on the card do what fits: open the link, connect to Wi-Fi, add a contact, call, email, send a text, show a place on the map or search for a product code. Everything can also be copied or shared. Reading happens entirely on the phone, without Google Play services.",
         "The Scan QR quick settings tile (pull down the panel and add the tile with the pencil) opens the camera straight in Scan mode.",
-        "Document: hold the phone over the page – a gold frame shows the paper. Tap the shutter, drag the corners to the edges of the page if needed and choose Black & white (white paper, clear text), Colour or Original. Add page, take the next page, and tap Save PDF when you are done.",
+        "Document: hold the phone over the page – a gold frame shows the paper. Tap the shutter, drag the corners to the edges of the page if needed and choose Colour (selected from the start), Black & white (white paper, clear text) or Original. Add page, take the next page, and tap Save PDF when you are done.",
         "The PDF is saved in Documents/SNC Camera (A4, one page per picture) and can be opened or shared straight from the card. Discard removes pages that have not been saved."
       ]
     },

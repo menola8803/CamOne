@@ -2,6 +2,10 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.16.3 – 2026-11-20
+
+- Dokumentskannern: Färg ligger först och är valt från början för varje sida. Svartvit (vitt papper, tydlig text) och Original finns kvar bredvid.
+
 ## Version 1.16.2 – 2026-11-19
 
 - Dubbelvideo: båda halvorna i filmen är nu rättvända och har rätt proportioner. Förut vreds och speglades kamerabilden en gång till i filmen, så att framkamerans bild (och bakkamerans) blev vriden och hoptryckt. Framkameran spegelvänds i filmen enligt Spegla framkameran, som i dubbelfotot.

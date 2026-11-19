@@ -806,6 +806,7 @@ tap --desc "Shutter"
 sleep 6
 shot 19o-dokument-horn
 check "Dokumentet öppnas för att justera hörnen" $UI exists --text "Adjust the corners" --timeout 12
+check "Färg är valt från början för sidan" $UI exists --text "Colour" --checked --timeout 5
 tap --text "Add page"
 sleep 6
 check "Sidan läggs till" $UI exists --text "Pages: 1" --timeout 15
