@@ -546,6 +546,71 @@ PY
   key KEYCODE_VOLUME_UP
   for w in $(seq 1 15); do sleep 1; [ "$(count 'DUAL_')" -gt "$DB" ] && break; done
   check "Dubbelbild sparas även efter bytet" [ "$(count 'DUAL_')" -gt "$DB" ]
+
+  # Dubbelvideo: båda halvorna spelas in i sökarens ordning, byt plats mitt i
+  tap --text "Video"
+  for w in $(seq 1 12); do sleep 1; adb logcat -d -s SncCamera:V 2>/dev/null | grep -q "Dubbel: bunden för video" && break; done
+  sleep 3
+  shot 19n-dubbelvideo
+  adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Dubbel: bunden för video|Dubbelvideo: (indata|OpenGL|bindningen|första bildrutan från)" | tail -4 | while IFS= read -r l; do
+    echo "::notice title=Dubbelvideo-logg::$(echo "$l" | cut -c1-300)"
+  done
+  check "Dubbel binds för video (båda sökarna genom appens OpenGL-steg)" sh -c "adb logcat -d -s SncCamera:V 2>/dev/null | grep -q 'Dubbel: bunden för video'"
+  VB=$(count 'DUAL_.*mp4')
+  key KEYCODE_VOLUME_UP
+  sleep 2
+  tap --desc "Swap places"
+  sleep 3
+  shot 19o-dubbelvideo-spelar-in
+  key KEYCODE_VOLUME_UP
+  for w in $(seq 1 15); do sleep 1; [ "$(count 'DUAL_.*mp4')" -gt "$VB" ] && break; done
+  sleep 1
+  adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Dubbelvideo: (kodare|inspelning|första bildrutan i filmen|ljudet|kodarfel)" | tail -5 | while IFS= read -r l; do
+    echo "::notice title=Dubbelvideo-inspelning::$(echo "$l" | cut -c1-300)"
+  done
+  VA=$(count 'DUAL_.*mp4')
+  check "Dubbelvideon sparas ($VB → $VA)" [ "$VA" -gt "$VB" ]
+  DV=$(adb shell "ls -t '$DIR' | grep 'DUAL_.*mp4' | head -1" | tr -d '\r')
+  if [ -n "$DV" ] && command -v ffprobe > /dev/null; then
+    adb pull "$DIR/$DV" "$OUT/dubbelvideo.mp4" >> "$OUT/ui.log" 2>&1
+    DVS=$(ffprobe -v error -select_streams v:0 -show_entries stream=width,height -of csv=s=x:p=0 "$OUT/dubbelvideo.mp4" 2>> "$OUT/ui.log" | head -1)
+    DVD=$(ffprobe -v error -show_entries format=duration -of csv=p=0 "$OUT/dubbelvideo.mp4" 2>> "$OUT/ui.log" | head -1)
+    DVA=$(ffprobe -v error -select_streams a -show_entries stream=codec_name -of csv=p=0 "$OUT/dubbelvideo.mp4" 2>> "$OUT/ui.log" | head -1)
+    log "  Dubbelvideo: $DV – ${DVS:-?}, ${DVD:-?} s, ljud ${DVA:-inget}"
+    check "Dubbelvideon är stående 3:4: ${DVS:-?}" python3 -c "import sys; w,h=map(int,'${DVS:-0x1}'.split('x')); sys.exit(0 if h and 0.72 < w/h < 0.78 else 1)"
+    check "Dubbelvideon är minst 3 s lång (${DVD:-?} s)" python3 -c "import sys; sys.exit(0 if float('${DVD:-0}' or 0) >= 3 else 1)"
+    if adb logcat -d -s SncCamera:V 2>/dev/null | grep -q "Dubbelvideo: inspelning startad .*ljud på"; then
+      check "Dubbelvideon har ljud (${DVA:-inget})" [ "$DVA" = "aac" ]
+    else
+      log "  (ljudet var avstängt eller saknas – inget ljudspår väntas)"
+    fi
+    ffmpeg -loglevel error -y -ss 0.8 -i "$OUT/dubbelvideo.mp4" -frames:v 1 "$OUT/dubbelvideo.png" >> "$OUT/ui.log" 2>&1
+    if [ -f "$OUT/dubbelvideo.png" ]; then
+      HALVES=$(python3 - "$OUT/dubbelvideo.png" <<'PY'
+import sys
+from PIL import Image, ImageStat
+im = Image.open(sys.argv[1]).convert("RGB")
+w, h = im.size
+top = ImageStat.Stat(im.crop((0, 0, w, h // 2 - 8)))
+bottom = ImageStat.Stat(im.crop((0, h // 2 + 8, w, h)))
+line = ImageStat.Stat(im.crop((0, h // 2 - 1, w, h // 2 + 1))).mean
+def desc(s):
+    return f"{sum(s.mean) / 3:.0f}/{sum(s.stddev) / 3:.0f}"
+ok = sum(top.stddev) / 3 > 4 and sum(bottom.stddev) / 3 > 4
+gold = line[0] > 140 and line[0] - line[2] > 50
+print(f"{'1' if ok else '0'} {'1' if gold else '0'} topp {desc(top)} botten {desc(bottom)} linje {line[0]:.0f},{line[1]:.0f},{line[2]:.0f}")
+PY
+)
+      log "  Bild ur dubbelvideon (medel/spridning): ${HALVES:-?}"
+      check "Dubbelvideon visar bild i båda halvorna (${HALVES:-?})" [ "${HALVES%% *}" = "1" ]
+      GOLD=$(echo "$HALVES" | cut -d' ' -f2)
+      check "Guldlinjen mellan halvorna finns i filmen" [ "$GOLD" = "1" ]
+    fi
+  fi
+  SWV=$(adb logcat -d -s SncCamera:V 2>/dev/null | grep -c "Dubbel: bytt plats")
+  check "Byt plats under inspelningen ($SWV byten totalt, minst 3)" [ "$SWV" -ge 3 ]
+  tap --text "Photo"
+  sleep 4
 fi
 check "Appen lever efter Dubbel" alive
 tap --text "PORTRAIT"

@@ -2,6 +2,14 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.14.0 – 2026-11-19
+
+- Dubbelvideo: läget Dubbel har nu Foto och Video under sökaren. I Video spelas båda kamerorna in samtidigt, i var sin halva som i sökaren, med guldlinjen emellan – 1080 × 1440 i 30 bilder per sekund med ljud från mikrofonen.
+- Byt plats under inspelningen (knappen eller håll in och dra): halvorna glider om varandra direkt i filmen. Live-filtret följer med och kan ändras under inspelningen.
+- Liggande telefon när inspelningen börjar ger en film med halvorna bredvid varandra, som fotot. Filmerna heter DUAL_….mp4.
+- Båda sökarna går genom ett eget OpenGL-steg (en CameraX-effekt per kamera, samma kamerauppsättning som dubbelfotot) som också ritar filmen till en H.264-kodare; ljudet kodas som AAC. Går det inte på telefonen visas ett meddelande och fotot fungerar som vanligt.
+- Filmen sparas klart även om appen går till bakgrunden mitt i en inspelning.
+
 ## Version 1.13.0 – 2026-11-19
 
 - Nytt läge Skanna (längst till höger i lägesmenyn) med QR-kod och Dokument.

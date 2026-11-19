@@ -352,6 +352,9 @@
     <string name="dual_hint">Hold and drag to swap places</string>
     <string name="msg_dual_unsupported">Front and back cameras can\'t be used at the same time on this phone</string>
     <string name="cd_swap_dual">Swap places</string>
+    <string name="dual_photo">Photo</string>
+    <string name="dual_video">Video</string>
+    <string name="msg_dual_video_unsupported">Dual video isn\'t supported on this phone – photos still work</string>
     <string name="mode_scan">Scan</string>
     <string name="scan_kind_code">QR code</string>
     <string name="scan_kind_document">Document</string>

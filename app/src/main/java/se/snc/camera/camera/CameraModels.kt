@@ -163,6 +163,10 @@ data class CameraUiState(
     val dualAvailable: Boolean? = null,
     /** Läget Dubbel: frontkameran ligger överst (annars bakkameran). */
     val dualSwapped: Boolean = false,
+    /** Läget Dubbel: Video (annars Foto). */
+    val dualVideo: Boolean = false,
+    /** Läget Dubbel: kamerorna är bundna för dubbelvideo (går att spela in). */
+    val dualVideoReady: Boolean = false,
 
     /** Håll in avtryckaren för serietagning (Foto och Pro, inte med HDR-sammanslagning eller RAW). */
     val burstAvailable: Boolean = false,

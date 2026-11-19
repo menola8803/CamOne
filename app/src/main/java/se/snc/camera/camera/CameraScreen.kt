@@ -780,6 +780,21 @@ private fun CameraContent(
                 }
             }
 
+            // Läget Dubbel: Foto eller Video
+            if (dual && state.dualAvailable == true && !state.isRecording && !state.filterPanelOpen) {
+                Box(Modifier.padding(bottom = 8.dp)) {
+                    GlassChipRow {
+                        val enabled = !state.isCapturing && state.countdown == 0
+                        GlassChip(stringResource(R.string.dual_photo), selected = !state.dualVideo, enabled = enabled) {
+                            viewModel.setDualVideo(false)
+                        }
+                        GlassChip(stringResource(R.string.dual_video), selected = state.dualVideo, enabled = enabled) {
+                            viewModel.setDualVideo(true)
+                        }
+                    }
+                }
+            }
+
             // Visar en stund vilken lins som tog över när man zoomar (t.ex. "Tele · 47 mm")
             var showLens by remember { mutableStateOf(false) }
             LaunchedEffect(state.lensChangeTick) {
@@ -845,8 +860,8 @@ private fun CameraContent(
             ) {
                 Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
                     if (state.isRecording) {
-                        // Paus bara i vanlig video
-                        if (state.videoStyle == VideoStyle.NORMAL) PauseButton(state.isPaused, viewModel::togglePause)
+                        // Paus bara i vanlig video (inte i dubbelvideo)
+                        if (state.videoStyle == VideoStyle.NORMAL && !dual) PauseButton(state.isPaused, viewModel::togglePause)
                     } else {
                         GalleryThumbnail(
                             bitmap = state.lastThumbnail,
@@ -866,7 +881,7 @@ private fun CameraContent(
 
                 // Skanna QR: koderna läses av sig själva – ingen avtryckare
                 if (state.mode == CameraMode.SCAN && state.scanKind == ScanKind.CODE) Spacer(Modifier.size(84.dp)) else ShutterButton(
-                    isVideo = state.mode.isVideo,
+                    isVideo = state.mode.isVideo || (dual && state.dualVideo),
                     isRecording = state.isRecording,
                     isBusy = state.isCapturing,
                     countdown = state.countdown,
@@ -958,7 +973,7 @@ private fun TopBar(
             RecordingTimer(
                 state.recordingMs,
                 state.isPaused,
-                extra = if (state.videoStyle != VideoStyle.NORMAL) "→ ${formatClip(state.recordingOutputMs)}" else null
+                extra = if (state.mode.isVideo && state.videoStyle != VideoStyle.NORMAL) "→ ${formatClip(state.recordingOutputMs)}" else null
             )
             return@Box
         }

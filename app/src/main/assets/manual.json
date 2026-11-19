@@ -1,5 +1,5 @@
 {
-  "version": "1.13.0",
+  "version": "1.14.0",
   "sv": [
     {
       "title": "Kameran",
@@ -60,10 +60,12 @@
     {
       "title": "Fram och bak samtidigt (Dubbel)",
       "items": [
-        "I läget Dubbel visas bakkameran och frontkameran samtidigt, i var sin halva av sökaren. En tunn guldlinje skiljer dem åt.",
-        "Byt plats: håll in en halva och dra den förbi mitten, eller tryck på knappen till höger om avtryckaren.",
-        "Fotot sätts ihop av båda kamerornas bilder i samma ordning som i sökaren. Håller du telefonen liggande hamnar bilderna bredvid varandra. Live-filtret och självutlösaren fungerar; blixt, zoom och HDR finns inte i läget.",
-        "Bilderna heter DUAL_….jpg. Alla telefoner kan inte använda båda kamerorna samtidigt – då står det i sökaren."
+        "I läget Dubbel visas bakkameran och frontkameran samtidigt, i var sin halva av sökaren. En tunn guldlinje skiljer dem åt. Under sökaren väljer du Foto eller Video.",
+        "Byt plats: håll in en halva och dra den förbi mitten, eller tryck på knappen till höger om avtryckaren. Det går även under en inspelning – bytet syns direkt i filmen.",
+        "Foto: bilden sätts ihop av båda kamerornas bilder i samma ordning som i sökaren. Håller du telefonen liggande hamnar bilderna bredvid varandra.",
+        "Video: tryck på avtryckaren för att börja och sluta spela in. Filmen ser ut som sökaren (1080 × 1440, 30 bilder per sekund) med ljud från mikrofonen och live-filtret. Hålls telefonen liggande när du börjar spelas filmen upp med halvorna bredvid varandra. Paus finns inte i dubbelvideo.",
+        "Live-filtret och självutlösaren fungerar; blixt, zoom och HDR finns inte i läget.",
+        "Bilderna heter DUAL_….jpg och filmerna DUAL_….mp4. Alla telefoner kan inte använda båda kamerorna samtidigt – då står det i sökaren. Klarar telefonen dubbelfoto men inte dubbelvideo visas ett meddelande och fotot fungerar som vanligt."
       ]
     },
     {
@@ -185,10 +187,12 @@
     {
       "title": "Front and back together (Dual)",
       "items": [
-        "In Dual mode the back and front cameras are shown at the same time, each in one half of the viewfinder, separated by a thin gold line.",
-        "Swap places: hold one half and drag it past the middle, or tap the button to the right of the shutter.",
-        "The photo is made from both cameras' pictures in the same order as in the viewfinder. If you hold the phone sideways, the pictures end up side by side. The live filter and self-timer work; flash, zoom and HDR are not available in this mode.",
-        "The photos are named DUAL_….jpg. Not every phone can use both cameras at once – the viewfinder says so if yours can't."
+        "In Dual mode the back and front cameras are shown at the same time, each in one half of the viewfinder, separated by a thin gold line. Choose Photo or Video below the viewfinder.",
+        "Swap places: hold one half and drag it past the middle, or tap the button to the right of the shutter. This also works while recording – the swap shows up in the video right away.",
+        "Photo: the picture is made from both cameras' pictures in the same order as in the viewfinder. If you hold the phone sideways, the pictures end up side by side.",
+        "Video: tap the shutter to start and stop recording. The video looks like the viewfinder (1080 × 1440, 30 frames per second) with sound from the microphone and the live filter. If you hold the phone sideways when you start, the video plays with the halves side by side. Dual video has no pause.",
+        "The live filter and self-timer work; flash, zoom and HDR are not available in this mode.",
+        "Photos are named DUAL_….jpg and videos DUAL_….mp4. Not every phone can use both cameras at once – the viewfinder says so if yours can't. If the phone can take dual photos but not dual video, a message says so and photos work as usual."
       ]
     },
     {

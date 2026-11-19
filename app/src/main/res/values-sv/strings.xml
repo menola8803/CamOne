@@ -349,6 +349,9 @@
     <string name="dual_hint">Håll in och dra för att byta plats</string>
     <string name="msg_dual_unsupported">Fram- och bakkameran kan inte användas samtidigt på den här telefonen</string>
     <string name="cd_swap_dual">Byt plats</string>
+    <string name="dual_photo">Foto</string>
+    <string name="dual_video">Video</string>
+    <string name="msg_dual_video_unsupported">Dubbelvideo stöds inte på den här telefonen – foton fungerar</string>
     <string name="mode_scan">Skanna</string>
     <string name="scan_kind_code">QR-kod</string>
     <string name="scan_kind_document">Dokument</string>

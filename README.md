@@ -25,7 +25,7 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
 - **Slow motion** (120/240/480 fps, spelas upp 4–16× långsammare) och **tidsförlopp** (0,5–5 s mellan bilderna)
-- **Dubbel**: fram- och bakkameran samtidigt i var sin halva – håll in och dra för att byta plats
+- **Dubbel**: fram- och bakkameran samtidigt i var sin halva – foto eller video med ljud; håll in och dra för att byta plats (även under inspelning)
 - **Skanna**: QR- och streckkoder med åtgärder (länk, Wi-Fi, kontakt, ring, mejl, sms, karta) och dokumentskanner till PDF;
   snabbinställningsrutan **Skanna QR**
 - Pro-läge: EV, ISO, slutartid **upp till 30 s** (lång exponering), vitbalans och manuell fokus,

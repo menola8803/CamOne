@@ -51,12 +51,16 @@ import androidx.camera.video.VideoRecordEvent
 import androidx.camera.view.PreviewView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.Observer
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -238,6 +242,19 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var dualFrontCapture: ImageCapture? = null
     private var dualBound = false
 
+    // Dubbelvideo (DualVideo.kt): båda sökarna går genom en egen OpenGL-tråd som också spelar in
+    private var dualRenderer: DualVideoRenderer? = null
+    private var dualVideoBound = false
+    private var dualRecorder: DualRecorder? = null
+    private var dualStopping = false
+    private var dualVideoFailShown = false
+    /** Filmen sparas klart även om kameraskärmen stängs under tiden. */
+    private val recorderScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val stopObserver = LifecycleEventObserver { _, event ->
+        // Appen går till bakgrunden: kamerorna stängs, så filmen avslutas och sparas
+        if (event == Lifecycle.Event.ON_STOP) finishDualRecording()
+    }
+
     // Läget Skanna (scan/): QR- och streckkoder med ML Kit, dokument med egen hörnsökning
     private var scanAnalysis: ImageAnalysis? = null
     private val scanExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SncScan") }
@@ -366,7 +383,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------------------------------------------------------------------------------------
 
     fun attach(owner: LifecycleOwner, view: PreviewView) {
+        lifecycleOwner?.lifecycle?.removeObserver(stopObserver)
         lifecycleOwner = owner
+        owner.lifecycle.addObserver(stopObserver)
         previewView = view
         rebind()
     }
@@ -385,6 +404,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         dualBackCapture = null
         dualFrontCapture = null
         dualBound = false
+        finishDualRecording()
+        dualVideoBound = false
+        lifecycleOwner?.lifecycle?.removeObserver(stopObserver)
         stopScan()
         motion.stop()
         bindJob?.cancel()
@@ -406,6 +428,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         videoFilter?.release()
         timelapseEffect?.release()
         slowCam?.release()
+        dualRenderer?.release()
         runCatching { barcodeScanner?.close() }
         scanExecutor.shutdown()
         runCatching { DocumentPdf.pagesDir(context).deleteRecursively() }
@@ -506,6 +529,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         dualBackCapture = null
         dualFrontCapture = null
         dualBound = false
+        dualVideoBound = false
 
         // Fram och bak samtidigt
         if (st.mode == CameraMode.DUAL) return bindDual(cp, owner, view, hasFront, hasBack)
@@ -1318,6 +1342,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             it.copy(
                 isReady = ready,
                 dualAvailable = available,
+                dualVideoReady = dualVideoBound,
                 lensFront = false,
                 hasFrontCamera = hasFront,
                 hasBackCamera = hasBack,
@@ -1376,19 +1401,147 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             null
         }
 
-        val cc = bind(withCapture = true) ?: bind(withCapture = false)
+        /**
+         * Dubbelvideo: bara sökarna (4:3, helst 1440 × 1080), var och en genom den gemensamma
+         * OpenGL-tråden som också ritar filmen.
+         */
+        fun bindVideo(): ConcurrentCamera? = try {
+            val r = dualRenderer ?: DualVideoRenderer().also { dualRenderer = it }
+            r.configure(backInfo.sensorRotationDegrees, frontInfo.sensorRotationDegrees, settings.value.mirrorFront)
+            fun videoPreview(target: PreviewView) = Preview.Builder()
+                .setResolutionSelector(
+                    ratio().setResolutionStrategy(
+                        ResolutionStrategy(Size(1440, 1080), ResolutionStrategy.FALLBACK_RULE_CLOSEST_LOWER_THEN_HIGHER)
+                    ).build()
+                )
+                .build()
+                .also { it.setSurfaceProvider(target.surfaceProvider) }
+            val groupBack = UseCaseGroup.Builder().addUseCase(videoPreview(view)).addEffect(r.backEffect).build()
+            val groupFront = UseCaseGroup.Builder().addUseCase(videoPreview(second)).addEffect(r.frontEffect).build()
+            cp.unbindAll()
+            cp.bindToLifecycle(
+                listOf(
+                    ConcurrentCamera.SingleCameraConfig(selectorFor(backInfo), groupBack, owner),
+                    ConcurrentCamera.SingleCameraConfig(selectorFor(frontInfo), groupFront, owner)
+                )
+            ).also { dualVideoBound = true }
+        } catch (e: Exception) {
+            Log.w(TAG, "Dubbelvideo: bindningen misslyckades", e)
+            runCatching { cp.unbindAll() }
+            null
+        }
+
+        val wantVideo = _state.value.dualVideo
+        val cc = (if (wantVideo) bindVideo() else null) ?: bind(withCapture = true) ?: bind(withCapture = false)
         if (cc == null) {
             publish(ready = false, available = false)
             return true
         }
         dualBound = true
         publish(ready = true, available = true)
+        if (wantVideo && !dualVideoBound && !dualVideoFailShown) {
+            dualVideoFailShown = true
+            showMessage(R.string.msg_dual_video_unsupported)
+        }
         Log.i(
             TAG,
-            "Dubbel: bunden – bak ${idOf(backInfo)} ${dualBackCapture?.resolutionInfo?.resolution ?: "(sökaren)"}, " +
-                "fram ${idOf(frontInfo)} ${dualFrontCapture?.resolutionInfo?.resolution ?: "(sökaren)"}"
+            if (dualVideoBound) {
+                "Dubbel: bunden för video – bak ${idOf(backInfo)} (${backInfo.sensorRotationDegrees}°), fram ${idOf(frontInfo)} (${frontInfo.sensorRotationDegrees}°)"
+            } else {
+                "Dubbel: bunden – bak ${idOf(backInfo)} ${dualBackCapture?.resolutionInfo?.resolution ?: "(sökaren)"}, " +
+                    "fram ${idOf(frontInfo)} ${dualFrontCapture?.resolutionInfo?.resolution ?: "(sökaren)"}"
+            }
         )
         return true
+    }
+
+    /** Läget Dubbel: Foto eller Video. */
+    fun setDualVideo(video: Boolean) {
+        val st = _state.value
+        if (st.isRecording || st.countdown > 0 || st.isCapturing || video == st.dualVideo) return
+        _state.update { it.copy(dualVideo = video) }
+        dualVideoFailShown = false
+        Log.i(TAG, "Dubbel: ${if (video) "video" else "foto"}")
+        if (st.mode == CameraMode.DUAL) rebind()
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun startDualRecording() {
+        val r = dualRenderer
+        if (!dualVideoBound || r == null) {
+            showMessage(R.string.msg_dual_video_unsupported)
+            return
+        }
+        if (dualRecorder != null) return
+        val st = _state.value
+        val s = settings.value
+        val audio = s.recordAudio && ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) ==
+            PackageManager.PERMISSION_GRANTED
+        val deviceDegrees = when (targetRotation) {
+            Surface.ROTATION_90 -> 90
+            Surface.ROTATION_180 -> 180
+            Surface.ROTATION_270 -> 270
+            else -> 0
+        }
+        // Samma vridning som fotot: liggande telefon ger halvorna bredvid varandra
+        val hint = (360 - deviceDegrees) % 360
+        r.frontOnTop = st.dualSwapped
+        r.setMatrix(if (st.filter.isActive) st.filter.matrix() else null)
+        r.setMirrorFront(s.mirrorFront)
+        val rec = DualRecorder(context, r)
+        dualRecorder = rec
+        dualStopping = false
+        if (s.shutterSound) sound.play(MediaActionSound.START_VIDEO_RECORDING)
+        viewModelScope.launch {
+            val ok = rec.start(withAudio = audio, orientationHint = hint)
+            if (dualRecorder !== rec) {
+                // Stoppad (t.ex. appen stängdes) medan den startade
+                return@launch
+            }
+            if (!ok) {
+                dualRecorder = null
+                showMessage(R.string.msg_record_failed)
+                return@launch
+            }
+            recordingStyle = VideoStyle.NORMAL
+            _state.update { it.copy(isRecording = true, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
+            startTicker()
+        }
+    }
+
+    private fun stopDualRecording() {
+        val rec = dualRecorder ?: return
+        if (dualStopping || !_state.value.isRecording) return
+        dualStopping = true
+        if (settings.value.shutterSound) sound.play(MediaActionSound.STOP_VIDEO_RECORDING)
+        viewModelScope.launch {
+            val uri = rec.stop()
+            if (dualRecorder === rec) dualRecorder = null
+            dualStopping = false
+            stopTicker()
+            _state.update { it.copy(isRecording = false, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
+            if (uri != null) onMediaSaved(uri, isVideo = true) else showMessage(R.string.msg_record_failed)
+            if (rebindAfterRecording) {
+                rebindAfterRecording = false
+                rebind()
+            }
+        }
+    }
+
+    /**
+     * Avslutar en pågående dubbelvideo direkt (appen går till bakgrunden eller kameraskärmen stängs).
+     * Filmen sparas klart i bakgrunden.
+     */
+    private fun finishDualRecording() {
+        val rec = dualRecorder ?: return
+        dualRecorder = null
+        dualStopping = false
+        stopTicker()
+        _state.update { it.copy(isRecording = false, isPaused = false, recordingMs = 0L, recordingOutputMs = 0L) }
+        recorderScope.launch {
+            val uri = rec.stop()
+            if (uri != null) withContext(Dispatchers.Main) { onMediaSaved(uri, isVideo = true) }
+        }
     }
 
     /** Byter plats på halvorna (knappen eller håll in och dra). */
@@ -1396,6 +1549,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         val st = _state.value
         if (st.mode != CameraMode.DUAL || st.isCapturing || st.countdown > 0) return
         _state.update { it.copy(dualSwapped = !it.dualSwapped) }
+        // Dubbelvideo: bytet syns direkt i filmen
+        dualRenderer?.frontOnTop = _state.value.dualSwapped
         Log.i(TAG, "Dubbel: bytt plats (${if (_state.value.dualSwapped) "frontkameran" else "bakkameran"} överst)")
     }
 
@@ -1743,6 +1898,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun onFilterChanged() {
         val st = _state.value
+        // Dubbelvideo: filtret i filmen ändras direkt (sökarna har det via RenderEffect)
+        if (st.mode == CameraMode.DUAL) dualRenderer?.setMatrix(if (st.filter.isActive) st.filter.matrix() else null)
         if (!st.mode.isVideo) return
         // Tidsförlopp: effekten på videon är alltid bunden – bara färgerna ändras (sökaren via RenderEffect)
         if (st.videoStyle == VideoStyle.TIMELAPSE) {
@@ -1966,6 +2123,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
         if (st.mode.isVideo) {
             if (st.isRecording) stopRecording() else runWithTimer { startRecording() }
+            return
+        }
+        if (st.mode == CameraMode.DUAL && st.dualVideo) {
+            if (st.isRecording) stopDualRecording() else runWithTimer { startDualRecording() }
             return
         }
         if (st.isCapturing) return
