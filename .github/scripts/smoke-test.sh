@@ -533,9 +533,11 @@ PY
   fi
   tap --desc "Swap places"
   sleep 2
-  # Håll in den övre halvan och dra den till den undre (input draganddrop håller in först)
+  # Håll in den övre halvan i 1 s och dra den till den undre (egna pekarhändelser: input draganddrop
+  # börjar röra sig precis när tiden för långt tryck går ut, och då hinner det bli ett svep)
   read -r SW SH < <(adb shell wm size | tail -1 | sed 's/.*: //; s/x/ /')
-  adb shell input draganddrop $((SW / 2)) $((SH * 24 / 100)) $((SW / 2)) $((SH * 52 / 100)) 1500 >> "$OUT/ui.log" 2>&1
+  DX=$((SW / 2)); DY1=$((SH * 24 / 100)); DY2=$((SH * 52 / 100))
+  adb shell "input motionevent DOWN $DX $DY1; sleep 1; for f in 1 2 3 4 5; do input motionevent MOVE $DX \$(( $DY1 + ($DY2 - $DY1) * f / 5 )); done; input motionevent UP $DX $DY2" >> "$OUT/ui.log" 2>&1
   sleep 3
   shot 19m-dubbel-bytt
   SWAPS=$(adb logcat -d -s SncCamera:V 2>/dev/null | grep -c "Dubbel: bytt plats")
