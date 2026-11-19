@@ -1,5 +1,9 @@
 package se.snc.camera.camera
 
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material.icons.rounded.SwapVert
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.platform.LocalDensity
 import android.Manifest
 import android.net.Uri
 import android.view.WindowManager
@@ -236,6 +240,18 @@ private fun CameraContent(
         }
     }
 
+    // Läget Dubbel: frontkamerans sökare (bakkameran använder previewView)
+    val dualView = remember {
+        PreviewView(context).apply {
+            scaleType = PreviewView.ScaleType.FILL_CENTER
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
+    }
+    DisposableEffect(dualView) {
+        viewModel.setDualView(dualView)
+        onDispose { viewModel.setDualView(null) }
+    }
+
     DisposableEffect(previewView, lifecycleOwner) {
         viewModel.attach(lifecycleOwner, previewView)
         onDispose { viewModel.detach() }
@@ -245,9 +261,9 @@ private fun CameraContent(
     // sökaren och filmen – utom i tidsförlopp, där effekten bara gäller filmen och sökaren får RenderEffect.
     val liveFilterOn = state.filter.isActive && (!state.mode.isVideo || state.videoStyle == VideoStyle.TIMELAPSE)
     LaunchedEffect(previewView, liveFilterOn, state.filter) {
-        previewView.setRenderEffect(
-            if (liveFilterOn) RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(state.filter.matrix())) else null
-        )
+        val effect = if (liveFilterOn) RenderEffect.createColorFilterEffect(ColorMatrixColorFilter(state.filter.matrix())) else null
+        previewView.setRenderEffect(effect)
+        dualView.setRenderEffect(effect)
     }
 
     LifecycleResumeEffect(Unit) {
@@ -331,10 +347,12 @@ private fun CameraContent(
         }
     }
 
+    // Läget Dubbel: alltid 3:4, delat i två halvor
+    val dual = state.mode == CameraMode.DUAL
     // Helskärm: sökaren fyller hela skärmen, knapparna ligger ovanpå
-    val fullScreen = !state.mode.isVideo && settings.aspect == AspectOption.FULL
+    val fullScreen = !state.mode.isVideo && !dual && settings.aspect == AspectOption.FULL
     // 16:9 (foto och video): sökaren går ut till kanterna och upp till skärmens överkant
-    val edge169 = !fullScreen && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
+    val edge169 = !fullScreen && !dual && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
     // Knapparna ligger ovanpå bilden (glas) i helskärm och 16:9
     val overPhoto = fullScreen || edge169
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -343,12 +361,20 @@ private fun CameraContent(
     val vfCorner by animateDpAsState(if (edge169) 0.dp else 24.dp, tween(280), label = "vfCorner")
     // Etiketter överst i sökaren hamnar under knapparna när bilden går upp till överkanten
     val overlayTop = if (overPhoto) statusTop + 64.dp else 0.dp
-    val previewRatio = if (state.mode.isVideo) 9f / 16f else settings.aspect.portraitRatio.takeIf { it > 0f } ?: (3f / 4f)
+    val previewRatio = when {
+        state.mode.isVideo -> 9f / 16f
+        dual -> 3f / 4f
+        else -> settings.aspect.portraitRatio.takeIf { it > 0f } ?: (3f / 4f)
+    }
     val animatedRatio by animateFloatAsState(previewRatio, tween(280), label = "previewRatio")
     val modes = CameraMode.entries
 
     val currentState by rememberUpdatedState(state)
     val focusActive by rememberUpdatedState(focusPos != null)
+    var vfHeightPx by remember { mutableIntStateOf(0) }
+    val dualLayout = rememberDualLayout()
+    val density = LocalDensity.current
+    val dualHalfDp = with(density) { (vfHeightPx / 2f).toDp() }
 
     Box(
         Modifier
@@ -363,11 +389,35 @@ private fun CameraContent(
                 .padding(horizontal = vfSide)
                 .fillMaxWidth()
                 .aspectRatio(animatedRatio))
-                .onSizeChanged { viewModel.setViewfinderSize(it.width, it.height) }
+                .onSizeChanged {
+                    vfHeightPx = it.height
+                    viewModel.setViewfinderSize(it.width, it.height)
+                }
                 // Rundade hörn som i Alif-förslaget (inte i helskärm och 16:9)
                 .clip(RoundedCornerShape(if (fullScreen) 0.dp else vfCorner))
         ) {
-            AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
+            // Sökaren ligger alltid på samma plats i vyträdet; i läget Dubbel blir den bakkamerans halva
+            AndroidView(
+                factory = { previewView },
+                modifier = if (dual) Modifier.dualPane(dualLayout, back = true, halfDp = dualHalfDp) else Modifier.fillMaxSize()
+            )
+            if (dual) {
+                DualPanes(
+                    layout = dualLayout,
+                    frontView = dualView,
+                    heightPx = vfHeightPx,
+                    swapped = state.dualSwapped,
+                    available = state.dualAvailable,
+                    onSwap = viewModel::swapDual,
+                    onSwipe = { dir ->
+                        val st = currentState
+                        if (!st.isRecording && st.countdown == 0 && !st.isCapturing) {
+                            val i = modes.indexOf(st.mode) + dir
+                            if (i in modes.indices) viewModel.setMode(modes[i])
+                        }
+                    }
+                )
+            }
 
             // Slow motion med Camera2: egen sökare ovanpå (CameraX är frånkopplad)
             if (state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2) {
@@ -386,7 +436,8 @@ private fun CameraContent(
             }
 
             // Gester: tryck = fokus, nyp = zoom, svep = byt läge, dra upp/ned efter fokus = exponering
-            Box(
+            // (läget Dubbel har egna gester i DualPanes)
+            if (!dual) Box(
                 Modifier
                     .fillMaxSize()
                     .pointerInput(Unit) {
@@ -466,6 +517,23 @@ private fun CameraContent(
             )
 
             CountdownOverlay(state.countdown, iconRotation)
+
+            // Läget Dubbel: en kort stund visas hur man byter plats
+            var dualHint by remember { mutableStateOf(false) }
+            LaunchedEffect(dual, state.dualAvailable) {
+                if (dual && state.dualAvailable == true) {
+                    dualHint = true
+                    delay(3500)
+                }
+                dualHint = false
+            }
+            DualHint(
+                visible = dualHint,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 16.dp)
+                    .zIndex(5f)
+            )
 
             // Pro: histogram uppe till höger
             if (assistShown && settings.histogram) {
@@ -674,8 +742,8 @@ private fun CameraContent(
                 if (lens != null) LensPill(lens, iconRotation, Modifier.padding(bottom = 8.dp))
             }
 
-            // Ingen zoom i slow motion med Camera2 (egen session utan CameraX)
-            if (!(state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2)) {
+            // Ingen zoom i slow motion med Camera2 (egen session utan CameraX) och i läget Dubbel
+            if (!dual && !(state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2)) {
                 ZoomChips(
                     zoom = state.zoomRatio,
                     minZoom = state.minZoom,
@@ -753,11 +821,22 @@ private fun CameraContent(
                 )
 
                 Box(Modifier.size(56.dp), contentAlignment = Alignment.Center) {
-                    SwitchLensButton(
-                        rotation = iconRotation,
-                        enabled = !state.isRecording && state.hasFrontCamera && state.hasBackCamera,
-                        onClick = viewModel::switchLens
-                    )
+                    if (dual) {
+                        // Läget Dubbel: byt plats på halvorna
+                        GoldSquareButton(
+                            icon = Icons.Rounded.SwapVert,
+                            contentDescription = stringResource(R.string.cd_swap_dual),
+                            onClick = viewModel::swapDual,
+                            rotation = iconRotation,
+                            enabled = state.dualAvailable == true && !state.isCapturing
+                        )
+                    } else {
+                        SwitchLensButton(
+                            rotation = iconRotation,
+                            enabled = !state.isRecording && state.hasFrontCamera && state.hasBackCamera,
+                            onClick = viewModel::switchLens
+                        )
+                    }
                 }
             }
         }

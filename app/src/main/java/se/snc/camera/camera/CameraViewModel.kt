@@ -111,6 +111,16 @@ import androidx.camera.video.ExperimentalHighSpeedVideo
 import androidx.camera.video.HighSpeedVideoSessionConfig
 import androidx.camera.video.VideoCapabilities
 import kotlinx.coroutines.isActive
+import android.graphics.Bitmap
+import android.graphics.Matrix
+import androidx.camera.core.ConcurrentCamera
+import androidx.camera.core.ImageProxy
+import kotlinx.coroutines.asExecutor
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 @androidx.annotation.OptIn(ExperimentalCamera2Interop::class)
 class CameraViewModel(app: Application) : AndroidViewModel(app) {
@@ -213,6 +223,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     private var recordingFps = 30
     private var recordingTicker: Job? = null
 
+    // Fram och bak samtidigt (DualCamera.kt): två sökare och två ImageCapture
+    private var dualView: PreviewView? = null
+    private var dualBackCapture: ImageCapture? = null
+    private var dualFrontCapture: ImageCapture? = null
+    private var dualBound = false
+
     // Serietagning: håll in avtryckaren
     private var burstJob: Job? = null
     @Volatile private var burstHeld = false
@@ -289,7 +305,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             val s = settingsRepo.settings.first()
             val mode = pendingMode ?: if (s.keepLastMode) {
-                CameraMode.entries.firstOrNull { it.name == s.lastMode } ?: CameraMode.PHOTO
+                // Dubbel öppnas aldrig av sig själv vid start (två kameror tar längre tid att starta)
+                CameraMode.entries.firstOrNull { it.name == s.lastMode }?.takeIf { it != CameraMode.DUAL } ?: CameraMode.PHOTO
             } else CameraMode.PHOTO
             pendingMode = null
             _state.update { it.copy(mode = mode, lensFront = s.lastLensFront) }
@@ -332,6 +349,9 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         slowCam?.closeAndWait()
         timelapseGate.disarm()
         stopTicker()
+        dualBackCapture = null
+        dualFrontCapture = null
+        dualBound = false
         motion.stop()
         bindJob?.cancel()
         zoomLiveData?.removeObserver(zoomObserver)
@@ -445,6 +465,12 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         slowCam?.closeAndWait()
         videoFilterBound = false
         timelapseBound = false
+        dualBackCapture = null
+        dualFrontCapture = null
+        dualBound = false
+
+        // Fram och bak samtidigt
+        if (st.mode == CameraMode.DUAL) return bindDual(cp, owner, view, hasFront, hasBack)
 
         // Slow motion: undersök en gång vad kamerorna klarar och välj CameraX eller Camera2
         val slowWanted = st.mode == CameraMode.VIDEO && st.videoStyle == VideoStyle.SLOW_MOTION && !front
@@ -1156,6 +1182,227 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         recordingTicker = null
     }
 
+    // ---------------------------------------------------------------------------------------------
+    // Fram och bak samtidigt (läget Dubbel)
+    // ---------------------------------------------------------------------------------------------
+
+    /** Frontkamerans sökare i läget Dubbel (bakkameran använder den vanliga sökaren). */
+    fun setDualView(view: PreviewView?) {
+        dualView = view
+    }
+
+    /**
+     * Ett par med en bak- och en frontkamera som telefonen kan köra samtidigt. Helst fotokameran (flest
+     * linser), annars standardkameran, annars första paret.
+     */
+    private fun findDualPair(cp: ProcessCameraProvider): Pair<CameraInfo, CameraInfo>? {
+        val pairs = runCatching { cp.availableConcurrentCameraInfos }.getOrDefault(emptyList())
+        val candidates = pairs.mapNotNull { list ->
+            if (list.size != 2) return@mapNotNull null
+            val back = list.firstOrNull { it.lensFacing == CameraSelector.LENS_FACING_BACK } ?: return@mapNotNull null
+            val front = list.firstOrNull { it.lensFacing == CameraSelector.LENS_FACING_FRONT } ?: return@mapNotNull null
+            back to front
+        }
+        return candidates.firstOrNull { idOf(it.first) == preferredBackId }
+            ?: candidates.firstOrNull { idOf(it.first) == "0" }
+            ?: candidates.firstOrNull()
+    }
+
+    /**
+     * Läget Dubbel: CameraX samtidig kamera med en sökare och en ImageCapture per kamera (4:3). Går det
+     * inte med ImageCapture binds bara sökarna, och fotot tas då från sökarna. Saknar telefonen stöd
+     * visas ett besked i sökaren.
+     */
+    private fun bindDual(cp: ProcessCameraProvider, owner: LifecycleOwner, view: PreviewView, hasFront: Boolean, hasBack: Boolean): Boolean {
+        camera?.let { old -> runCatching { Camera2CameraControl.from(old.cameraControl).clearCaptureRequestOptions() } }
+        zoomLiveData?.removeObserver(zoomObserver)
+        zoomLiveData = null
+        cp.unbindAll()
+        camera = null
+        imageCapture = null
+        videoCapture = null
+        nightAnalysis = null
+        assistAnalysis = null
+        rawFormat = null
+        lensBadges = emptyMap()
+        motion.stop()
+
+        val second = dualView
+        val pair = findDualPair(cp)
+        val feature = context.packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_CONCURRENT)
+        Log.i(
+            TAG,
+            "Dubbel: par ${runCatching { cp.availableConcurrentCameraInfos.map { l -> l.map { idOf(it) } } }.getOrNull()}, " +
+                "samtidig kamera ${if (feature) "ja" else "nej"}, valt ${pair?.let { "${idOf(it.first)}+${idOf(it.second)}" } ?: "inget"}"
+        )
+
+        fun publish(ready: Boolean, available: Boolean) = _state.update {
+            it.copy(
+                isReady = ready,
+                dualAvailable = available,
+                lensFront = false,
+                hasFrontCamera = hasFront,
+                hasBackCamera = hasBack,
+                hasFlashUnit = false,
+                torchOn = false,
+                activeLens = null,
+                extensionActive = false,
+                exposureSupported = false,
+                stackAvailable = false,
+                videoFilterOn = false,
+                assistActive = false,
+                burstAvailable = false,
+                timelapseReady = false,
+                slowEngine = SlowEngine.NONE,
+                zoomRatio = 1f,
+                minZoom = 1f,
+                maxZoom = 1f
+            )
+        }
+
+        if (pair == null || second == null || !feature) {
+            publish(ready = false, available = false)
+            return true
+        }
+        val (backInfo, frontInfo) = pair
+        // CameraInfo.cameraSelector pekar ut just den kameran (samma som i paret)
+        fun selectorFor(info: CameraInfo): CameraSelector = info.cameraSelector
+        fun ratio() = ResolutionSelector.Builder().setAspectRatioStrategy(AspectRatioStrategy.RATIO_4_3_FALLBACK_AUTO_STRATEGY)
+        val previewBack = Preview.Builder().setResolutionSelector(ratio().build()).build().also { it.setSurfaceProvider(view.surfaceProvider) }
+        val previewFront = Preview.Builder().setResolutionSelector(ratio().build()).build().also { it.setSurfaceProvider(second.surfaceProvider) }
+
+        fun bind(withCapture: Boolean): ConcurrentCamera? = try {
+            fun capture() = ImageCapture.Builder()
+                .setResolutionSelector(ratio().setResolutionStrategy(ResolutionStrategy.HIGHEST_AVAILABLE_STRATEGY).build())
+                .setCaptureMode(ImageCapture.CAPTURE_MODE_MINIMIZE_LATENCY)
+                // Bilden tas stående (som skärmen); hela den sammansatta bilden vrids efter telefonen
+                .setTargetRotation(Surface.ROTATION_0)
+                .build()
+            val icBack = if (withCapture) capture() else null
+            val icFront = if (withCapture) capture() else null
+            val groupBack = UseCaseGroup.Builder().addUseCase(previewBack).also { b -> icBack?.let { b.addUseCase(it) } }.build()
+            val groupFront = UseCaseGroup.Builder().addUseCase(previewFront).also { b -> icFront?.let { b.addUseCase(it) } }.build()
+            cp.unbindAll()
+            val cc = cp.bindToLifecycle(
+                listOf(
+                    ConcurrentCamera.SingleCameraConfig(selectorFor(backInfo), groupBack, owner),
+                    ConcurrentCamera.SingleCameraConfig(selectorFor(frontInfo), groupFront, owner)
+                )
+            )
+            dualBackCapture = icBack
+            dualFrontCapture = icFront
+            cc
+        } catch (e: Exception) {
+            Log.w(TAG, "Dubbel: bindningen misslyckades (foto ${if (withCapture) "ja" else "nej"})", e)
+            runCatching { cp.unbindAll() }
+            null
+        }
+
+        val cc = bind(withCapture = true) ?: bind(withCapture = false)
+        if (cc == null) {
+            publish(ready = false, available = false)
+            return true
+        }
+        dualBound = true
+        publish(ready = true, available = true)
+        Log.i(
+            TAG,
+            "Dubbel: bunden – bak ${idOf(backInfo)} ${dualBackCapture?.resolutionInfo?.resolution ?: "(sökaren)"}, " +
+                "fram ${idOf(frontInfo)} ${dualFrontCapture?.resolutionInfo?.resolution ?: "(sökaren)"}"
+        )
+        return true
+    }
+
+    /** Byter plats på halvorna (knappen eller håll in och dra). */
+    fun swapDual() {
+        val st = _state.value
+        if (st.mode != CameraMode.DUAL || st.isCapturing || st.countdown > 0) return
+        _state.update { it.copy(dualSwapped = !it.dualSwapped) }
+        Log.i(TAG, "Dubbel: bytt plats (${if (_state.value.dualSwapped) "frontkameran" else "bakkameran"} överst)")
+    }
+
+    /** En bild från en av kamerorna, rättvänd för stående skärm (och spegelvänd om [mirror]). */
+    private suspend fun captureUpright(ic: ImageCapture, mirror: Boolean): Bitmap = suspendCancellableCoroutine { cont ->
+        ic.takePicture(Dispatchers.Default.asExecutor(), object : ImageCapture.OnImageCapturedCallback() {
+            override fun onCaptureSuccess(image: ImageProxy) {
+                try {
+                    val raw = image.toBitmap()
+                    val m = Matrix().apply {
+                        postRotate(image.imageInfo.rotationDegrees.toFloat())
+                        if (mirror) postScale(-1f, 1f)
+                    }
+                    val upright = Bitmap.createBitmap(raw, 0, 0, raw.width, raw.height, m, true)
+                    if (upright !== raw) raw.recycle()
+                    cont.resume(upright)
+                } catch (t: Throwable) {
+                    cont.resumeWithException(t)
+                } finally {
+                    image.close()
+                }
+            }
+
+            override fun onError(exception: ImageCaptureException) {
+                cont.resumeWithException(exception)
+            }
+        })
+    }
+
+    /**
+     * Fotot i läget Dubbel: båda kamerorna tar en bild samtidigt, bilderna läggs över varandra i samma
+     * ordning som i sökaren och hela bilden vrids efter hur telefonen hålls (liggande = bredvid varandra).
+     */
+    private fun takeDualShot() {
+        val st = _state.value
+        val s = settings.value
+        if (st.isCapturing || !dualBound) return
+        val icBack = dualBackCapture
+        val icFront = dualFrontCapture
+        val rotationNow = targetRotation
+        _state.update { it.copy(isCapturing = true, shutterBlink = System.currentTimeMillis()) }
+        if (s.shutterSound) sound.play(MediaActionSound.SHUTTER_CLICK)
+        viewModelScope.launch {
+            try {
+                val (back, front) = if (icBack != null && icFront != null) {
+                    coroutineScope {
+                        val b = async { captureUpright(icBack, mirror = false) }
+                        val f = async { captureUpright(icFront, mirror = s.mirrorFront) }
+                        b.await() to f.await()
+                    }
+                } else {
+                    // Bara sökarna gick att binda: bilden tas från sökarna (skärmens upplösning)
+                    val b = previewView?.bitmap ?: error("ingen bild från bakkameran")
+                    val f = dualView?.bitmap ?: error("ingen bild från frontkameran")
+                    b to f
+                }
+                val top = if (st.dualSwapped) front else back
+                val bottom = if (st.dualSwapped) back else front
+                val deviceDegrees = when (rotationNow) {
+                    Surface.ROTATION_90 -> 90
+                    Surface.ROTATION_180 -> 180
+                    Surface.ROTATION_270 -> 270
+                    else -> 0
+                }
+                val filter = if (st.filter.isActive) st.filter.matrix() else null
+                val composed = withContext(Dispatchers.Default) {
+                    DualCompose.stack(top, bottom, DUAL_HALF_RATIO, (360 - deviceDegrees) % 360, filter)
+                }
+                val exif = baseExif("SNC Camera: fram och bak samtidigt", 0L, 0)
+                val uri = media.saveNewPhoto(composed, s.photoFormat, s.jpegQuality, exif, prefix = "DUAL")
+                if (uri != null) {
+                    Log.i(TAG, "Dubbel: sparad ${composed.width}x${composed.height} (${if (icBack != null) "kamerornas bilder" else "sökarna"})")
+                    onMediaSaved(uri, isVideo = false)
+                } else {
+                    showMessage(R.string.msg_capture_failed)
+                }
+            } catch (e: Exception) {
+                Log.w(TAG, "Dubbel: bilden kunde inte tas", e)
+                showMessage(R.string.msg_capture_failed)
+            } finally {
+                _state.update { it.copy(isCapturing = false) }
+            }
+        }
+    }
+
     fun updatePro(transform: (ProState) -> ProState) {
         _state.update { it.copy(pro = transform(it.pro)) }
         applyProOptions()
@@ -1413,6 +1660,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     /** Avtryckaren: foto, start/stopp av video eller avbryt nedräkning. */
     fun onShutter() {
         val st = _state.value
+        if (st.mode == CameraMode.DUAL && st.dualAvailable == false) {
+            showMessage(R.string.msg_dual_unsupported)
+            return
+        }
         if (!st.isReady) return
         if (st.countdown > 0) {
             countdownJob?.cancel()
@@ -1424,6 +1675,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (st.isCapturing) return
+        if (st.mode == CameraMode.DUAL) {
+            runWithTimer { takeDualShot() }
+            return
+        }
         if (st.mode == CameraMode.NIGHT && nightAnalysis != null) {
             runWithTimer { takeStackShot() }
         } else if (st.mode == CameraMode.PHOTO && nightAnalysis != null) {

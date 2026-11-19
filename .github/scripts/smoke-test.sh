@@ -490,6 +490,67 @@ check "Tillbaka till vanlig video" $UI exists --desc "Frame rate" --timeout 6
 tap --text "PHOTO"
 sleep 4
 
+step "Fram och bak samtidigt (Dubbel)"
+tap --text "PORTRAIT"
+sleep 4
+tap --text "DUAL"
+sleep 8
+shot 19l-dubbel
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Dubbel: (par|bunden)" | tail -2 | while IFS= read -r l; do
+  echo "::notice title=Dubbel-logg::$(echo "$l" | cut -c1-300)"
+done
+if $UI exists --text "Front and back cameras can't be used at the same time on this phone" --timeout 3 >> "$OUT/ui.log" 2>&1; then
+  log "  Fram och bak samtidigt stöds inte av emulatorn – appen säger det"
+  ok "Dubbel: tydligt besked när telefonen inte klarar båda kamerorna samtidigt"
+else
+  check "Knappen Byt plats finns" $UI exists --desc "Swap places"
+  DB=$(count 'DUAL_')
+  key KEYCODE_VOLUME_UP
+  for w in $(seq 1 15); do sleep 1; [ "$(count 'DUAL_')" -gt "$DB" ] && break; done
+  DA=$(count 'DUAL_')
+  check "Dubbelbilden sparas ($DB → $DA)" [ "$DA" -gt "$DB" ]
+  DF=$(adb shell "ls -t '$DIR' | grep 'DUAL_' | head -1" | tr -d '\r')
+  if [ -n "$DF" ]; then
+    adb pull "$DIR/$DF" "$OUT/dubbel.jpg" >> "$OUT/ui.log" 2>&1
+    DIM=$(python3 - "$OUT/dubbel.jpg" <<'PY'
+import struct, sys
+d = open(sys.argv[1], 'rb').read()
+i = 2
+while i < len(d) - 9:
+    if d[i] != 0xFF:
+        i += 1
+        continue
+    m = d[i + 1]
+    if m in (0xC0, 0xC1, 0xC2):
+        h, w = struct.unpack('>HH', d[i + 5:i + 9])
+        print(f"{w}x{h}")
+        break
+    i += 2 + struct.unpack('>H', d[i + 2:i + 4])[0]
+PY
+)
+    log "  Dubbelbild: $DF ${DIM:-?}"
+    check "Dubbelbilden är stående 3:4 (två halvor 3:2): ${DIM:-?}" python3 -c "import sys; w,h=map(int,'${DIM:-0x1}'.split('x')); sys.exit(0 if h and 0.72 < w/h < 0.78 else 1)"
+  fi
+  tap --desc "Swap places"
+  sleep 2
+  # Håll in den övre halvan och dra den till den undre (input draganddrop håller in först)
+  read -r SW SH < <(adb shell wm size | tail -1 | sed 's/.*: //; s/x/ /')
+  adb shell input draganddrop $((SW / 2)) $((SH * 24 / 100)) $((SW / 2)) $((SH * 52 / 100)) 1500 >> "$OUT/ui.log" 2>&1
+  sleep 3
+  shot 19m-dubbel-bytt
+  SWAPS=$(adb logcat -d -s SncCamera:V 2>/dev/null | grep -c "Dubbel: bytt plats")
+  check "Byt plats med knappen och genom att hålla in och dra ($SWAPS byten, minst 2)" [ "$SWAPS" -ge 2 ]
+  DB=$(count 'DUAL_')
+  key KEYCODE_VOLUME_UP
+  for w in $(seq 1 15); do sleep 1; [ "$(count 'DUAL_')" -gt "$DB" ] && break; done
+  check "Dubbelbild sparas även efter bytet" [ "$(count 'DUAL_')" -gt "$DB" ]
+fi
+check "Appen lever efter Dubbel" alive
+tap --text "PORTRAIT"
+sleep 3
+tap --text "PHOTO"
+sleep 4
+
 step "Framkamera"
 tap --desc "Switch camera"
 sleep 6

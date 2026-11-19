@@ -2,6 +2,14 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.12.0 – 2026-11-19
+
+- Nytt läge Dubbel (längst till höger i lägesmenyn): bakkameran och frontkameran samtidigt, i var sin halva av sökaren med en tunn guldlinje emellan.
+- Byt plats: håll in en halva och dra den förbi mitten, eller tryck på knappen till höger om avtryckaren.
+- Fotot sätts ihop av båda kamerornas bilder (CameraX samtidig kamera, en ImageCapture per kamera) i samma ordning som i sökaren; liggande telefon ger bilderna bredvid varandra. Live-filter och självutlösare fungerar. Bilderna heter DUAL_….jpg.
+- Klarar telefonen inte båda kamerorna samtidigt står det i sökaren. Går kamerorna bara att köra med sökarna tas bilden från sökarna.
+- Appen startar aldrig i läget Dubbel (två kameror tar längre tid att starta).
+
 ## Version 1.11.0 – 2026-11-19
 
 - Videoläget har tre val i glas ovanför zoomen: Video, Slow motion och Tidsförlopp.

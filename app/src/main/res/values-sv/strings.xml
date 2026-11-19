@@ -344,6 +344,11 @@
     <string name="msg_slowmo_failed">Slow motion kunde inte startas – prova en annan bildfrekvens</string>
     <string name="msg_slowmo_no_filter">Live-filtret används inte i slow motion</string>
     <string name="msg_timelapse_failed">Tidsförlopp kunde inte startas med den här kameran</string>
+    <string name="mode_dual">Dubbel</string>
+    <string name="dual_unsupported">Fram- och bakkameran kan inte användas samtidigt på den här telefonen</string>
+    <string name="dual_hint">Håll in och dra för att byta plats</string>
+    <string name="msg_dual_unsupported">Fram- och bakkameran kan inte användas samtidigt på den här telefonen</string>
+    <string name="cd_swap_dual">Byt plats</string>
     <string name="msg_filter_failed">Filtret kunde inte läggas på – bilden sparades utan filter</string>
     <string name="cams_raw_used">Ja – välj RAW under Inställningar › Foto › Filformat</string>
     <string name="cams_raw_camera2_only">Kameran har RAW, men CameraX erbjuder det inte här</string>

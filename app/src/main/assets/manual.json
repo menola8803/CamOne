@@ -1,10 +1,10 @@
 {
-  "version": "1.11.0",
+  "version": "1.12.0",
   "sv": [
     {
       "title": "Kameran",
       "items": [
-        "Lägena Pro, Natt, Video, Foto och Porträtt ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
+        "Lägena Pro, Natt, Video, Foto, Porträtt och Dubbel ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
         "Linserna: .6 är ultravidvinkeln (16 mm), 1× huvudkameran (24 mm) och 2× telelinsen (47 mm). Nyp för att zooma upp till 10×. En liten etikett visar vilken lins som tar över. I Video är 2 och 5 digital zoom: filmen tas med telefonens standardkamera, samma som LineageOS kameraapp, som inte har telelinsen.",
         "Tryck i sökaren för att fokusera och dra sedan uppåt eller nedåt för att ändra exponeringen.",
         "Övre raden: blixt, självutlösare, bildformat (4:3, 1:1, 16:9, 3:2 eller Full – i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser starkare guld.",
@@ -55,6 +55,15 @@
         "Slow motion: välj bildfrekvens (t.ex. 120, 240 eller 480 fps – det kameran klarar visas). Filmen sparas i 30 bilder per sekund och spelas upp 4, 8 eller 16 gånger långsammare. Slow motion spelas in med huvudkameran, utan ljud och utan live-filter. Klockan visar inspelad tid och filmens längd.",
         "Tidsförlopp: välj tid mellan bilderna (0,5, 1, 2 eller 5 s). En bild tas per intervall och filmen spelas upp 15–150 gånger snabbare. Live-filtret följer med. Ställ telefonen stadigt, till exempel på ett stativ.",
         "Filmerna heter …_SLOMO240.mp4 och …_TIMELAPSE.mp4. Paus finns bara i vanlig video."
+      ]
+    },
+    {
+      "title": "Fram och bak samtidigt (Dubbel)",
+      "items": [
+        "I läget Dubbel visas bakkameran och frontkameran samtidigt, i var sin halva av sökaren. En tunn guldlinje skiljer dem åt.",
+        "Byt plats: håll in en halva och dra den förbi mitten, eller tryck på knappen till höger om avtryckaren.",
+        "Fotot sätts ihop av båda kamerornas bilder i samma ordning som i sökaren. Håller du telefonen liggande hamnar bilderna bredvid varandra. Live-filtret och självutlösaren fungerar; blixt, zoom och HDR finns inte i läget.",
+        "Bilderna heter DUAL_….jpg. Alla telefoner kan inte använda båda kamerorna samtidigt – då står det i sökaren."
       ]
     },
     {
@@ -109,7 +118,7 @@
     {
       "title": "The camera",
       "items": [
-        "The modes Pro, Night, Video, Photo and Portrait are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
+        "The modes Pro, Night, Video, Photo, Portrait and Dual are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
         "The lenses: .6 is the ultra-wide (16 mm), 1× the main camera (24 mm) and 2× the telephoto (47 mm). Pinch to zoom up to 10×. A small label shows which lens takes over. In Video, 2 and 5 are digital zoom: video is recorded with the phone's standard camera, the same as the LineageOS camera app, which has no telephoto lens.",
         "Tap the viewfinder to focus, then drag up or down to change the exposure.",
         "Top row: flash, self-timer, aspect ratio (4:3, 1:1, 16:9, 3:2 or Full – in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow brighter gold.",
@@ -160,6 +169,15 @@
         "Slow motion: choose the frame rate (for example 120, 240 or 480 fps – what the camera can do is shown). The video is saved at 30 frames per second and plays 4, 8 or 16 times slower. Slow motion is recorded with the main camera, without sound and without the live filter. The clock shows the recorded time and the length of the clip.",
         "Time-lapse: choose the time between frames (0.5, 1, 2 or 5 s). One frame is taken per interval and the video plays 15–150 times faster. The live filter is included. Keep the phone steady, for example on a tripod.",
         "The videos are named …_SLOMO240.mp4 and …_TIMELAPSE.mp4. Pause is only available in normal video."
+      ]
+    },
+    {
+      "title": "Front and back together (Dual)",
+      "items": [
+        "In Dual mode the back and front cameras are shown at the same time, each in one half of the viewfinder, separated by a thin gold line.",
+        "Swap places: hold one half and drag it past the middle, or tap the button to the right of the shutter.",
+        "The photo is made from both cameras' pictures in the same order as in the viewfinder. If you hold the phone sideways, the pictures end up side by side. The live filter and self-timer work; flash, zoom and HDR are not available in this mode.",
+        "The photos are named DUAL_….jpg. Not every phone can use both cameras at once – the viewfinder says so if yours can't."
       ]
     },
     {

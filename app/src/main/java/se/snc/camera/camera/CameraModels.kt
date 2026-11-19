@@ -12,7 +12,9 @@ enum class CameraMode(@StringRes val label: Int) {
     NIGHT(R.string.mode_night),
     VIDEO(R.string.mode_video),
     PHOTO(R.string.mode_photo),
-    PORTRAIT(R.string.mode_portrait);
+    PORTRAIT(R.string.mode_portrait),
+    /** Fram- och bakkameran samtidigt, i var sin halva. */
+    DUAL(R.string.mode_dual);
 
     val isVideo get() = this == VIDEO
 }
@@ -136,6 +138,11 @@ data class CameraUiState(
     val stackProgress: Float? = null,
     /** Bilderna läggs ihop och sparas. */
     val stackMerging: Boolean = false,
+
+    /** Läget Dubbel: true = fram och bak samtidigt fungerar, false = stöds inte, null = inte bundet än. */
+    val dualAvailable: Boolean? = null,
+    /** Läget Dubbel: frontkameran ligger överst (annars bakkameran). */
+    val dualSwapped: Boolean = false,
 
     /** Håll in avtryckaren för serietagning (Foto och Pro, inte med HDR-sammanslagning eller RAW). */
     val burstAvailable: Boolean = false,
