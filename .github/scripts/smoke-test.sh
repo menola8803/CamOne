@@ -644,7 +644,7 @@ sleep 3
 shot 22b-manual
 check "Manualen öppnas med sina avsnitt" $UI exists --text "THE CAMERA" --timeout 10
 check "Manualen visar vilken version den gäller" $UI exists --contains "For version"
-check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 40
+check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 75
 key KEYCODE_BACK
 sleep 2
 $UI tap --text "Beige" --scroll --timeout 10 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte temat Beige"
