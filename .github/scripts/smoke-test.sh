@@ -1052,7 +1052,9 @@ if $UI exists --text "NEW VERSION" --timeout 25 >> "$OUT/ui.log" 2>&1; then
   shot 30-uppdatering-efter-nedladdning
   log "  Resultat av nedladdningen: ${RESULT:-inget}"
   check "Nedladdning och kontroll blir klar (${RESULT:-timeout})" bash -c "[ -n '$RESULT' ] && [ '$RESULT' != 'nätverksfel' ]"
-  if [ "$RESULT" = "installerare" ]; then
+  # Androids installerare kan också komma upp strax efter kontrollen ("verifierad") – stäng den
+  [ "$RESULT" = "installerare" ] || sleep 4
+  if [ "$RESULT" = "installerare" ] || ! adb shell dumpsys window | grep -q "mCurrentFocus.*$PKG"; then
     adb exec-out screencap -p > "$OUT/31-androids-installerare.png" 2>/dev/null || true
     key KEYCODE_BACK
     sleep 2
@@ -1073,6 +1075,8 @@ sleep 3
 shot 32-kamera-med-prick
 
 step "Språkval (Svenska)"
+# Tillbaka till kameran om något steg ovan lämnade en annan sida öppen
+for i in 1 2 3; do $UI exists --desc "Settings" --timeout 3 >> "$OUT/ui.log" 2>&1 && break; key KEYCODE_BACK; sleep 3; done
 tap --desc "Settings"
 sleep 3
 tap --text "Svenska"
