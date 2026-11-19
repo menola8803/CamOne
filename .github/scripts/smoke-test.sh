@@ -571,6 +571,9 @@ sleep 4
 step "Fram och bak samtidigt (Dubbel)"
 tap --text "PORTRAIT"
 sleep 4
+# Panorama ligger mellan Porträtt och Dubbel
+tap --text "PANORAMA"
+sleep 4
 tap --text "DUAL"
 sleep 8
 shot 19l-dubbel
@@ -691,6 +694,51 @@ PY
   sleep 4
 fi
 check "Appen lever efter Dubbel" alive
+tap --text "PANORAMA"
+sleep 3
+tap --text "PORTRAIT"
+sleep 3
+tap --text "PHOTO"
+sleep 4
+
+step "Panorama"
+tap --text "PORTRAIT"
+sleep 3
+tap --text "PANORAMA"
+sleep 6
+shot 19p-panorama
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Panorama: analys" | tail -1 | while IFS= read -r l; do
+  echo "::notice title=Panorama-logg::$(echo "$l" | cut -c1-300)"
+done
+check "Panorama visar uppmaningen" $UI exists --text "Tap the shutter and sweep slowly to the side" --timeout 8
+PB=$(count 'PANO_')
+key KEYCODE_VOLUME_UP
+sleep 1
+# Emulatorns gyro: vrid åt höger ca 26° per sekund (runt telefonens y-axel)
+GY=$(adb emu sensor set gyroscope 0:-0.45:0 2>&1 | tr -d '\r' | tail -1)
+log "  Emulatorns gyro: ${GY:-?}"
+sleep 3
+shot 19q-panorama-svep
+check "Panoramat visar grader och bilder under svepet" $UI exists --contains "photos – tap to finish" --timeout 4
+sleep 3
+adb emu sensor set gyroscope 0:0:0 >> "$OUT/ui.log" 2>&1
+sleep 1
+key KEYCODE_VOLUME_UP
+for w in $(seq 1 40); do sleep 1; [ "$(count 'PANO_')" -gt "$PB" ] && break; done
+sleep 2
+adb logcat -d -s SncCamera:V 2>/dev/null | grep -E "Panorama: (start|bild|klart|sparat|kunde)" | tail -6 | while IFS= read -r l; do
+  echo "::notice title=Panorama::$(echo "$l" | cut -c1-300)"
+done
+PA=$(count 'PANO_')
+check "Panoramat sparas ($PB → $PA)" [ "$PA" -gt "$PB" ]
+FP=$(adb shell "ls -t '$DIR' | grep 'PANO_' | head -1" | tr -d '\r')
+if [ -n "$FP" ]; then
+  adb pull "$DIR/$FP" "$OUT/panorama.jpg" >> "$OUT/ui.log" 2>&1
+  PS=$(python3 -c "from PIL import Image; w,h=Image.open('$OUT/panorama.jpg').size; print(f'{w}x{h}')" 2>> "$OUT/ui.log")
+  log "  Panorama: $FP ${PS:-?}"
+  check "Panoramat är brett (${PS:-?}, minst 1,4 gånger så brett som högt)" python3 -c "import sys; w,h=map(int,'${PS:-0x1}'.split('x')); sys.exit(0 if h and w/h >= 1.4 else 1)"
+fi
+check "Appen lever efter panoramat" alive
 tap --text "PORTRAIT"
 sleep 3
 tap --text "PHOTO"
@@ -856,7 +904,7 @@ sleep 3
 shot 22b-manual
 check "Manualen öppnas med sina avsnitt" $UI exists --text "THE CAMERA" --timeout 10
 check "Manualen visar vilken version den gäller" $UI exists --contains "For version"
-check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 75
+check "Manualen har avsnittet om uppdateringar" $UI exists --text "UPDATES" --scroll --timeout 90
 key KEYCODE_BACK
 sleep 2
 $UI tap --text "Beige" --scroll --timeout 10 >> "$OUT/ui.log" 2>&1 || bad "Hittade inte temat Beige"

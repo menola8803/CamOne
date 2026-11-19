@@ -12,7 +12,7 @@ där man trycker på texten för att markera, kopiera eller dela den.
 
 **Kamera**
 - Fram- och bakkamera (snurra-knappen till höger om avtryckaren)
-- Lägen i en svepbar karusell som i OnePlus: **Pro · Natt · Video · Foto · Porträtt · Dubbel · Skanna**
+- Lägen i en svepbar karusell som i OnePlus: **Pro · Natt · Video · Foto · Porträtt · Panorama · Dubbel · Skanna**
   (svep i sidled på lägesraden eller i sökaren, eller tryck på läget – raden följer fingret)
 - Övre fältet: blixt (av/auto/på, skärmblixt på frontkameran), HDR, självutlösare 3/5/10 s,
   bildformat 4:3 / 1:1 / 16:9 / 3:2 / Helskärm (16:9 och Helskärm ut till kanterna, knapparna i glas ovanpå bilden), live-filter, rutnät och inställningar
@@ -25,6 +25,7 @@ där man trycker på texten för att markera, kopiera eller dela den.
 - Ikonerna roterar med telefonen; bilder sparas rättvända även i liggande läge
 - Video 720p / 1080p / 4K i **30 eller 60 fps**, med paus, ficklampa och stabilisering
 - **Slow motion** (120/240/480 fps, spelas upp 4–16× långsammare) och **tidsförlopp** (0,5–5 s mellan bilderna)
+- **Panorama**: svep åt sidan med telefonen stående – guldlinje och prick visar lutningen, bilderna sys ihop i telefonen
 - **Dubbel**: fram- och bakkameran samtidigt i var sin halva – foto eller video med ljud; håll in och dra för att byta plats (även under inspelning)
 - **Skanna**: QR- och streckkoder med åtgärder (länk, Wi-Fi, kontakt, ring, mejl, sms, karta) och dokumentskanner till PDF;
   snabbinställningsrutan **Skanna QR**

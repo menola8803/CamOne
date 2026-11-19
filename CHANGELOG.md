@@ -2,6 +2,13 @@
 
 Varje version beskrivs här och under **Releases** på GitHub. Punktlistan för versionen visas också i appen under **Inställningar → Uppdateringar** när en ny version finns.
 
+## Version 1.16.0 – 2026-11-19
+
+- Nytt läge Panorama (mellan Porträtt och Dubbel): tryck på avtryckaren och svep sakta åt höger eller vänster med telefonen stående; tryck igen för att avsluta, eller svep ett helt varv.
+- En guldlinje med en prick i sökaren visar om telefonen lutar; Långsammare om man sveper för fort. Överst syns det som hittills sytts ihop, nederst grader och antal bilder.
+- Gyrot väljer en bild ungefär var tredjedel av bildbredden. Bilderna projiceras på en cylinder och finjusteras mot varandra (ljusstyrkan i överlappet, tre upplösningar), med en mjuk skarv mitt i överlappet. Allt görs i telefonen, i ren Kotlin – inga extra bibliotek.
+- Exponering och vitbalans låses under svepet. Panoramat sparas som PANO_….jpg med live-filter, vattenstämpel och plats om de är på.
+
 ## Version 1.15.0 – 2026-11-19
 
 - Bildvisaren har Alla, Favoriter och Papperskorg överst. Hjärtat gör en bild eller film till favorit (Androids egen favoritmarkering, syns även i andra galleriappar).

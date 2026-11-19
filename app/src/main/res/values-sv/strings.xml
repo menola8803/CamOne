@@ -486,4 +486,16 @@
     <string name="cams_location_none">Inga</string>
     <string name="cams_location_on">på</string>
     <string name="cams_location_off">av</string>
+    <!-- 1.16.0: panorama -->
+    <string name="mode_panorama">Panorama</string>
+    <string name="pano_hint">Tryck på avtryckaren och svep sakta åt sidan</string>
+    <string name="pano_sweep">Svep sakta åt höger eller vänster</string>
+    <string name="pano_slower">Långsammare</string>
+    <string name="pano_level">Håll pricken på guldlinjen</string>
+    <string name="pano_progress">%1$d° · %2$d bilder – tryck för att avsluta</string>
+    <string name="pano_merging">Sätter ihop panoramat…</string>
+    <string name="cd_pano_preview">Panoramat hittills</string>
+    <string name="msg_pano_short">Svep längre åt sidan för ett panorama</string>
+    <string name="msg_pano_no_gyro">Panorama behöver telefonens gyroskop</string>
+    <string name="msg_pano_failed">Panoramat kunde inte sparas</string>
 </resources>

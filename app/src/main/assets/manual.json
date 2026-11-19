@@ -1,10 +1,10 @@
 {
-  "version": "1.15.0",
+  "version": "1.16.0",
   "sv": [
     {
       "title": "Kameran",
       "items": [
-        "Lägena Pro, Natt, Video, Foto, Porträtt, Dubbel och Skanna ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
+        "Lägena Pro, Natt, Video, Foto, Porträtt, Panorama, Dubbel och Skanna ligger i glasmenyn längst ner. Svep i sidled på menyn eller i sökaren för att byta läge, eller tryck på läget.",
         "Linserna: .6 är ultravidvinkeln (16 mm), 1× huvudkameran (24 mm) och 2× telelinsen (47 mm). Nyp för att zooma upp till 10×. En liten etikett visar vilken lins som tar över. I Video är 2 och 5 digital zoom: filmen tas med telefonens standardkamera, samma som LineageOS kameraapp, som inte har telelinsen.",
         "Tryck i sökaren för att fokusera och dra sedan uppåt eller nedåt för att ändra exponeringen.",
         "Övre raden: blixt, självutlösare, bildformat (4:3, 1:1, 16:9, 3:2 eller Full – i video upplösning och 30 eller 60 fps), live-filter, rutnät och kugghjulet för Inställningar. Knappar som är påslagna lyser starkare guld.",
@@ -66,6 +66,15 @@
         "Video: tryck på avtryckaren för att börja och sluta spela in. Filmen ser ut som sökaren (1080 × 1440, 30 bilder per sekund) med ljud från mikrofonen och live-filtret. Hålls telefonen liggande när du börjar spelas filmen upp med halvorna bredvid varandra. Paus finns inte i dubbelvideo.",
         "Live-filtret och självutlösaren fungerar; blixt, zoom och HDR finns inte i läget.",
         "Bilderna heter DUAL_….jpg och filmerna DUAL_….mp4. Alla telefoner kan inte använda båda kamerorna samtidigt – då står det i sökaren. Klarar telefonen dubbelfoto men inte dubbelvideo visas ett meddelande och fotot fungerar som vanligt."
+      ]
+    },
+    {
+      "title": "Panorama",
+      "items": [
+        "Välj Panorama i lägesmenyn, håll telefonen stående och tryck på avtryckaren. Svep sedan sakta åt höger eller vänster – appen märker själv åt vilket håll.",
+        "Håll den vita pricken på guldlinjen i mitten; den visar om telefonen lutar uppåt eller nedåt. Står det Långsammare sveper du för fort. Överst syns det som hittills sytts ihop, nederst hur många grader och bilder det är.",
+        "Tryck på avtryckaren igen för att avsluta (eller svep ett helt varv). Bilderna sys ihop i telefonen och sparas som PANO_….jpg. Exponering och vitbalans låses under svepet så att himlen inte blir randig.",
+        "Live-filtret, vattenstämpeln och platsen följer med. Blixt, zoom och självutlösare finns inte i läget, och panoramat tas med bakkameran. Det blir bäst om du vrider telefonen runt kameran i stället för att gå i sidled, och motiv som rör sig kan synas dubbelt."
       ]
     },
     {
@@ -135,7 +144,7 @@
     {
       "title": "The camera",
       "items": [
-        "The modes Pro, Night, Video, Photo, Portrait, Dual and Scan are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
+        "The modes Pro, Night, Video, Photo, Portrait, Panorama, Dual and Scan are in the glass menu at the bottom. Swipe sideways on the menu or in the viewfinder to change mode, or tap a mode.",
         "The lenses: .6 is the ultra-wide (16 mm), 1× the main camera (24 mm) and 2× the telephoto (47 mm). Pinch to zoom up to 10×. A small label shows which lens takes over. In Video, 2 and 5 are digital zoom: video is recorded with the phone's standard camera, the same as the LineageOS camera app, which has no telephoto lens.",
         "Tap the viewfinder to focus, then drag up or down to change the exposure.",
         "Top row: flash, self-timer, aspect ratio (4:3, 1:1, 16:9, 3:2 or Full – in video the resolution and 30 or 60 fps), live filter, grid and the gear for Settings. Buttons that are on glow brighter gold.",
@@ -197,6 +206,15 @@
         "Video: tap the shutter to start and stop recording. The video looks like the viewfinder (1080 × 1440, 30 frames per second) with sound from the microphone and the live filter. If you hold the phone sideways when you start, the video plays with the halves side by side. Dual video has no pause.",
         "The live filter and self-timer work; flash, zoom and HDR are not available in this mode.",
         "Photos are named DUAL_….jpg and videos DUAL_….mp4. Not every phone can use both cameras at once – the viewfinder says so if yours can't. If the phone can take dual photos but not dual video, a message says so and photos work as usual."
+      ]
+    },
+    {
+      "title": "Panorama",
+      "items": [
+        "Choose Panorama in the mode menu, hold the phone upright and tap the shutter. Then sweep slowly to the right or left – the app works out the direction by itself.",
+        "Keep the white dot on the gold line in the middle; it shows whether the phone tilts up or down. If it says Slower, you're sweeping too fast. The top shows what has been stitched so far, the bottom how many degrees and photos.",
+        "Tap the shutter again to finish (or sweep a full circle). The photos are stitched on the phone and saved as PANO_….jpg. Exposure and white balance are locked during the sweep so the sky doesn't get bands.",
+        "The live filter, watermark and location are included. Flash, zoom and the self-timer aren't available in this mode, and the panorama is taken with the back camera. It works best if you turn the phone around the camera instead of walking sideways, and moving subjects can show up twice."
       ]
     },
     {

@@ -358,10 +358,11 @@ private fun CameraContent(
     // Läget Dubbel: alltid 3:4, delat i två halvor. Skanna: alltid 3:4.
     val dual = state.mode == CameraMode.DUAL
     val scan = state.mode == CameraMode.SCAN
+    val pano = state.mode == CameraMode.PANORAMA
     // Helskärm: sökaren fyller hela skärmen, knapparna ligger ovanpå
-    val fullScreen = !state.mode.isVideo && !dual && !scan && settings.aspect == AspectOption.FULL
+    val fullScreen = !state.mode.isVideo && !dual && !scan && !pano && settings.aspect == AspectOption.FULL
     // 16:9 (foto och video): sökaren går ut till kanterna och upp till skärmens överkant
-    val edge169 = !fullScreen && !dual && !scan && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
+    val edge169 = !fullScreen && !dual && !scan && !pano && (state.mode.isVideo || settings.aspect == AspectOption.RATIO_16_9)
     // Knapparna ligger ovanpå bilden (glas) i helskärm och 16:9
     val overPhoto = fullScreen || edge169
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -372,7 +373,7 @@ private fun CameraContent(
     val overlayTop = if (overPhoto) statusTop + 64.dp else 0.dp
     val previewRatio = when {
         state.mode.isVideo -> 9f / 16f
-        dual || scan -> 3f / 4f
+        dual || scan || pano -> 3f / 4f
         else -> settings.aspect.portraitRatio.takeIf { it > 0f } ?: (3f / 4f)
     }
     val animatedRatio by animateFloatAsState(previewRatio, tween(280), label = "previewRatio")
@@ -517,12 +518,24 @@ private fun CameraContent(
 
             // Vattenstämpeln där den hamnar på fotot (inte i video, Skanna, dubbelvideo eller bara RAW)
             val watermarkShown = settings.watermark && settings.photoFormat != PhotoFormat.RAW && when (state.mode) {
-                CameraMode.VIDEO, CameraMode.SCAN -> false
+                CameraMode.VIDEO, CameraMode.SCAN, CameraMode.PANORAMA -> false
                 CameraMode.DUAL -> !state.dualVideo && state.dualAvailable == true
                 else -> true
             }
             if (watermarkShown) {
                 WatermarkOverlay(settings.watermarkText, settings.watermarkDetails, orientation.quantized)
+            }
+
+            // Panorama: guldlinje med prick, det som sytts ihop hittills och en uppmaning
+            if (pano) {
+                val panoPreview by viewModel.panoPreview.collectAsStateWithLifecycle()
+                PanoramaOverlay(
+                    active = state.panoActive,
+                    merging = state.panoMerging,
+                    status = state.panoStatus,
+                    preview = panoPreview,
+                    verticalFovDeg = state.panoVfov
+                )
             }
 
             FocusRing(
@@ -825,7 +838,7 @@ private fun CameraContent(
             }
 
             // Ingen zoom i slow motion med Camera2 (egen session utan CameraX) och i läget Dubbel
-            if (!dual && !(state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2)) {
+            if (!dual && !pano && !(state.mode.isVideo && state.slowEngine == SlowEngine.CAMERA2)) {
                 ZoomChips(
                     zoom = state.zoomRatio,
                     minZoom = state.minZoom,
@@ -836,7 +849,7 @@ private fun CameraContent(
                 )
             }
 
-            if (state.isRecording) {
+            if (state.isRecording || state.panoActive) {
                 Spacer(Modifier.height(44.dp))
             } else {
                 ModeSelector(
@@ -892,8 +905,8 @@ private fun CameraContent(
 
                 // Skanna QR: koderna läses av sig själva – ingen avtryckare
                 if (state.mode == CameraMode.SCAN && state.scanKind == ScanKind.CODE) Spacer(Modifier.size(84.dp)) else ShutterButton(
-                    isVideo = state.mode.isVideo || (dual && state.dualVideo),
-                    isRecording = state.isRecording,
+                    isVideo = state.mode.isVideo || (dual && state.dualVideo) || pano,
+                    isRecording = state.isRecording || state.panoActive,
                     isBusy = state.isCapturing,
                     countdown = state.countdown,
                     onClick = viewModel::onShutter,
@@ -916,7 +929,7 @@ private fun CameraContent(
                     } else {
                         SwitchLensButton(
                             rotation = iconRotation,
-                            enabled = !state.isRecording && state.hasFrontCamera && state.hasBackCamera,
+                            enabled = !state.isRecording && !pano && state.hasFrontCamera && state.hasBackCamera,
                             onClick = viewModel::switchLens
                         )
                     }
@@ -1000,7 +1013,7 @@ private fun TopBar(
             // Blixt / ficklampa
             // Ingen blixt i nattläget eller när HDR läggs ihop i appen (flera bilder)
             val stackedHdr = mode == CameraMode.PHOTO && hdr && state.stackAvailable
-            if (mode != CameraMode.NIGHT && flashUsable && !stackedHdr) {
+            if (mode != CameraMode.NIGHT && mode != CameraMode.PANORAMA && flashUsable && !stackedHdr) {
                 if (mode.isVideo || mode == CameraMode.SCAN) {
                     // Video och Skanna: ficklampa
                     GlassIconButton(
@@ -1042,8 +1055,8 @@ private fun TopBar(
                 )
             }
 
-            // Ingen självutlösare i Skanna
-            if (mode != CameraMode.SCAN) GlassIconButton(
+            // Ingen självutlösare i Skanna och Panorama
+            if (mode != CameraMode.SCAN && mode != CameraMode.PANORAMA) GlassIconButton(
                 size = iconSize,
                 icon = if (timer == TimerOption.OFF) Icons.Rounded.TimerOff else Icons.Rounded.Timer,
                 contentDescription = stringResource(R.string.cd_timer),

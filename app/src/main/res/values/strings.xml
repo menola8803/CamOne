@@ -489,4 +489,16 @@
     <string name="cams_location_none">None</string>
     <string name="cams_location_on">on</string>
     <string name="cams_location_off">off</string>
+    <!-- 1.16.0: panorama -->
+    <string name="mode_panorama">Panorama</string>
+    <string name="pano_hint">Tap the shutter and sweep slowly to the side</string>
+    <string name="pano_sweep">Sweep slowly to the right or left</string>
+    <string name="pano_slower">Slower</string>
+    <string name="pano_level">Keep the dot on the gold line</string>
+    <string name="pano_progress">%1$d° · %2$d photos – tap to finish</string>
+    <string name="pano_merging">Stitching the panorama…</string>
+    <string name="cd_pano_preview">Panorama so far</string>
+    <string name="msg_pano_short">Sweep further to the side for a panorama</string>
+    <string name="msg_pano_no_gyro">Panorama needs the phone\'s gyroscope</string>
+    <string name="msg_pano_failed">The panorama couldn\'t be saved</string>
 </resources>

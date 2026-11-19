@@ -259,6 +259,18 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     // Spara plats (LocationTracker.kt): lyssnar bara medan kameraskärmen är öppen och inställningen är på
     private val locationTracker = LocationTracker(context)
 
+    // Panorama (Panorama.kt, PanoramaStitcher.kt): gyrot väljer bilderna, en egen tråd syr ihop dem
+    private val panoMotion by lazy { PanoramaMotion(context) }
+    private var panoAnalysis: ImageAnalysis? = null
+    @Volatile private var panoSession: PanoramaSession? = null
+    private var panoFocal = 0f
+    private val _panoPreview = MutableStateFlow<Bitmap?>(null)
+    val panoPreview: StateFlow<Bitmap?> = _panoPreview.asStateFlow()
+    private val panoAnalyzer = ImageAnalysis.Analyzer { image ->
+        val session = panoSession
+        if (session != null && session.active) session.analyze(image) else image.close()
+    }
+
     // Läget Skanna (scan/): QR- och streckkoder med ML Kit, dokument med egen hörnsökning
     private var scanAnalysis: ImageAnalysis? = null
     private val scanExecutor = Executors.newSingleThreadExecutor { r -> Thread(r, "SncScan") }
@@ -416,6 +428,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         dualVideoBound = false
         lifecycleOwner?.lifecycle?.removeObserver(stopObserver)
         locationTracker.stop()
+        cancelPanorama()
+        panoAnalysis = null
         stopScan()
         motion.stop()
         bindJob?.cancel()
@@ -438,6 +452,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         timelapseEffect?.release()
         slowCam?.release()
         dualRenderer?.release()
+        panoSession?.release()
         runCatching { barcodeScanner?.close() }
         scanExecutor.shutdown()
         runCatching { DocumentPdf.pagesDir(context).deleteRecursively() }
@@ -496,6 +511,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         var front = st.lensFront
         if (front && !hasFront) front = false
         if (!front && !hasBack && hasFront) front = true
+        // Panorama tas med bakkameran
+        if (st.mode == CameraMode.PANORAMA && hasBack) front = false
         val defaultBase = if (front) CameraSelector.DEFAULT_FRONT_CAMERA else CameraSelector.DEFAULT_BACK_CAMERA
         // Bak, foto: den logiska kameran med flest linser, så att 0,6× och 2× använder de riktiga linserna.
         // Bak, video: standardkameran (0,6× och 1× är riktiga linser, 2× och 5× digital zoom), se videoBackId.
@@ -531,6 +548,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         stopStacking()
         stopAssist()
         stopScan()
+        cancelPanorama()
+        panoAnalysis = null
         // Slow motion med Camera2 stängs (öppnas igen nedan om det fortfarande gäller)
         slowCam?.closeAndWait()
         videoFilterBound = false
@@ -593,6 +612,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             var na: ImageAnalysis? = null
             var aa: ImageAnalysis? = null
             var sa: ImageAnalysis? = null
+            var pa: ImageAnalysis? = null
             // Natt (utan tillverkarens nattläge) och HDR i Foto (utan tillverkarens HDR) läggs ihop i appen
             val stacking = (st.mode == CameraMode.NIGHT || (st.mode == CameraMode.PHOTO && s.hdr)) &&
                 !(useExtension && wantedExtension != null)
@@ -662,6 +682,23 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                         .build()
                     useCases += ic
                 }
+            } else if (st.mode == CameraMode.PANORAMA) {
+                // Panorama: bildrutor i RGBA (ca 1280 × 960) som sys ihop i appen – ingen ImageCapture
+                pa = ImageAnalysis.Builder()
+                    .setResolutionSelector(
+                        ResolutionSelector.Builder()
+                            .setAspectRatioStrategy(photoAspect)
+                            .setResolutionStrategy(
+                                ResolutionStrategy(Size(1280, 960), ResolutionStrategy.FALLBACK_RULE_CLOSEST_HIGHER_THEN_LOWER)
+                            )
+                            .build()
+                    )
+                    .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                    .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                    // Skärmen är alltid stående; bilderna vrids stående i appen
+                    .setTargetRotation(Surface.ROTATION_0)
+                    .build()
+                useCases += pa
             } else {
                 // RAW (DNG) i Foto och Pro om kameran stöder det
                 val wantRaw = allowRaw && s.photoFormat.isRaw && (st.mode == CameraMode.PHOTO || st.mode == CameraMode.PRO) &&
@@ -753,6 +790,8 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
                 aa?.setAnalyzer(analysisExecutor, assistAnalyzer)
                 scanAnalysis = sa
                 sa?.setAnalyzer(scanExecutor, scanAnalyzer)
+                panoAnalysis = pa
+                pa?.setAnalyzer(analysisExecutor, panoAnalyzer)
                 rawFormat = if (ic != null) pendingRaw else null
                 cam
             } catch (e: Exception) {
@@ -876,6 +915,29 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         nightAnalysis?.let { Log.i(TAG, "Natt: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
         assistAnalysis?.let { Log.i(TAG, "Hjälpmedel: analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
         scanAnalysis?.let { Log.i(TAG, "Skanna: ${_state.value.scanKind} analys ${it.resolutionInfo?.resolution} bunden, kamera $boundId") }
+        panoAnalysis?.let { a ->
+            val res = a.resolutionInfo?.resolution
+            val longPx = res?.let { maxOf(it.width, it.height) } ?: 1280
+            val ci = runCatching { Camera2CameraInfo.from(cam.cameraInfo) }.getOrNull()
+            val sensor = ci?.getCameraCharacteristic(CameraCharacteristics.SENSOR_INFO_PHYSICAL_SIZE)
+            // En logisk kamera kan ange flera brännvidder: välj den som motsvarar huvudlinsen (ca 24 mm)
+            val diag = sensor?.let { kotlin.math.sqrt(it.width * it.width + it.height * it.height) } ?: 0f
+            val focalMm = ci?.getCameraCharacteristic(CameraCharacteristics.LENS_INFO_AVAILABLE_FOCAL_LENGTHS)
+                ?.minByOrNull { f -> if (diag > 0f) kotlin.math.abs(f * 43.27f / diag - 25f) else 0f }
+            // Brännvidden i bildpunkter: brännvidd (mm) × bildens långa sida / sensorns långa sida (mm)
+            val fromCamera = if (focalMm != null && sensor != null && maxOf(sensor.width, sensor.height) > 0f) {
+                focalMm * longPx / maxOf(sensor.width, sensor.height)
+            } else null
+            panoFocal = (fromCamera ?: (longPx / 2f / kotlin.math.tan(Math.toRadians(36.5)).toFloat()))
+                .coerceIn(longPx * 0.45f, longPx * 2f)
+            val vfov = Math.toDegrees(2.0 * kotlin.math.atan(longPx / 2.0 / panoFocal)).toFloat()
+            _state.update { it.copy(panoVfov = vfov) }
+            Log.i(
+                TAG,
+                "Panorama: analys $res bunden, brännvidd ${panoFocal.toInt()} px (${focalMm ?: "?"} mm), " +
+                    "synfält ${vfov.toInt()}° på höjden, kamera $boundId, gyro ${if (panoMotion.available) "ja" else "nej"}"
+            )
+        }
 
         when (st.mode) {
             CameraMode.PRO -> applyProOptions()
@@ -1997,6 +2059,120 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
         }
 
     // ---------------------------------------------------------------------------------------------
+    // Panorama
+    // ---------------------------------------------------------------------------------------------
+
+    /** Låser exponering och vitbalans under svepet, så att bilderna blir lika ljusa. */
+    private fun lockExposure(lock: Boolean) {
+        val cam = camera ?: return
+        runCatching {
+            val b = CaptureRequestOptions.Builder()
+                .setCaptureRequestOption(CaptureRequest.CONTROL_AE_LOCK, lock)
+                .setCaptureRequestOption(CaptureRequest.CONTROL_AWB_LOCK, lock)
+            Camera2CameraControl.from(cam.cameraControl).addCaptureRequestOptions(b.build())
+        }
+    }
+
+    private fun startPanorama() {
+        val st = _state.value
+        if (!st.isReady || panoAnalysis == null || panoFocal <= 0f) {
+            showMessage(R.string.msg_pano_failed)
+            return
+        }
+        if (!panoMotion.available) {
+            showMessage(R.string.msg_pano_no_gyro)
+            return
+        }
+        panoSession?.release()
+        val session = PanoramaSession(
+            motion = panoMotion,
+            focalLong = panoFocal,
+            onStatus = { status -> _state.update { it.copy(panoStatus = status) } },
+            onPreview = { bmp -> _panoPreview.value = bmp },
+            onFull = { viewModelScope.launch { if (_state.value.panoActive) stopPanorama() } }
+        )
+        panoSession = session
+        lockExposure(true)
+        panoMotion.start()
+        _panoPreview.value = null
+        _state.update { it.copy(panoActive = true, panoStatus = PanoramaStatus()) }
+        session.start()
+        if (settings.value.shutterSound) sound.play(MediaActionSound.START_VIDEO_RECORDING)
+        Log.i(TAG, "Panorama: svepet börjar")
+    }
+
+    private fun stopPanorama() {
+        val session = panoSession ?: return
+        if (!_state.value.panoActive) return
+        panoMotion.stop()
+        lockExposure(false)
+        val st = _state.value
+        val s = settings.value
+        if (s.shutterSound) sound.play(MediaActionSound.STOP_VIDEO_RECORDING)
+        _state.update { it.copy(panoActive = false, panoMerging = true, isCapturing = true) }
+        session.finish { result, frames, degrees ->
+            viewModelScope.launch {
+                try {
+                    if (result == null) {
+                        showMessage(R.string.msg_pano_short)
+                        return@launch
+                    }
+                    val uri = withContext(Dispatchers.Default) {
+                        val (px, w, h) = result
+                        var bmp = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+                        if (st.filter.isActive) {
+                            val filtered = bmp.withColorMatrix(st.filter.matrix())
+                            bmp.recycle()
+                            bmp = filtered
+                        }
+                        val exif = baseExif("SNC Camera Panorama: $frames frames, $degrees°", 0L, 0)
+                        Watermark.specFor(s, exif)?.let { spec ->
+                            val stamped = runCatching { Watermark.apply(context, bmp, spec) }.getOrDefault(bmp)
+                            if (stamped !== bmp) bmp.recycle()
+                            bmp = stamped
+                        }
+                        val format = if (s.photoFormat.isRaw) PhotoFormat.JPEG else s.photoFormat
+                        val saved = media.saveNewPhoto(bmp, format, s.jpegQuality, exif, prefix = "PANO", location = currentLocation(s))
+                        Log.i(TAG, "Panorama: sparat ${bmp.width}x${bmp.height} (${if (saved != null) "ja" else "nej"})")
+                        bmp.recycle()
+                        saved
+                    }
+                    if (uri != null) {
+                        _state.update { it.copy(shutterBlink = System.currentTimeMillis()) }
+                        onMediaSaved(uri, isVideo = false)
+                    } else {
+                        showMessage(R.string.msg_pano_failed)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    Log.e(TAG, "Panorama: kunde inte sparas: $t", t)
+                    showMessage(R.string.msg_pano_failed)
+                } finally {
+                    _state.update { it.copy(panoMerging = false, isCapturing = false, panoStatus = PanoramaStatus()) }
+                    _panoPreview.value = null
+                    session.release()
+                    if (panoSession === session) panoSession = null
+                }
+            }
+        }
+    }
+
+    /** Avbryter ett pågående panorama utan att spara (kameran binds om eller skärmen stängs). */
+    private fun cancelPanorama() {
+        val session = panoSession ?: return
+        if (!_state.value.panoActive && !_state.value.panoMerging) return
+        if (_state.value.panoMerging) return // sparas klart av sig självt
+        panoMotion.stop()
+        session.cancel()
+        session.release()
+        panoSession = null
+        _panoPreview.value = null
+        _state.update { it.copy(panoActive = false, panoStatus = PanoramaStatus()) }
+        Log.i(TAG, "Panorama: avbrutet")
+    }
+
+    // ---------------------------------------------------------------------------------------------
     // Plats i foton och filmer
     // ---------------------------------------------------------------------------------------------
 
@@ -2028,6 +2204,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun setMode(mode: CameraMode) {
         val st = _state.value
         if (st.isRecording || st.countdown > 0 || mode == st.mode) return
+        if (st.panoActive || st.panoMerging) return // ett panorama tas eller sys ihop
         if (st.isCapturing && stackSession != null) return // natt- eller HDR-bilden tas fortfarande
         if (burstJob?.isActive == true) return // serietagning pågår
         _state.update { it.copy(mode = mode, activeProControl = null) }
@@ -2038,6 +2215,7 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
     fun switchLens() {
         val st = _state.value
         if (st.isRecording || st.countdown > 0) return
+        if (st.mode == CameraMode.PANORAMA) return
         if (st.isCapturing && stackSession != null) return
         if (burstJob?.isActive == true) return
         if (!st.hasFrontCamera || !st.hasBackCamera) return
@@ -2178,6 +2356,10 @@ class CameraViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         if (st.isCapturing) return
+        if (st.mode == CameraMode.PANORAMA) {
+            if (st.panoActive) stopPanorama() else startPanorama()
+            return
+        }
         if (st.mode == CameraMode.DUAL) {
             runWithTimer { takeDualShot() }
             return

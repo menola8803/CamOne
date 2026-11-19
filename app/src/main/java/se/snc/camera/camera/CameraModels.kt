@@ -13,6 +13,8 @@ enum class CameraMode(@StringRes val label: Int) {
     VIDEO(R.string.mode_video),
     PHOTO(R.string.mode_photo),
     PORTRAIT(R.string.mode_portrait),
+    /** Svep åt sidan – bilderna sys ihop till ett panorama. */
+    PANORAMA(R.string.mode_panorama),
     /** Fram- och bakkameran samtidigt, i var sin halva. */
     DUAL(R.string.mode_dual),
     /** QR- och streckkoder eller dokument (PDF). */
@@ -165,6 +167,11 @@ data class CameraUiState(
     val dualSwapped: Boolean = false,
     /** Läget Dubbel: Video (annars Foto). */
     val dualVideo: Boolean = false,
+    /** Panorama: svepet pågår, bilderna sys ihop, läget under svepet och sökarens synfält på höjden. */
+    val panoActive: Boolean = false,
+    val panoMerging: Boolean = false,
+    val panoStatus: PanoramaStatus = PanoramaStatus(),
+    val panoVfov: Float = 75f,
     /** Läget Dubbel: kamerorna är bundna för dubbelvideo (går att spela in). */
     val dualVideoReady: Boolean = false,
 
