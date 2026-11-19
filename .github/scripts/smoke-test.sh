@@ -721,10 +721,12 @@ check "Kamerasidan visar sammanfattningen" $UI exists --text "AVAILABLE TO THE A
 shot 33-kameror
 # Video använder standardkameran (kamera 0), foto den logiska kameran med flest linser
 check "Kamerasidan visar kameran för video" $UI exists --contains "Back camera for video" --scroll --timeout 15
+# Bakkamerans rubrik kommer direkt efter sammanfattningen – leta innan sidan rullas långt ned
+# (--scroll rullar bara nedåt)
+check "Kamerasidan visar bakkameran" $UI exists --contains "BACK CAMERA" --scroll --timeout 25
 W=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f1); H=$(adb shell wm size | grep -oE '[0-9]+x[0-9]+' | tail -1 | cut -dx -f2)
 adb shell input swipe $((W / 2)) $((H * 3 / 4)) $((W / 2)) $((H / 5)) 400; sleep 1
 shot 34-kameror-linser
-check "Kamerasidan visar bakkameran" $UI exists --contains "BACK CAMERA" --scroll --timeout 25
 tap --text "Copy report"
 sleep 1
 check "Appen lever efter kamerasidan" alive
